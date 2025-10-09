@@ -42,6 +42,15 @@ const PixelGrid = ({ current_color, on_pixel_submitted, can_submit }: PixelGridP
             });
         });
 
+        socket.on("pixel_update_rejected", (reason) => {
+            if (reason === "timeout") {
+                // ui should already prevent this, so just ignore in case of any millisecond clock sync moments
+                return;
+            }
+
+            alert(`Pixel update rejected! Reason: ${reason}`);
+        });
+
         // request initial grid
         socket.emit("request_full_grid");
 
