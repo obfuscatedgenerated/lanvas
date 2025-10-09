@@ -6,9 +6,9 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { socket } from "@/socket";
 import GridCanvas, {type GridCanvasRef} from "@/components/GridCanvas";
 
-const GRID_WIDTH = 100;
-const GRID_HEIGHT = 100;
-const PIXEL_SIZE = 10;
+const PIXEL_SIZE = process.env.NEXT_PUBLIC_PIXEL_SIZE ? parseInt(process.env.NEXT_PUBLIC_PIXEL_SIZE) : 10;
+const GRID_WIDTH = process.env.NEXT_PUBLIC_GRID_WIDTH ? parseInt(process.env.NEXT_PUBLIC_GRID_WIDTH) : 100;
+const GRID_HEIGHT = process.env.NEXT_PUBLIC_GRID_HEIGHT ? parseInt(process.env.NEXT_PUBLIC_GRID_HEIGHT) : 100;
 
 const create_empty_grid = () => Array.from({ length: GRID_HEIGHT }, () => Array(GRID_WIDTH).fill("#FFFFFF"));
 
