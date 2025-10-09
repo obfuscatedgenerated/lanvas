@@ -25,6 +25,7 @@ const handler = app.getRequestHandler();
 
 const GRID_WIDTH = process.env.NEXT_PUBLIC_GRID_WIDTH ? parseInt(process.env.NEXT_PUBLIC_GRID_WIDTH) : 100;
 const GRID_HEIGHT = process.env.NEXT_PUBLIC_GRID_HEIGHT ? parseInt(process.env.NEXT_PUBLIC_GRID_HEIGHT) : 100;
+const PIXEL_TIMEOUT_MS = process.env.PIXEL_TIMEOUT_MS ? parseInt(process.env.PIXEL_TIMEOUT_MS) : 30000;
 
 console.log(`Grid size: ${GRID_WIDTH}x${GRID_HEIGHT}`);
 
@@ -32,6 +33,10 @@ console.log(`Grid size: ${GRID_WIDTH}x${GRID_HEIGHT}`);
 let grid_data = Array.from({ length: GRID_HEIGHT }, () =>
     Array(GRID_WIDTH).fill("#FFFFFF")
 );
+
+let timeouts = {};
+
+const banned_user_ids = [];
 
 app.prepare().then(() => {
     const http_server = createServer(handler);
@@ -82,20 +87,42 @@ app.prepare().then(() => {
             try {
                 const { x, y, color } = payload;
                 //console.log(`Received pixel_update from ${socket.id}:`, payload);
-                
-                if (
-                    // basic validation of incoming data
-                    // TODO: handle auth tokens
-                    typeof x === "number" && x >= 0 && x < GRID_WIDTH &&
-                    typeof y === "number" && y >= 0 && y < GRID_HEIGHT &&
-                    typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color)
-                ) {
-                    grid_data[y][x] = color;
-                    console.log(`Pixel updated at (${x}, ${y}) to ${color} by user ${socket.user.name} (id: ${socket.user.sub})`);
 
-                    // broadcast the pixel update to all connected clients
-                    io.emit("pixel_update", { x, y, color });
+                // basic validation of incoming data
+                if (
+                    !(
+                        typeof x === "number" && x >= 0 && x < GRID_WIDTH &&
+                        typeof y === "number" && y >= 0 && y < GRID_HEIGHT &&
+                        typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color)
+                    )
+                ) {
+                    return;
                 }
+
+                // check if user is banned
+                const user_id = socket.user.sub;
+                if (banned_user_ids.includes(user_id)) {
+                    socket.emit("pixel_update_rejected", { reason: "banned" });
+                    return;
+                }
+
+                // check user isn't in timeout period
+                const current_time = Date.now();
+                if (timeouts[user_id] && timeouts[user_id] > current_time) {
+                    // user is still in timeout period
+                    const wait_time = Math.ceil((timeouts[user_id] - current_time) / 1000);
+                    socket.emit("pixel_update_rejected", { reason: "timeout", wait_time });
+                    return;
+                }
+
+                grid_data[y][x] = color;
+                console.log(`Pixel updated at (${x}, ${y}) to ${color} by user ${socket.user.name} (id: ${user_id})`);
+
+                // set new timeout for user
+                timeouts[user_id] = current_time + PIXEL_TIMEOUT_MS;
+
+                // broadcast the pixel update to all connected clients
+                io.emit("pixel_update", { x, y, color });
             } catch (error) {
                 console.error("Invalid pixel_update payload", error);
             }
