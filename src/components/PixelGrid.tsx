@@ -14,11 +14,13 @@ const create_empty_grid = () => Array.from({ length: GRID_HEIGHT }, () => Array(
 
 interface PixelGridProps {
     current_color: string;
-    on_pixel_submitted?: (x: number, y: number, color: string) => void;
     can_submit?: boolean;
+
+    on_pixel_submitted?: (x: number, y: number, color: string) => void;
+    on_pixel_update_rejected?: (reason: string) => void;
 }
 
-const PixelGrid = ({ current_color, on_pixel_submitted, can_submit }: PixelGridProps) => {
+const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pixel_update_rejected }: PixelGridProps) => {
     const [grid_data, setGridData] = useState(create_empty_grid);
     const grid_canvas_ref = useRef<GridCanvasRef>(null);
 
@@ -42,13 +44,18 @@ const PixelGrid = ({ current_color, on_pixel_submitted, can_submit }: PixelGridP
             });
         });
 
-        socket.on("pixel_update_rejected", (reason) => {
-            if (reason === "timeout") {
+        socket.on("pixel_update_rejected", (data) => {
+            console.log("Pixel update rejected", data);
+
+            if (data.reason === "timeout") {
                 // ui should already prevent this, so just ignore in case of any millisecond clock sync moments
                 return;
             }
 
-            alert(`Pixel update rejected! Reason: ${reason}`);
+            alert(`Pixel update rejected! Reason: ${data.reason}`);
+            if (on_pixel_update_rejected) {
+                on_pixel_update_rejected(data);
+            }
         });
 
         // request initial grid

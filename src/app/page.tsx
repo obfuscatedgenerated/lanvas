@@ -22,12 +22,27 @@ export default function Home() {
             setTimeout(() => {
                 setTimeoutStartTime(null);
             }, PIXEL_TIMEOUT_MS);
-        }
-    , []);
+        },
+        []
+    );
+
+    // if the update was rejected, undo the timeout state
+    const handle_pixel_update_rejected = useCallback(
+        () => {
+            setTimeoutStartTime(null);
+        },
+        []
+    );
 
     return (
         <div className="flex-1">
-            <PixelGrid current_color={current_color} on_pixel_submitted={handle_pixel_submitted} can_submit={timeout_start_time === null} />
+            <PixelGrid
+                current_color={current_color}
+                can_submit={timeout_start_time === null}
+
+                on_pixel_submitted={handle_pixel_submitted}
+                on_pixel_update_rejected={handle_pixel_update_rejected}
+            />
 
             <FloatingWidget
                 mode={timeout_start_time ? "timeout" : "color"}
