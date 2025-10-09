@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import {Merriweather_Sans, Playpen_Sans} from "next/font/google";
 import "./globals.css";
 
 import Header from "@/components/Header";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const font_sans = Merriweather_Sans({
+  variable: "--font-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const font_doodle = Playpen_Sans({
+    variable: "--font-doodle",
+    subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
@@ -27,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased h-screen max-h-screen overflow-hidden flex flex-col`}
+        className={`${font_sans.variable} ${font_doodle.variable} antialiased h-screen max-h-screen overflow-hidden flex flex-col`}
       >
         <Header />
         {children}
