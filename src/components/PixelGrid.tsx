@@ -14,9 +14,11 @@ const create_empty_grid = () => Array.from({ length: GRID_HEIGHT }, () => Array(
 
 interface PixelGridProps {
     current_color: string;
+    on_pixel_submitted?: (x: number, y: number, color: string) => void;
+    can_submit?: boolean;
 }
 
-const PixelGrid = ({ current_color }: PixelGridProps) => {
+const PixelGrid = ({ current_color, on_pixel_submitted, can_submit }: PixelGridProps) => {
     const [grid_data, setGridData] = useState(create_empty_grid);
     const grid_canvas_ref = useRef<GridCanvasRef>(null);
 
@@ -51,6 +53,11 @@ const PixelGrid = ({ current_color }: PixelGridProps) => {
     // click handler
     const handle_pixel_click = useCallback(
         (event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
+            if (!can_submit) {
+                console.log("Cannot submit pixel");
+                return;
+            }
+
             if (!grid_canvas_ref.current || !socket) return;
 
             const canvas = grid_canvas_ref.current.get_canvas();
@@ -79,8 +86,12 @@ const PixelGrid = ({ current_color }: PixelGridProps) => {
 
             // TODO: send token for rate limiting / auth
             socket.emit("pixel_update", { x: pixel_x, y: pixel_y, color: current_color });
+
+            if (on_pixel_submitted) {
+                on_pixel_submitted(pixel_x, pixel_y, current_color);
+            }
         },
-        [current_color]
+        [current_color, on_pixel_submitted, can_submit]
     );
 
     return (
@@ -96,7 +107,7 @@ const PixelGrid = ({ current_color }: PixelGridProps) => {
             }}
         >
             <TransformComponent
-                wrapperStyle={{ width: "100%", height: "100%", imageRendering: "crisp-edges" }}
+                wrapperStyle={{ width: "100%", height: "100%", imageRendering: "crisp-edges", cursor: can_submit ? "crosshair" : "not-allowed" }}
                 contentStyle={{ width: "100%", height: "100%" }}
             >
                 <GridCanvas

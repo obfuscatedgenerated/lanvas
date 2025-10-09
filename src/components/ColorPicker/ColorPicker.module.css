@@ -1,0 +1,41 @@
+.container {
+    position: relative;
+    border-radius: calc(infinity * 1px);
+    border: 1px solid #ccc;
+
+    /* margin set dynamically */
+}
+
+
+.input {
+    /* browser consistent borders: https://rebeccamdeprey.com/blog/styling-the-html-color-input */
+    -webkit-appearance: none;
+
+    inline-size: 30px;
+    block-size: 30px;
+    
+    background-color: #fff;
+
+    padding: 0; /* no area around displayed swatch */
+
+    border-radius: calc(infinity * 1px);
+
+    cursor: pointer;
+
+    /* width and height set dynamically */
+}
+
+.input::-webkit-color-swatch-wrapper {
+    padding: 0; /* no area around displayed swatch */
+}
+
+.input::-webkit-color-swatch {
+    border: none;
+}
+
+.overlay {
+    position: absolute;
+    pointer-events: none;
+
+    /* top, left, width and height set dynamically */
+}

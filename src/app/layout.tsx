@@ -27,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${font_sans.variable} ${font_doodle.variable} antialiased h-screen max-h-screen overflow-hidden flex flex-col`}
+        className={`${font_sans.variable} ${font_doodle.variable} select-none antialiased h-screen max-h-screen overflow-hidden flex flex-col`}
       >
         <Header />
         {children}

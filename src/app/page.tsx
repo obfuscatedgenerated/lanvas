@@ -1,9 +1,43 @@
+"use client";
+
+// it's all interactivity anyway, may as well be a client component and we just inline the state here
+
+import { useState, useCallback } from "react";
+
 import PixelGrid from "@/components/PixelGrid";
+import FloatingWidget from "@/components/FloatingWidget";
+
+const PIXEL_TIMEOUT_MS = process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS ? parseInt(process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS) : 30000;
 
 export default function Home() {
-  return (
-    <div className="flex-1">
-      <PixelGrid current_color="#000000" />
-    </div>
-  );
+    const [current_color, setCurrentColor] = useState("#000000");
+    const [timeout_start_time, setTimeoutStartTime] = useState<number | null>(null);
+
+    // when pixel is submitted, switch to show timeout mode for the widget
+    const handle_pixel_submitted = useCallback(
+        () => {
+            setTimeoutStartTime(Date.now());
+
+            // after timeout, switch back to color picker mode
+            setTimeout(() => {
+                setTimeoutStartTime(null);
+            }, PIXEL_TIMEOUT_MS);
+        }
+    , []);
+
+    return (
+        <div className="flex-1">
+            <PixelGrid current_color={current_color} on_pixel_submitted={handle_pixel_submitted} can_submit={timeout_start_time === null} />
+
+            <FloatingWidget
+                mode={timeout_start_time ? "timeout" : "color"}
+
+                current_color={current_color}
+                on_color_change={setCurrentColor}
+
+                start_time={timeout_start_time ?? -1}
+                duration={PIXEL_TIMEOUT_MS}
+            />
+        </div>
+    );
 }
