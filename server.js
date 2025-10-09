@@ -5,7 +5,17 @@ import next from "next";
 
 import { Server } from "socket.io";
 
+import { getToken } from "next-auth/jwt";
+import { parse as parse_cookies } from "cookie";
+
 const dev = process.env.NODE_ENV !== "production";
+
+const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET;
+
+if (!NEXTAUTH_SECRET) {
+    throw new Error("Missing NEXTAUTH_SECRET");
+}
+
 const hostname = process.argv[2] || "localhost";
 const port = parseInt(process.argv[3], 10) || 3000;
 
@@ -24,12 +34,42 @@ let grid_data = Array.from({ length: GRID_HEIGHT }, () =>
 );
 
 app.prepare().then(() => {
-    const httpServer = createServer(handler);
+    const http_server = createServer(handler);
 
-    const io = new Server(httpServer);
+    const io = new Server(http_server);
+
+    // jwt validation middleware
+    io.use(async (socket, next_handler) => {
+        const handshake = socket.handshake;
+
+        if (!handshake.headers.cookie) {
+            return next_handler(new Error("Authentication error: No cookies provided."));
+        }
+
+        // prepare cookies into format accepted by next-auth
+        handshake.cookies = parse_cookies(handshake.headers.cookie || "");
+
+        const token = await getToken({
+            req: handshake,
+            secret: NEXTAUTH_SECRET,
+        });
+
+        if (!token) {
+            return next_handler(new Error("Authentication error: Invalid token."));
+        }
+
+        socket.user = token;
+        next_handler();
+    });
 
     io.on("connection", (socket) => {
-        console.log(`Client connected: ${socket.id}`);
+        if (!socket.user) {
+            console.log("Unauthenticated socket connection attempt.");
+            socket.disconnect(true);
+            return;
+        }
+
+        console.log(`Client connected: ${socket.id}, user ${socket.user.name} (id: ${socket.user.sub})`);
         
         // send full grid to client when requested
         socket.on("request_full_grid", () => {
@@ -41,7 +81,7 @@ app.prepare().then(() => {
         socket.on("pixel_update", (payload) => {
             try {
                 const { x, y, color } = payload;
-                console.log("Received pixel_update:", payload);
+                //console.log(`Received pixel_update from ${socket.id}:`, payload);
                 
                 if (
                     // basic validation of incoming data
@@ -51,7 +91,7 @@ app.prepare().then(() => {
                     typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color)
                 ) {
                     grid_data[y][x] = color;
-                    console.log(`Pixel updated at (${x}, ${y}) to ${color}`);
+                    console.log(`Pixel updated at (${x}, ${y}) to ${color} by user ${socket.user.name} (id: ${socket.user.sub})`);
 
                     // broadcast the pixel update to all connected clients
                     io.emit("pixel_update", { x, y, color });
@@ -66,7 +106,7 @@ app.prepare().then(() => {
         });
     });
 
-    httpServer
+    http_server
         .once("error", (err) => {
             console.error(err);
             process.exit(1);
