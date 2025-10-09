@@ -1,9 +1,9 @@
 "use client";
 
-import {signOut, useSession} from "next-auth/react"
+import {SessionProvider, signOut, useSession} from "next-auth/react"
 import Image from "next/image";
 
-const LoginStatus = () => {
+const LoginStatusInternal = () => {
     const { data: session, status } = useSession();
 
     if (status === "authenticated") {
@@ -13,14 +13,22 @@ const LoginStatus = () => {
 
                 <span>Signed in as <b>{session.user?.name}</b></span>
 
-                <button onClick={() => signOut()} className="cursor-pointer ml-2 px-3 py-1 bg-gray-600 text-white rounded hover:bg-red-700 transition duration-300">
+                <button onClick={() => signOut()} className="cursor-pointer ml-2 px-3 py-1 bg-slate-800 text-white rounded hover:bg-red-900 transition duration-300">
                     Sign out
                 </button>
             </div>
         )
     }
 
-    return <p>Loading...</p>;
+    return <p className="flex items-center h-8">Loading...</p>;
+}
+
+const LoginStatus = () => {
+    return (
+        <SessionProvider>
+            <LoginStatusInternal />
+        </SessionProvider>
+    );
 }
 
 export default LoginStatus
