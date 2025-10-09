@@ -75,7 +75,7 @@ const GridCanvas = ({ grid_data, on_pixel_click, pixel_size, grid_height, grid_w
     return (
         <canvas
             ref={canvas_ref}
-            className="w-full h-full block pixelated"
+            className="block pixelated"
             onClick={on_pixel_click}
             onContextMenu={(e) => e.preventDefault()}
         />
