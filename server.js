@@ -1,3 +1,5 @@
+import "dotenv/config";
+
 import { createServer } from "node:http";
 import next from "next";
 
@@ -11,8 +13,10 @@ const port = parseInt(process.argv[3], 10) || 3000;
 const app = next({ dev, hostname, port });
 const handler = app.getRequestHandler();
 
-const GRID_WIDTH = 100;
-const GRID_HEIGHT = 100;
+const GRID_WIDTH = process.env.NEXT_PUBLIC_GRID_WIDTH ? parseInt(process.env.NEXT_PUBLIC_GRID_WIDTH) : 100;
+const GRID_HEIGHT = process.env.NEXT_PUBLIC_GRID_HEIGHT ? parseInt(process.env.NEXT_PUBLIC_GRID_HEIGHT) : 100;
+
+console.log(`Grid size: ${GRID_WIDTH}x${GRID_HEIGHT}`);
 
 // basic test in memory, will switch to database once sockets work
 let grid_data = Array.from({ length: GRID_HEIGHT }, () =>

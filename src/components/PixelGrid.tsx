@@ -6,7 +6,7 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { socket } from "@/socket";
 import GridCanvas, {type GridCanvasRef} from "@/components/GridCanvas";
 
-const PIXEL_SIZE = process.env.NEXT_PUBLIC_PIXEL_SIZE ? parseInt(process.env.NEXT_PUBLIC_PIXEL_SIZE) : 10;
+const PIXEL_SIZE = 10; // use slight oversampling. could also instead use pixelated on parent, but that leads to weird subpixel artifacts
 const GRID_WIDTH = process.env.NEXT_PUBLIC_GRID_WIDTH ? parseInt(process.env.NEXT_PUBLIC_GRID_WIDTH) : 100;
 const GRID_HEIGHT = process.env.NEXT_PUBLIC_GRID_HEIGHT ? parseInt(process.env.NEXT_PUBLIC_GRID_HEIGHT) : 100;
 
@@ -96,7 +96,7 @@ const PixelGrid = ({ current_color }: PixelGridProps) => {
             }}
         >
             <TransformComponent
-                wrapperStyle={{ width: "100%", height: "100%"}}
+                wrapperStyle={{ width: "100%", height: "100%", imageRendering: "crisp-edges" }}
                 contentStyle={{ width: "100%", height: "100%" }}
             >
                 <GridCanvas

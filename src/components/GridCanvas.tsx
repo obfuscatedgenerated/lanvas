@@ -20,6 +20,7 @@ interface GridCanvasProps {
 const GridCanvas = ({ grid_data, on_pixel_click, pixel_size, grid_height, grid_width, ref}: GridCanvasProps) => {
     const canvas_ref = useRef<HTMLCanvasElement>(null);
     const old_grid_data = useRef<string[][]>([]);
+
     // expose methods to parent via ref
     useImperativeHandle(ref, () => ({
         update_draw,
@@ -39,6 +40,9 @@ const GridCanvas = ({ grid_data, on_pixel_click, pixel_size, grid_height, grid_w
 
         const ctx = canvas_ref.current.getContext("2d");
         if (!ctx) return;
+
+        // ensure image smoothing is disabled for pixelated look
+        ctx.imageSmoothingEnabled = false;
 
         ctx.save();
         
