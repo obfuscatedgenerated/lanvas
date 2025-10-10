@@ -35,7 +35,7 @@ const handler = app.getRequestHandler();
 
 const GRID_WIDTH = process.env.NEXT_PUBLIC_GRID_WIDTH ? parseInt(process.env.NEXT_PUBLIC_GRID_WIDTH) : 100;
 const GRID_HEIGHT = process.env.NEXT_PUBLIC_GRID_HEIGHT ? parseInt(process.env.NEXT_PUBLIC_GRID_HEIGHT) : 100;
-const PIXEL_TIMEOUT_MS = process.env.PIXEL_TIMEOUT_MS ? parseInt(process.env.PIXEL_TIMEOUT_MS) : 30000;
+const PIXEL_TIMEOUT_MS = process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS ? parseInt(process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS) : 30000;
 
 console.log(`Grid size: ${GRID_WIDTH}x${GRID_HEIGHT}`);
 
