@@ -1,9 +1,14 @@
-import NextAuth from "next-auth"
+import NextAuth, {User} from "next-auth"
 import DiscordProvider from "next-auth/providers/discord";
 
 if (!process.env.DISCORD_CLIENT_ID || !process.env.DISCORD_CLIENT_SECRET) {
     throw new Error("Missing DISCORD_CLIENT_ID or DISCORD_CLIENT_SECRET environment variable");
 }
+
+export interface UserWithAdminFlag extends User {
+    is_admin?: boolean;
+}
+
 export const handler = NextAuth({
     providers: [
         DiscordProvider({
@@ -15,7 +20,12 @@ export const handler = NextAuth({
 
     callbacks: {
         // verify that the user is in a specific guild
-        async signIn({ user, account, profile, email, credentials }) {
+        async signIn({ user, account }) {
+            // if the user is the DISCORD_ADMIN_USER_ID, allow sign in regardless
+            if (process.env.DISCORD_ADMIN_USER_ID && user.id === process.env.DISCORD_ADMIN_USER_ID) {
+                return true;
+            }
+
             const guild_id = process.env.DISCORD_GUILD_ID;
             if (!guild_id) {
                 throw new Error("Missing DISCORD_GUILD_ID environment variable");
@@ -45,6 +55,19 @@ export const handler = NextAuth({
                 console.error("Error checking guild membership:", error);
                 return false; // deny sign in on error
             }
+        },
+
+        async session({ session, token }) {
+            // add user id to session
+            if (session.user && token.sub) {
+                (session.user as User).id = token.sub;
+            }
+
+            // add admin flag to session if the user is the admin
+            if (process.env.DISCORD_ADMIN_USER_ID && token.sub === process.env.DISCORD_ADMIN_USER_ID) {
+                (session.user as UserWithAdminFlag).is_admin = true;
+            }
+            return session;
         }
     }
 })
