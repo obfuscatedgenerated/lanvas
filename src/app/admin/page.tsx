@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import { unauthorized } from "next/navigation";
 import {getToken} from "next-auth/jwt";
+import {Suspense} from "react";
+import AdminPageInteractivity from "@/components/AdminPageInteractivity";
 
 export default async function AdminPage() {
     const cookie_store = await cookies();
@@ -18,6 +20,9 @@ export default async function AdminPage() {
     return (
         <div className="p-8">
             <h1 className="text-3xl font-bold mb-4">Admin Page</h1>
+            <Suspense fallback="Loading...">
+                <AdminPageInteractivity />
+            </Suspense>
         </div>
     );
 }

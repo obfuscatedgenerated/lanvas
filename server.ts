@@ -39,29 +39,30 @@ const PIXEL_TIMEOUT_MS = process.env.PIXEL_TIMEOUT_MS ? parseInt(process.env.PIX
 
 console.log(`Grid size: ${GRID_WIDTH}x${GRID_HEIGHT}`);
 
-// in memory caches with default empty values
-const grid_data = Array.from({length: GRID_HEIGHT}, () =>
+const initialise_grid_data = () => Array.from({length: GRID_HEIGHT}, () =>
     Array(GRID_WIDTH).fill("#FFFFFF")
 );
 
-const author_data = Array.from({length: GRID_HEIGHT}, () =>
+const initialise_author_data = () => Array.from({length: GRID_HEIGHT}, () =>
     Array(GRID_WIDTH).fill(null)
 );
+
+// in memory caches with default empty values
+let grid_data = initialise_grid_data();
+
+let author_data = initialise_author_data();
 
 // TODO: could reduce redundancy further by storing user ids only in author_data and having a separate user map
 
 const timeouts: {[user_id: string]: number} = {};
 
-const banned_user_ids: string[] = [];
+let banned_user_ids: string[] = [];
 
 interface SocketWithJWT extends Socket {
     user?: JWT
 }
 
-const main = async () => {
-    await app.prepare();
-
-    // load existing pixels from database
+const load_pixels = async () => {
     const pixels = await pool.query("SELECT x, y, color, author_id, author.username, author.avatar_url FROM pixels JOIN user_details AS author ON pixels.author_id = author.user_id");
 
     let loaded_pixel_count = 0;
@@ -81,17 +82,28 @@ const main = async () => {
         }
     }
 
-    console.log(`Loaded ${loaded_pixel_count} pixels from database.`);
+    return loaded_pixel_count;
+}
 
-    // load banned users from database
+const load_banned_users = async () => {
     const banned_users_res = await pool.query("SELECT user_id FROM banned_user_ids");
     for (const row of banned_users_res.rows) {
         banned_user_ids.push(row.user_id);
     }
+}
+
+const main = async () => {
+    await app.prepare();
+
+    // load existing pixels from database
+    const loaded_pixel_count = await load_pixels();
+
+    console.log(`Loaded ${loaded_pixel_count} pixels from database.`);
+
+    // load banned users from database
+    await load_banned_users();
 
     console.log(`Loaded ${banned_user_ids.length} banned users from database.`);
-
-    // TODO: a way to sync bans or add them in a way that this cache is kept up to date without restarting the server
 
     const http_server = createServer(handler);
 
@@ -243,6 +255,172 @@ const main = async () => {
                 }
             } catch (error) {
                 console.error("Invalid pixel_update payload", error);
+            }
+        });
+
+        socket.on("admin_ban_user", async (payload) => {
+            const user = socket.user;
+            if (!user || !user.sub) {
+                return;
+            }
+
+            // check if their id matches the DISCORD_ADMIN_USER_ID env var
+            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
+                console.log(`Unauthorised admin_ban_user attempt by ${socket.id} (user id: ${user.sub})`);
+                return;
+            }
+
+            // check for user_id in payload
+            const {user_id} = payload;
+            if (typeof user_id !== "string" || !user_id) {
+                return;
+            }
+
+            // add to banned list if not already present
+            if (!banned_user_ids.includes(user_id)) {
+                banned_user_ids.push(user_id);
+                console.log(`User id ${user_id} banned by admin ${user.name} (id: ${user.sub})`);
+
+                // look up the username, assuming we have it
+                let username = null;
+                try {
+                    const res = await pool.query("SELECT username FROM user_details WHERE user_id = $1", [user_id]);
+                    if (res.rows.length > 0) {
+                        console.log(`Banned user id ${user_id} corresponds to username: ${res.rows[0].username}`);
+                        username = res.rows[0].username;
+                    } else {
+                        console.log(`Banned user id ${user_id} has no known username in the database.`);
+                    }
+                } catch (db_error) {
+                    console.error("Database error during fetching banned user's username:", db_error);
+                }
+
+                // also add to database
+                try {
+                    await pool.query(
+                        `INSERT INTO banned_user_ids (user_id, username_at_ban) VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING`,
+                        [user_id, username]
+                    );
+                    console.log(`User id ${user_id} added to banned_user_ids table`);
+                } catch (db_error) {
+                    console.error("Database error during banning user, please add to DB manually to ensure the ban is kept:", db_error);
+                }
+            }
+        });
+
+        socket.on("admin_unban_user", async (payload) => {
+            const user = socket.user;
+            if (!user || !user.sub) {
+                return;
+            }
+
+            // check if their id matches the DISCORD_ADMIN_USER_ID env var
+            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
+                console.log(`Unauthorised admin_unban_user attempt by ${socket.id} (user id: ${user.sub})`);
+                return;
+            }
+
+            // check for user_id in payload
+            const {user_id} = payload;
+            if (typeof user_id !== "string" || !user_id) {
+                return;
+            }
+
+            const index = banned_user_ids.indexOf(user_id);
+            if (index !== -1) {
+                banned_user_ids.splice(index, 1);
+                console.log(`User id ${user_id} unbanned by admin ${user.name} (id: ${user.sub})`);
+
+                // also remove from database
+                try {
+                    await pool.query(
+                        `DELETE FROM banned_user_ids WHERE user_id = $1`,
+                        [user_id]
+                    );
+                    console.log(`User id ${user_id} removed from banned_user_ids table`);
+                } catch (db_error) {
+                    console.error("Database error during unbanning user, please remove from DB manually to ensure the unban is kept:", db_error);
+                }
+            }
+        });
+
+        socket.on("admin_request_banned_users", async () => {
+            const user = socket.user;
+            if (!user || !user.sub) {
+                return;
+            }
+
+            // check if their id matches the DISCORD_ADMIN_USER_ID env var
+            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
+                console.log(`Unauthorised admin_request_banned_users attempt by ${socket.id} (user id: ${user.sub})`);
+                return;
+            }
+
+            // send the list of banned user ids back to the requester
+            socket.emit("banned_user_ids", banned_user_ids);
+        });
+
+        socket.on("admin_refresh_banned_users", async () => {
+            const user = socket.user;
+            if (!user || !user.sub) {
+                return;
+            }
+
+            // check if their id matches the DISCORD_ADMIN_USER_ID env var
+            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
+                console.log(`Unauthorised admin_refresh_banned_users attempt by ${socket.id} (user id: ${user.sub})`);
+                return;
+            }
+
+            // reload banned users from database
+            // TODO: instead of affecting global value and reverting, use a staging value
+            const old_banned_user_ids = banned_user_ids.slice();
+            try {
+                banned_user_ids = [];
+                console.log("Reloading banned users from database...");
+                await load_banned_users();
+                console.log(`Reloaded ${banned_user_ids.length} banned users from database.`);
+
+                // send the updated list of banned user ids back to the requester
+                socket.emit("banned_user_ids", banned_user_ids);
+            } catch (db_error) {
+                console.error("Database error during reloading banned users, keeping old list:", db_error);
+                banned_user_ids = old_banned_user_ids;
+            }
+        });
+
+        socket.on("admin_refresh_grid", async () => {
+            const user = socket.user;
+            if (!user || !user.sub) {
+                return;
+            }
+
+            // check if their id matches the DISCORD_ADMIN_USER_ID env var
+            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
+                console.log(`Unauthorised admin_refresh_grid attempt by ${socket.id} (user id: ${user.sub})`);
+                return;
+            }
+            
+            // reload pixels and authors from the database
+            // TODO: instead of affecting global value and reverting, use a staging value
+            const old_grid_data = grid_data.slice();
+            const old_author_data = author_data.slice();
+            try {
+                // clear grid and author data
+                grid_data = initialise_grid_data();
+                author_data = initialise_author_data();
+
+                console.log("Reloading grid from database...");
+                const pixel_count = await load_pixels();
+                console.log(`Reloaded ${pixel_count} pixels from database.`);
+
+                // broadcast the new grid to all clients
+                io.emit("full_grid", grid_data);
+                io.emit("full_author_data", author_data);
+            } catch (db_error) {
+                console.error("Database error during reloading pixels, keeping old grids:", db_error);
+                grid_data = old_grid_data;
+                author_data = old_author_data;
             }
         });
 
