@@ -109,6 +109,7 @@ const AdminPageInteractivity = () => {
                     className="bg-gray-700 border border-gray-500 text-gray-100 text-md rounded-lg py-1 px-2 mt-4 mx-2"
                     value={ban_user_id_input}
                     onChange={(e) => setBanUserIdInput(e.target.value)}
+                    autoComplete="off"
                 />
             </label>
             <button onClick={on_ban_click} className="cursor-pointer ml-2 px-3 py-1 bg-slate-800 text-white rounded hover:bg-slate-900 transition duration-300">
