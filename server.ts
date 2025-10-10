@@ -83,6 +83,16 @@ const main = async () => {
 
     console.log(`Loaded ${loaded_pixel_count} pixels from database.`);
 
+    // load banned users from database
+    const banned_users_res = await pool.query("SELECT user_id FROM banned_user_ids");
+    for (const row of banned_users_res.rows) {
+        banned_user_ids.push(row.user_id);
+    }
+
+    console.log(`Loaded ${banned_user_ids.length} banned users from database.`);
+
+    // TODO: a way to sync bans or add them in a way that this cache is kept up to date without restarting the server
+
     const http_server = createServer(handler);
 
     const io = new Server(http_server);
