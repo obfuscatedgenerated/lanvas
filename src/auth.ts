@@ -14,7 +14,7 @@ export const handler = NextAuth({
         DiscordProvider({
             clientId: process.env.DISCORD_CLIENT_ID,
             clientSecret: process.env.DISCORD_CLIENT_SECRET,
-            authorization: { params: { scope: 'identify email guilds' } }, // need access to guilds
+            authorization: { params: { scope: "identify guilds" } }, // need access to guilds
         })
     ],
 
