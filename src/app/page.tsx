@@ -41,7 +41,14 @@ export default function Home() {
 
         socket.on("timeout_info", (info) => {
             console.log(info);
+
+            // update timeout so far
             setTimeoutStartTime(info.started);
+
+            // after timeout, switch back to color picker mode
+            setTimeout(() => {
+                setTimeoutStartTime(null);
+            }, info.remaining);
         });
 
         // check for any timeouts on page load
