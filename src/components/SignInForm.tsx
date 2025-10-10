@@ -9,7 +9,7 @@ export default function SignInForm() {
     const error = searchParams.get("error");
 
     return (
-        <div className="bg-neutral-800 rounded-2xl p-5 flex flex-col gap-4 w-9/10 max-w-9/10 sm:w-lg sm:max-w-lg">
+        <div className="bg-neutral-800 rounded-2xl p-5 flex flex-col gap-3 w-9/10 max-w-9/10 sm:w-lg sm:max-w-lg">
             {error && (
                 <div className="text-red-500">
                     Sign-in failed.
@@ -23,6 +23,8 @@ export default function SignInForm() {
                 <Image src="/discord.svg" alt="" width={32} height={32} />
                 Sign in with Discord
             </button>
+
+            <p className="text-center font-semibold font-sans">Disclaimer: This is not an official event</p>
 
             <details className="flex flex-col w-full px-2">
                 <summary className="text-lg font-medium text-center">
