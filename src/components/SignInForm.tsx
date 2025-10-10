@@ -3,6 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
+import DiscordLogo from "@/components/DiscordLogo";
 
 export default function SignInForm() {
     const searchParams = useSearchParams();
@@ -20,7 +21,7 @@ export default function SignInForm() {
                 onClick={() => signIn("discord")}
                 className="cursor-pointer flex items-center justify-center gap-3 font-semibold text-lg font-sans bg-neutral-900 hover:bg-gray-900 transition duration-200 p-4 rounded-xl"
             >
-                <Image src="/vector/discord.svg" alt="" width={32} height={32} />
+                <DiscordLogo className="w-8 h-8" />
                 Sign in with Discord
             </button>
 

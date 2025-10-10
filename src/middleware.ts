@@ -9,8 +9,7 @@ export const config = {
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
          * - opengraph-image (the Open Graph image generation route)
-         * - vector (public vector files)
          */
-        "/((?!api|_next/static|_next/image|favicon.ico|opengraph-image|vector).*)",
+        "/((?!api|_next/static|_next/image|favicon.ico|opengraph-image).*)",
     ]
 }
