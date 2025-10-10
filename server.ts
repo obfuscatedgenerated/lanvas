@@ -57,6 +57,7 @@ let author_data = initialise_author_data();
 const timeouts: {[user_id: string]: number} = {};
 
 let banned_user_ids: string[] = [];
+let banned_usernames_cache: {[user_id: string]: string} = {};
 
 interface SocketWithJWT extends Socket {
     user?: JWT
@@ -86,9 +87,10 @@ const load_pixels = async () => {
 }
 
 const load_banned_users = async () => {
-    const banned_users_res = await pool.query("SELECT user_id FROM banned_user_ids");
+    const banned_users_res = await pool.query("SELECT user_id, username_at_ban FROM banned_user_ids");
     for (const row of banned_users_res.rows) {
         banned_user_ids.push(row.user_id);
+        banned_usernames_cache[row.user_id] = row.username_at_ban;
     }
 }
 
@@ -358,6 +360,9 @@ const main = async () => {
 
             // send the list of banned user ids back to the requester
             socket.emit("banned_user_ids", banned_user_ids);
+
+            // send the username cache object too. lazy approach but means very little tweaks to data caching here are made, and no expensive augmenting
+            socket.emit("banned_usernames_cache", banned_usernames_cache);
         });
 
         socket.on("admin_refresh_banned_users", async () => {
@@ -375,8 +380,10 @@ const main = async () => {
             // reload banned users from database
             // TODO: instead of affecting global value and reverting, use a staging value
             const old_banned_user_ids = banned_user_ids.slice();
+            const old_banned_usernames_cache = structuredClone(banned_usernames_cache);
             try {
                 banned_user_ids = [];
+                banned_usernames_cache = {};
                 console.log("Reloading banned users from database...");
                 await load_banned_users();
                 console.log(`Reloaded ${banned_user_ids.length} banned users from database.`);
@@ -386,6 +393,7 @@ const main = async () => {
             } catch (db_error) {
                 console.error("Database error during reloading banned users, keeping old list:", db_error);
                 banned_user_ids = old_banned_user_ids;
+                banned_usernames_cache = old_banned_usernames_cache;
             }
         });
 
