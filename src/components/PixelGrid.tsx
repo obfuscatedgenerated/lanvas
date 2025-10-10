@@ -176,7 +176,9 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
             visible={can_hover && hovered_author !== null}
         >
             <TransformWrapper
-                initialScale={1}
+                initialScale={0.66}
+                initialPositionX={window.innerWidth / 2 - (GRID_WIDTH * PIXEL_SIZE * 0.66) / 2}
+                initialPositionY={window.innerHeight / 2 - (GRID_HEIGHT * PIXEL_SIZE * 0.66) / 2}
                 minScale={0.5}
                 maxScale={25}
                 limitToBounds={false}
