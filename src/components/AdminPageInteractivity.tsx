@@ -91,7 +91,7 @@ const AdminPageInteractivity = () => {
         [ban_user_id_input]
     );
 
-    // TODO: adding bans, refreshing ban list, refreshing global grid
+    // TODO: refreshing ban list, refreshing global grid, clearing global grid, getting grid canvas screenshot
     return (
         <>
             <h2 className="text-xl font-medium mb-2">Banned users</h2>
