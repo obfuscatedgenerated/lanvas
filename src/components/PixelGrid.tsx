@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
+import {TransformWrapper, TransformComponent, ReactZoomPanPinchContentRef} from "react-zoom-pan-pinch";
 
 import { socket } from "@/socket";
 import GridCanvas, {type GridCanvasRef} from "@/components/GridCanvas";
@@ -32,6 +32,22 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
     const author_data = useRef<AuthorData>([]);
 
     const grid_canvas_ref = useRef<GridCanvasRef>(null);
+
+    const transform_wrapper_ref = useRef<ReactZoomPanPinchContentRef>(null);
+
+    // center transform on mount
+    useEffect(() => {
+        // this is a hack
+        setTimeout(() => {
+            if (transform_wrapper_ref.current) {
+                transform_wrapper_ref.current.setTransform(
+                    window.innerWidth / 2 - (GRID_WIDTH * PIXEL_SIZE) / 2 * 0.66,
+                    window.innerHeight / 2 - (GRID_HEIGHT * PIXEL_SIZE) / 2 * 0.66,
+                    0.66
+                );
+            }
+        }, 10);
+    }, []);
 
     // setup socket listeners
     useEffect(() => {
@@ -176,9 +192,8 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
             visible={can_hover && hovered_author !== null}
         >
             <TransformWrapper
+                ref={transform_wrapper_ref}
                 initialScale={0.66}
-                initialPositionX={window.innerWidth / 2 - (GRID_WIDTH * PIXEL_SIZE * 0.66) / 2}
-                initialPositionY={window.innerHeight / 2 - (GRID_HEIGHT * PIXEL_SIZE * 0.66) / 2}
                 minScale={0.5}
                 maxScale={25}
                 limitToBounds={false}
