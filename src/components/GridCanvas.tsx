@@ -14,7 +14,7 @@ interface GridCanvasProps {
     grid_height: number;
     grid_width: number;
 
-    ref: RefObject<GridCanvasRef | null>;
+    ref?: RefObject<GridCanvasRef | null>;
 
     on_click?: (e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => void;
     on_mouse_move?: (e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => void;
