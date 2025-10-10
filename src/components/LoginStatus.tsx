@@ -9,7 +9,7 @@ const LoginStatusInternal = () => {
     if (status === "authenticated") {
         return (
             <div className="flex items-center gap-3">
-                <Image src={session.user?.image || ''} alt="User Avatar" width={32} height={32} className="rounded-full" />
+                <Image src={session.user?.image || ''} alt="" draggable="false" width={32} height={32} className="rounded-full" />
 
                 <span>Signed in as <b>{session.user?.name}</b></span>
 

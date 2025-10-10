@@ -34,6 +34,12 @@ let grid_data = Array.from({ length: GRID_HEIGHT }, () =>
     Array(GRID_WIDTH).fill("#FFFFFF")
 );
 
+let author_data = Array.from({ length: GRID_HEIGHT }, () =>
+    Array(GRID_WIDTH).fill(null)
+);
+
+// TODO: could reduce redundancy further by storing user ids only in author_data and having a separate user map
+
 let timeouts = {};
 
 const banned_user_ids = [];
@@ -82,6 +88,12 @@ app.prepare().then(() => {
             socket.emit("full_grid", grid_data);
         });
 
+        // send full author data to client when requested
+        socket.on("request_full_author_data", () => {
+            console.log(`Full author data requested by: ${socket.id}`);
+            socket.emit("full_author_data", author_data);
+        });
+
         // handle pixel updates from clients
         socket.on("pixel_update", (payload) => {
             try {
@@ -115,14 +127,21 @@ app.prepare().then(() => {
                     return;
                 }
 
+                const author = {
+                    user_id,
+                    name: socket.user.name,
+                    avatar_url: socket.user.picture || null,
+                };
+
                 grid_data[y][x] = color;
+                author_data[y][x] = author;
                 console.log(`Pixel updated at (${x}, ${y}) to ${color} by user ${socket.user.name} (id: ${user_id})`);
 
                 // set new timeout for user
                 timeouts[user_id] = current_time + PIXEL_TIMEOUT_MS;
 
                 // broadcast the pixel update to all connected clients
-                io.emit("pixel_update", { x, y, color });
+                io.emit("pixel_update", { x, y, color, author });
             } catch (error) {
                 console.error("Invalid pixel_update payload", error);
             }

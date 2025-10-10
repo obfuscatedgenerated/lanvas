@@ -9,15 +9,19 @@ export interface GridCanvasRef {
 
 interface GridCanvasProps {
     grid_data: string[][];
-    on_pixel_click: (e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => void;
+
     pixel_size: number;
     grid_height: number;
     grid_width: number;
-    clear_color?: string;
+
     ref: RefObject<GridCanvasRef | null>;
+
+    on_click?: (e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => void;
+    on_mouse_move?: (e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => void;
+    on_mouse_leave?: (e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => void;
 }
 
-const GridCanvas = ({ grid_data, on_pixel_click, pixel_size, grid_height, grid_width, ref}: GridCanvasProps) => {
+const GridCanvas = ({ grid_data, pixel_size, grid_height, grid_width, ref, on_click, on_mouse_move }: GridCanvasProps) => {
     const canvas_ref = useRef<HTMLCanvasElement>(null);
     const old_grid_data = useRef<string[][]>([]);
 
@@ -76,7 +80,9 @@ const GridCanvas = ({ grid_data, on_pixel_click, pixel_size, grid_height, grid_w
         <canvas
             ref={canvas_ref}
             className="block pixelated"
-            onClick={on_pixel_click}
+            onClick={on_click}
+            onMouseMove={on_mouse_move}
+            onMouseLeave={on_mouse_move}
             onContextMenu={(e) => e.preventDefault()}
         />
     );
