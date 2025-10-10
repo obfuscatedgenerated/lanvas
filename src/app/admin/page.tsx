@@ -5,7 +5,8 @@ import {Suspense} from "react";
 import {revalidateTag} from "next/cache";
 
 import AdminPageInteractivity from "@/components/AdminPageInteractivity";
-import FancyButton from "@/components/FancyButton";
+import FancyButton, {fancy_button_class} from "@/components/FancyButton";
+import Link from "next/link";
 
 const revalidate_og = async () => {
     "use server";
@@ -46,9 +47,15 @@ export default async function AdminPage() {
                 <AdminPageInteractivity />
             </Suspense>
 
-            <FancyButton onClick={revalidate_og}>
-                Revalidate OG image
-            </FancyButton>
+            <div className="flex">
+                <FancyButton onClick={revalidate_og}>
+                    Revalidate OG image
+                </FancyButton>
+
+                <Link href="/opengraph-image" download="canvas.png" className={fancy_button_class}>
+                    Download canvas (revalidate first)
+                </Link>
+            </div>
         </div>
     );
 }
