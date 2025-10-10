@@ -138,7 +138,7 @@ const main = async () => {
         });
 
         // handle pixel updates from clients
-        socket.on("pixel_update", (payload) => {
+        socket.on("pixel_update", async (payload) => {
             try {
                 const {x, y, color} = payload;
                 //console.log(`Received pixel_update from ${socket.id}:`, payload);
@@ -181,6 +181,10 @@ const main = async () => {
                     avatar_url: socket.user.picture || null,
                 };
 
+                // we will do an optimistic update, so we store the old state in case we need to revert
+                const old_color = grid_data[y][x];
+                const old_author = author_data[y][x];
+
                 grid_data[y][x] = color;
                 author_data[y][x] = author;
                 console.log(`Pixel updated at (${x}, ${y}) to ${color} by user ${socket.user.name} (id: ${user_id})`);
@@ -190,6 +194,43 @@ const main = async () => {
 
                 // broadcast the pixel update to all connected clients
                 io.emit("pixel_update", {x, y, color, author});
+
+                // try to update the database
+                try {
+                    // first upsert the user details in case they have changed
+                    await pool.query(
+                        `INSERT INTO user_details (user_id, username, avatar_url)
+                         VALUES ($1, $2, $3)
+                         ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username, avatar_url = EXCLUDED.avatar_url`,
+                        [user_id, socket.user.name, socket.user.picture || null]
+                    );
+
+                    // then upsert the pixel
+                    await pool.query(
+                        `INSERT INTO pixels (x, y, color, author_id)
+                         VALUES ($1, $2, $3, $4)
+                         ON CONFLICT (x, y) DO UPDATE SET color = EXCLUDED.color, author_id = EXCLUDED.author_id`,
+                        [x, y, color, user_id]
+                    );
+
+                    console.log(`Database updated for pixel at (${x}, ${y})`);
+                } catch (db_error) {
+                    console.error("Database error during pixel update:", db_error);
+
+                    // revert in-memory state
+                    // TODO: dealing with conflicting edits could be improved here to avoid race condition if one is reverted but another edit has happened since
+                    grid_data[y][x] = old_color;
+                    author_data[y][x] = old_author;
+
+                    // notify clients to revert the pixel
+                    io.emit("pixel_update", {x, y, color: old_color, author: old_author});
+
+                    // remove the timeout since the update failed
+                    delete timeouts[user_id];
+
+                    // notify the user that their update failed to reset their client timer
+                    socket.emit("pixel_update_rejected", {reason: "database_error"});
+                }
             } catch (error) {
                 console.error("Invalid pixel_update payload", error);
             }
