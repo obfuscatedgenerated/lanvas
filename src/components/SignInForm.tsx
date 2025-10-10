@@ -20,7 +20,7 @@ export default function SignInForm() {
                 onClick={() => signIn("discord")}
                 className="cursor-pointer flex items-center justify-center gap-3 font-semibold text-lg font-sans bg-neutral-900 hover:bg-gray-900 transition duration-200 p-4 rounded-xl"
             >
-                <Image src="/discord.svg" alt="" width={32} height={32} />
+                <Image src="/vector/discord.svg" alt="" width={32} height={32} />
                 Sign in with Discord
             </button>
 
