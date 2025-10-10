@@ -3,9 +3,9 @@ import "dotenv/config";
 import {createServer} from "node:http";
 import next from "next";
 
-import {Server} from "socket.io";
+import {Server, type Socket} from "socket.io";
 
-import {getToken} from "next-auth/jwt";
+import {getToken, JWT} from "next-auth/jwt";
 import {parse as parse_cookies} from "cookie";
 
 import {Pool} from "pg";
@@ -50,9 +50,13 @@ const author_data = Array.from({length: GRID_HEIGHT}, () =>
 
 // TODO: could reduce redundancy further by storing user ids only in author_data and having a separate user map
 
-const timeouts = {};
+const timeouts: {[user_id: string]: number} = {};
 
-const banned_user_ids = [];
+const banned_user_ids: string[] = [];
+
+interface SocketWithJWT extends Socket {
+    user?: JWT
+}
 
 const main = async () => {
     await app.prepare();
@@ -92,10 +96,14 @@ const main = async () => {
         }
 
         // prepare cookies into format accepted by next-auth
-        handshake.cookies = parse_cookies(handshake.headers.cookie || "");
+        const handshake_with_cookies = {
+            ...handshake,
+            cookies: parse_cookies(handshake.headers.cookie || ""),
+        }
 
         const token = await getToken({
-            req: handshake,
+            // @ts-expect-error the function just wants to see a request object with basic fields and cookies, this suffices
+            req: handshake_with_cookies,
             secret: NEXTAUTH_SECRET,
         });
 
@@ -103,11 +111,12 @@ const main = async () => {
             return next_handler(new Error("Authentication error: Invalid token."));
         }
 
-        socket.user = token;
+        (socket as SocketWithJWT).user = token
         next_handler();
     });
 
-    io.on("connection", (socket) => {
+    io.on("connection", (sock) => {
+        const socket = sock as SocketWithJWT;
         if (!socket.user) {
             console.log("Unauthenticated socket connection attempt.");
             socket.disconnect(true);
@@ -142,6 +151,11 @@ const main = async () => {
                         typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color)
                     )
                 ) {
+                    return;
+                }
+
+                if (!socket.user || !socket.user.sub || !socket.user.name) {
+                    socket.emit("pixel_update_rejected", {reason: "unauthenticated"});
                     return;
                 }
 
