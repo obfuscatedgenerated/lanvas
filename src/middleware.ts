@@ -10,6 +10,6 @@ export const config = {
          * - favicon.ico (favicon file)
          * - opengraph-image (the Open Graph image generation route)
          */
-        '/((?!api|_next/static|_next/image|favicon.ico|opengraph-image).*)',
+        "/((?!api|_next/static|_next/image|favicon.ico|opengraph-image).*)",
     ]
 }

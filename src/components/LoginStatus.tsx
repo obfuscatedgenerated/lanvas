@@ -4,6 +4,7 @@ import {SessionProvider, signOut, useSession} from "next-auth/react"
 import Image from "next/image";
 import Link from "next/link";
 import {UserWithAdminFlag} from "@/auth";
+import FancyButton, {fancy_button_class} from "@/components/FancyButton";
 
 const LoginStatusInternal = () => {
     const { data: session, status } = useSession();
@@ -21,14 +22,14 @@ const LoginStatusInternal = () => {
                 <span>Signed in as <b>{user.name}</b></span>
 
                 {(user as UserWithAdminFlag).is_admin &&
-                    <Link href="/admin" className="ml-2 px-3 py-1 bg-slate-800 text-white rounded hover:bg-slate-900 transition duration-300">
+                    <Link href="/admin" className={fancy_button_class}>
                         Admin
                     </Link>
                 }
 
-                <button onClick={() => signOut()} className="cursor-pointer ml-2 px-3 py-1 bg-slate-800 text-white rounded hover:bg-red-900 transition duration-300">
+                <FancyButton onClick={() => signOut()}>
                     Sign out
-                </button>
+                </FancyButton>
             </div>
         )
     }

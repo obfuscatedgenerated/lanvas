@@ -78,7 +78,8 @@ export default async function Image() {
         draw_pixels_to_data_url,
         ["canvas-data-url"],
         {
-            revalidate: 60 // cache for a minute
+            revalidate: 60, // cache for a minute
+            tags: ["og-image"]
         }
     );
 
