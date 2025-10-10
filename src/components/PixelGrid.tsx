@@ -152,7 +152,6 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
             // pre-validate
             if (pixel_x < 0 || pixel_x >= GRID_WIDTH || pixel_y < 0 || pixel_y >= GRID_HEIGHT) return;
 
-            // TODO: send token for rate limiting / auth
             socket.emit("pixel_update", { x: pixel_x, y: pixel_y, color: current_color });
 
             if (on_pixel_submitted) {
