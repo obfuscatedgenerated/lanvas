@@ -43,7 +43,8 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
                 transform_wrapper_ref.current.setTransform(
                     window.innerWidth / 2 - (GRID_WIDTH * PIXEL_SIZE) / 2 * 0.66,
                     window.innerHeight / 2 - (GRID_HEIGHT * PIXEL_SIZE) / 2 * 0.66,
-                    0.66
+                    0.66,
+                    0
                 );
             }
         }, 10);
