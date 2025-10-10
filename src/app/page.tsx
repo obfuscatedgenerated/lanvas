@@ -34,6 +34,8 @@ export default function Home() {
         []
     );
 
+    // TODO: check for any active timeouts on page load
+
     return (
         <div className="flex-1">
             <PixelGrid

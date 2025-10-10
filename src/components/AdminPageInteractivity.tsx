@@ -12,9 +12,9 @@ interface UserListProps {
 
 const UserList = ({user_ids, usernames = {}, action_text, on_action_click = () => {}}: UserListProps) => {
     return (
-        <table className="table-fixed">
+        <table className="table-fixed bg-neutral-900">
             <thead>
-                <tr>
+                <tr className="border-neutral-600 border-b-1">
                     <th className="w-50">User ID</th>
                     <th className="w-50">Username</th>
                 </tr>
@@ -26,7 +26,7 @@ const UserList = ({user_ids, usernames = {}, action_text, on_action_click = () =
                       <td className="text-center">{usernames[user_id]}</td>
                       <td>
                           {action_text && (
-                              <button onClick={() => on_action_click(user_id)} className="cursor-pointer ml-2 px-3 py-1 bg-slate-800 text-white rounded hover:bg-slate-900 transition duration-300">
+                              <button onClick={() => on_action_click(user_id)} className="cursor-pointer m-2 px-3 py-1 bg-slate-800 text-white rounded hover:bg-slate-900 transition duration-300">
                                   {action_text}
                               </button>
                           )}
@@ -71,6 +71,26 @@ const AdminPageInteractivity = () => {
         [banned_usernames_cache]
     );
 
+    const [ban_user_id_input, setBanUserIdInput] = useState("");
+
+    const on_ban_click = useCallback(
+        () => {
+            const user_id = ban_user_id_input;
+
+            const confirmed = confirm(`Are you sure want to ban user ${user_id}?`);
+            if (!confirmed) {
+                return;
+            }
+
+            // submit ban and refresh list
+            socket.emit("admin_ban_user", {user_id});
+            socket.emit("admin_request_banned_users");
+
+            setBanUserIdInput("");
+        },
+        [ban_user_id_input]
+    );
+
     // TODO: adding bans, refreshing ban list, refreshing global grid
     return (
         <>
@@ -82,6 +102,18 @@ const AdminPageInteractivity = () => {
                 action_text="Unban"
                 on_action_click={on_unban_click}
             />
+
+            <label>
+                User ID:
+                <input
+                    className="bg-gray-700 border border-gray-500 text-gray-100 text-md rounded-lg py-1 px-2 mt-4 mx-2"
+                    value={ban_user_id_input}
+                    onChange={(e) => setBanUserIdInput(e.target.value)}
+                />
+            </label>
+            <button onClick={on_ban_click} className="cursor-pointer ml-2 px-3 py-1 bg-slate-800 text-white rounded hover:bg-slate-900 transition duration-300">
+                Ban user
+            </button>
         </>
     )
 }
