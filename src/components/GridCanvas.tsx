@@ -21,7 +21,7 @@ interface GridCanvasProps {
     on_mouse_leave?: (e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => void;
 }
 
-const GridCanvas = ({ grid_data, pixel_size, grid_height, grid_width, ref, on_click, on_mouse_move }: GridCanvasProps) => {
+const GridCanvas = ({ grid_data, pixel_size, grid_height, grid_width, ref, on_click, on_mouse_move, on_mouse_leave }: GridCanvasProps) => {
     const canvas_ref = useRef<HTMLCanvasElement>(null);
     const old_grid_data = useRef<string[][]>([]);
 
@@ -82,7 +82,7 @@ const GridCanvas = ({ grid_data, pixel_size, grid_height, grid_width, ref, on_cl
             className="block pixelated"
             onClick={on_click}
             onMouseMove={on_mouse_move}
-            onMouseLeave={on_mouse_move}
+            onMouseLeave={on_mouse_leave}
             onContextMenu={(e) => e.preventDefault()}
         />
     );
