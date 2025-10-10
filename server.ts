@@ -260,6 +260,27 @@ const main = async () => {
             }
         });
 
+        socket.on("check_timeout", () => {
+            const user = socket.user;
+            if (!user || !user.sub) {
+                return;
+            }
+
+            const timeout = timeouts[user.sub];
+            const current_time = Date.now();
+            if (timeout && timeout > current_time) {
+                const remaining = timeouts[user.sub] - current_time;
+                const elapsed = PIXEL_TIMEOUT_MS - remaining;
+                socket.emit("timeout_info", {
+                    started: current_time - elapsed, // this does it backwards as we don't store when it was started, assumed the PIXEL_TIMEOUT_MS doesnt change
+                    remaining,
+                    elapsed,
+                    ends: timeout,
+                    checked_at: current_time
+                });
+            }
+        });
+
         socket.on("admin_ban_user", async (payload) => {
             const user = socket.user;
             if (!user || !user.sub) {

@@ -2,10 +2,11 @@
 
 // it's all interactivity anyway, may as well be a client component and we just inline the state here
 
-import { useState, useCallback } from "react";
+import {useState, useCallback, useEffect} from "react";
 
 import PixelGrid from "@/components/PixelGrid";
 import FloatingWidget from "@/components/FloatingWidget";
+import {socket} from "@/socket";
 
 const PIXEL_TIMEOUT_MS = process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS ? parseInt(process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS) : 30000;
 
@@ -34,7 +35,22 @@ export default function Home() {
         []
     );
 
-    // TODO: check for any active timeouts on page load
+    // use socket to check timeout
+    useEffect(() => {
+        socket.on("connect", () => console.log("Connected!", socket.id));
+
+        socket.on("timeout_info", (info) => {
+            console.log(info);
+            setTimeoutStartTime(info.started);
+        });
+
+        // check for any timeouts on page load
+        socket.emit("check_timeout");
+
+        return () => {
+            socket.disconnect();
+        }
+    }, []);
 
     return (
         <div className="flex-1">
