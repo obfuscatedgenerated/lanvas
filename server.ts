@@ -299,6 +299,17 @@ const main = async () => {
                 return;
             }
 
+            // validate bigint
+            try {
+                if (user_id !== String(BigInt(user_id))) {
+                    console.log(`Got invalid bigint ${user_id}`);
+                    return;
+                }
+            } catch (err) {
+                console.log(`Got invalid bigint ${user_id} with error: ${err}`);
+                return;
+            }
+
             // add to banned list if not already present
             if (!banned_user_ids.includes(user_id)) {
                 banned_user_ids.push(user_id);
@@ -346,6 +357,17 @@ const main = async () => {
             // check for user_id in payload
             const {user_id} = payload;
             if (typeof user_id !== "string" || !user_id) {
+                return;
+            }
+
+            // validate bigint
+            try {
+                if (user_id !== String(BigInt(user_id))) {
+                    console.log(`Got invalid bigint ${user_id}`);
+                    return;
+                }
+            } catch (err) {
+                console.log(`Got invalid bigint ${user_id} with error: ${err}`);
                 return;
             }
 

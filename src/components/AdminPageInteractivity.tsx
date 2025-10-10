@@ -77,6 +77,17 @@ const AdminPageInteractivity = () => {
         () => {
             const user_id = ban_user_id_input;
 
+            // validate bigint
+            try {
+                if (user_id !== String(BigInt(user_id))) {
+                    alert(`Invalid bigint ${user_id}`);
+                    return;
+                }
+            } catch (err) {
+                alert(`Invalid bigint ${user_id} with error: ${err}`);
+                return;
+            }
+
             const confirmed = confirm(`Are you sure want to ban user ${user_id}?`);
             if (!confirmed) {
                 return;
