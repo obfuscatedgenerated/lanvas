@@ -9,7 +9,8 @@ export const config = {
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
          * - opengraph-image (the Open Graph image generation route)
+         * - discord.svg
          */
-        "/((?!api|_next/static|_next/image|favicon.ico|opengraph-image).*)",
+        "/((?!api|_next/static|_next/image|favicon.ico|opengraph-image|discord.svg).*)",
     ]
 }
