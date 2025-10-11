@@ -26,8 +26,8 @@ const UserList = ({
         <tbody>
         {user_ids.map(user_id => (
             <tr key={user_id}>
-                <td className="text-center">{user_id}</td>
-                <td className="text-center">{usernames[user_id]}</td>
+                <td className="text-center select-text">{user_id}</td>
+                <td className="text-center select-text">{usernames[user_id]}</td>
                 <td>
                     {action_text && (
                         <FancyButton onClick={() => on_action_click(user_id)}>
@@ -59,9 +59,9 @@ const ConnectedUserList = ({connected_users}: { connected_users: ConnectedUserDe
         <tbody>
         {connected_users.map(({socket_id, user_id, username}) => (
             <tr key={socket_id}>
-                <td className="text-center">{socket_id}</td>
-                <td className="text-center">{user_id || "(unknown)"}</td>
-                <td className="text-center">{username || "(unknown)"}</td>
+                <td className="text-center select-text">{socket_id}</td>
+                <td className="text-center select-text">{user_id || "(unknown)"}</td>
+                <td className="text-center select-text">{username || "(unknown)"}</td>
             </tr>
         ))}
         </tbody>
