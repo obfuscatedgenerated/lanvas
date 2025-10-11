@@ -1,47 +1,78 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import {useEffect, useState, useCallback} from "react";
 import {socket} from "@/socket";
 
 import FancyButton from "@/components/FancyButton";
 
 interface UserListProps {
     user_ids: string[];
-    usernames?: {[user_id: string]: string};
+    usernames?: { [user_id: string]: string };
     action_text?: string;
     on_action_click?: (user_id: string) => void;
 }
-const UserList = ({user_ids, usernames = {}, action_text, on_action_click = () => {}}: UserListProps) => {
-    return (
-        <table className="table-fixed bg-neutral-900">
-            <thead>
-                <tr className="border-neutral-600 border-b-1">
-                    <th className="w-50">User ID</th>
-                    <th className="w-50">Username</th>
-                </tr>
-            </thead>
-            <tbody>
-                {user_ids.map(user_id => (
-                  <tr key={user_id}>
-                      <td className="text-center">{user_id}</td>
-                      <td className="text-center">{usernames[user_id]}</td>
-                      <td>
-                          {action_text && (
-                              <FancyButton onClick={() => on_action_click(user_id)}>
-                                  {action_text}
-                              </FancyButton>
-                          )}
-                      </td>
-                  </tr>
-                ))}
-            </tbody>
-        </table>
-    )
+
+const UserList = ({
+                      user_ids, usernames = {}, action_text, on_action_click = () => {
+    }
+                  }: UserListProps) => (
+    <table className="table-fixed bg-neutral-900">
+        <thead>
+        <tr className="border-neutral-600 border-b-1">
+            <th className="w-50">User ID</th>
+            <th className="w-50">Username</th>
+        </tr>
+        </thead>
+        <tbody>
+        {user_ids.map(user_id => (
+            <tr key={user_id}>
+                <td className="text-center">{user_id}</td>
+                <td className="text-center">{usernames[user_id]}</td>
+                <td>
+                    {action_text && (
+                        <FancyButton onClick={() => on_action_click(user_id)}>
+                            {action_text}
+                        </FancyButton>
+                    )}
+                </td>
+            </tr>
+        ))}
+        </tbody>
+    </table>
+);
+
+interface ConnectedUserDetails {
+    socket_id: string;
+    user_id?: string;
+    username?: string;
 }
+
+const ConnectedUserList = ({connected_users}: { connected_users: ConnectedUserDetails[] }) => (
+    <table className="table-fixed bg-neutral-900">
+        <thead>
+        <tr className="border-neutral-600 border-b-1">
+            <th className="w-50">Socket ID</th>
+            <th className="w-50">User ID</th>
+            <th className="w-50">Username</th>
+        </tr>
+        </thead>
+        <tbody>
+        {connected_users.map(({socket_id, user_id, username}) => (
+            <tr key={socket_id}>
+                <td className="text-center">{socket_id}</td>
+                <td className="text-center">{user_id || "(unknown)"}</td>
+                <td className="text-center">{username || "(unknown)"}</td>
+            </tr>
+        ))}
+        </tbody>
+    </table>
+);
 
 const AdminPageInteractivity = () => {
     const [banned_user_ids, setBannedUserIds] = useState<string[]>([]);
-    const [banned_usernames_cache, setBannedUsernamesCache] = useState<{[user_id: string]: string}>({});
+    const [banned_usernames_cache, setBannedUsernamesCache] = useState<{ [user_id: string]: string }>({});
+
+    const [connected_users, setConnectedUsers] = useState<ConnectedUserDetails[]>([]);
 
     // setup socket
     useEffect(() => {
@@ -49,9 +80,11 @@ const AdminPageInteractivity = () => {
 
         socket.on("banned_user_ids", setBannedUserIds);
         socket.on("banned_usernames_cache", setBannedUsernamesCache);
+        socket.on("connected_users", setConnectedUsers);
 
-        // request ban list
+        // request ban list and connected users on load
         socket.emit("admin_request_banned_users");
+        socket.emit("admin_request_connected_users");
 
         return () => {
             socket.disconnect();
@@ -106,6 +139,10 @@ const AdminPageInteractivity = () => {
     // TODO: refreshing ban list, refreshing global grid, clearing global grid
     return (
         <>
+            <h2 className="text-xl font-medium mb-2">Connected users</h2>
+
+            <ConnectedUserList connected_users={connected_users} />
+
             <h2 className="text-xl font-medium mb-2">Banned users</h2>
 
             <UserList

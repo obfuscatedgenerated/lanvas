@@ -59,6 +59,14 @@ const timeouts: {[user_id: string]: number} = {};
 let banned_user_ids: string[] = [];
 let banned_usernames_cache: {[user_id: string]: string} = {};
 
+interface ConnectedUserDetails {
+    socket_id: string;
+    user_id?: string;
+    username?: string;
+}
+
+const connected_users = new Set<ConnectedUserDetails>();
+
 interface SocketWithJWT extends Socket {
     user?: JWT
 }
@@ -147,7 +155,21 @@ const main = async () => {
             return;
         }
 
+        // if they are admin, subscribe to the admin room
+        if (socket.user.sub === process.env.DISCORD_ADMIN_USER_ID) {
+            socket.join("admin");
+            console.log(`Admin user connected: ${socket.id}, user ${socket.user.name} (id: ${socket.user.sub})`);
+        }
+
         console.log(`Client connected: ${socket.id}, user ${socket.user.name} (id: ${socket.user.sub})`);
+        connected_users.add({
+            socket_id: socket.id,
+            user_id: socket.user.sub,
+            username: socket.user.name || undefined,
+        });
+
+        // send updated connected users list to admin room
+        io.to("admin").emit("connected_users", Array.from(connected_users));
 
         // send full grid to client when requested
         socket.on("request_full_grid", () => {
@@ -475,8 +497,34 @@ const main = async () => {
             }
         });
 
+        socket.on("admin_request_connected_users", () => {
+            const user = socket.user;
+            if (!user || !user.sub) {
+                return;
+            }
+
+            // check if their id matches the DISCORD_ADMIN_USER_ID env var
+            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
+                console.log(`Unauthorised admin_request_connected_users attempt by ${socket.id} (user id: ${user.sub})`);
+                return;
+            }
+
+            // send the list of connected users back to the requester
+            socket.emit("connected_users", Array.from(connected_users));
+        });
+
         socket.on("disconnect", () => {
             console.log(`Client disconnected: ${socket.id}`);
+
+            // remove from connected users set
+            connected_users.forEach((user) => {
+                if (user.socket_id === socket.id) {
+                    connected_users.delete(user);
+                }
+            });
+
+            // send updated connected users list to admin room
+            io.to("admin").emit("connected_users", Array.from(connected_users));
         });
     });
 
