@@ -9,16 +9,16 @@ import {createCanvas} from "canvas";
 
 // Image metadata
 export const alt = "LANvas canvas"
-export const size = {
-    width: 1200,
-    height: 630,
-}
-
 export const contentType = "image/png"
 
 const PIXEL_SIZE = 10; // use slight oversampling. could also instead use pixelated on parent, but that leads to weird subpixel artifacts
 const GRID_WIDTH = process.env.NEXT_PUBLIC_GRID_WIDTH ? parseInt(process.env.NEXT_PUBLIC_GRID_WIDTH) : 100;
 const GRID_HEIGHT = process.env.NEXT_PUBLIC_GRID_HEIGHT ? parseInt(process.env.NEXT_PUBLIC_GRID_HEIGHT) : 100;
+
+export const size = {
+    width: GRID_WIDTH * PIXEL_SIZE / 2,
+    height: GRID_HEIGHT * PIXEL_SIZE / 2,
+}
 
 const draw_pixels_to_data_url = async () => {
     console.log("OpenGraph image redrawing...");
