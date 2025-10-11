@@ -13,9 +13,8 @@ interface UserListProps {
 }
 
 const UserList = ({
-                      user_ids, usernames = {}, action_text, on_action_click = () => {
-    }
-                  }: UserListProps) => (
+    user_ids, usernames = {}, action_text, on_action_click = () => {}
+}: UserListProps) => (
     <table className="table-fixed bg-neutral-900">
         <thead>
         <tr className="border-neutral-600 border-b-1">
@@ -74,6 +73,14 @@ const AdminPageInteractivity = () => {
 
     const [connected_users, setConnectedUsers] = useState<ConnectedUserDetails[]>([]);
 
+    const [is_readonly, setIsReadonly] = useState(false);
+    const [readonly_checkbox, setReadonlyCheckbox] = useState(is_readonly);
+
+    // keep checkbox in sync with actual readonly state
+    useEffect(() => {
+        setReadonlyCheckbox(is_readonly);
+    }, [is_readonly]);
+
     // setup socket
     useEffect(() => {
         socket.on("connect", () => console.log("Connected!", socket.id));
@@ -81,8 +88,10 @@ const AdminPageInteractivity = () => {
         socket.on("banned_user_ids", setBannedUserIds);
         socket.on("banned_usernames_cache", setBannedUsernamesCache);
         socket.on("connected_users", setConnectedUsers);
+        socket.on("readonly", setIsReadonly);
 
-        // request ban list and connected users on load
+        // request readonly state, ban list and connected users on load
+        socket.emit("check_readonly");
         socket.emit("admin_request_banned_users");
         socket.emit("admin_request_connected_users");
 
@@ -166,6 +175,34 @@ const AdminPageInteractivity = () => {
                     Ban user
                 </FancyButton>
             </div>
+
+            <label>
+                <input
+                    type="checkbox"
+                    checked={readonly_checkbox}
+                    onChange={(e) => {
+                        const new_value = e.target.checked;
+                        setReadonlyCheckbox(new_value);
+
+                        const confirmed = confirm(`Are you sure want to turn ${new_value ? "on" : "off"} readonly mode?`);
+                        if (!confirmed) {
+                            // revert checkbox
+                            setReadonlyCheckbox(is_readonly);
+                            return;
+                        }
+
+                        // submit change
+                        socket.emit("admin_set_readonly", new_value);
+
+                        // we don't update the is_readonly state here, we wait for the server to confirm the change and rely on the parrot back
+                    }}
+                    className="mr-2"
+                />
+                Read only mode
+                {is_readonly !== readonly_checkbox && (
+                    <span className="text-yellow-400 ml-2">(pending change)</span>
+                )}
+            </label>
         </>
     )
 }

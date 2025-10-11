@@ -33,6 +33,7 @@ const port = parseInt(process.argv[3], 10) || 3000;
 const app = next({dev, hostname, port});
 const handler = app.getRequestHandler();
 
+// TODO: move these values to the database so they can be changed without redeploying, and transmit the values to the client via ws rather than baked in env vars
 const GRID_WIDTH = process.env.NEXT_PUBLIC_GRID_WIDTH ? parseInt(process.env.NEXT_PUBLIC_GRID_WIDTH) : 100;
 const GRID_HEIGHT = process.env.NEXT_PUBLIC_GRID_HEIGHT ? parseInt(process.env.NEXT_PUBLIC_GRID_HEIGHT) : 100;
 const PIXEL_TIMEOUT_MS = process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS ? parseInt(process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS) : 30000;
@@ -51,6 +52,8 @@ const initialise_author_data = () => Array.from({length: GRID_HEIGHT}, () =>
 let grid_data = initialise_grid_data();
 
 let author_data = initialise_author_data();
+
+let readonly = false;
 
 // TODO: could reduce redundancy further by storing user ids only in author_data and having a separate user map
 
@@ -114,6 +117,21 @@ const main = async () => {
     await load_banned_users();
 
     console.log(`Loaded ${banned_user_ids.length} banned users from database.`);
+
+    // load config value "readonly" from database if it exists
+    // default to false if not set
+    try {
+        const res = await pool.query("SELECT value FROM config WHERE key = 'readonly'");
+        if (res.rows.length > 0) {
+            readonly = res.rows[0].value === 'true';
+        } else {
+            readonly = false;
+        }
+        console.log(`Readonly mode is ${readonly ? "enabled" : "disabled"}.`);
+    } catch (db_error) {
+        console.error("Database error during loading config, defaulting to readonly = false:", db_error);
+        readonly = false;
+    }
 
     const http_server = createServer(handler);
 
@@ -200,6 +218,11 @@ const main = async () => {
                     return;
                 }
 
+                if (readonly) {
+                    socket.emit("pixel_update_rejected", {reason: "readonly"});
+                    return;
+                }
+
                 if (!socket.user || !socket.user.sub || !socket.user.name) {
                     socket.emit("pixel_update_rejected", {reason: "unauthenticated"});
                     return;
@@ -278,7 +301,7 @@ const main = async () => {
                     socket.emit("pixel_update_rejected", {reason: "database_error"});
                 }
             } catch (error) {
-                console.error("Invalid pixel_update payload", error);
+                console.error("pixel_update failed", error);
             }
         });
 
@@ -301,6 +324,10 @@ const main = async () => {
                     checked_at: current_time
                 });
             }
+        });
+
+        socket.on("check_readonly", () => {
+            socket.emit("readonly", readonly);
         });
 
         socket.on("admin_ban_user", async (payload) => {
@@ -511,6 +538,41 @@ const main = async () => {
 
             // send the list of connected users back to the requester
             socket.emit("connected_users", Array.from(connected_users));
+        });
+
+        socket.on("admin_set_readonly", async (payload) => {
+            const user = socket.user;
+            if (!user || !user.sub) {
+                return;
+            }
+
+            // check if their id matches the DISCORD_ADMIN_USER_ID env var
+            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
+                console.log(`Unauthorised admin_set_readonly attempt by ${socket.id} (user id: ${user.sub})`);
+                return;
+            }
+
+            if (typeof payload !== "boolean") {
+                return;
+            }
+
+            readonly = payload;
+            console.log(`Readonly mode set to ${readonly}`);
+
+            // broadcast the new readonly value to all clients
+            io.emit("readonly", readonly);
+
+            // persist to database
+            try {
+                await pool.query(
+                    `INSERT INTO config (key, value) VALUES ('readonly', $1)
+                     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+                    [readonly ? "true" : "false"]
+                );
+                console.log(`Readonly mode persisted to database as ${readonly}`);
+            } catch (db_error) {
+                console.error("Database error during setting readonly mode, please set in DB manually to ensure the setting is kept:", db_error);
+            }
         });
 
         socket.on("disconnect", () => {

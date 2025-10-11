@@ -13,6 +13,7 @@ const PIXEL_TIMEOUT_MS = process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS ? parseInt(pro
 export default function Home() {
     const [current_color, setCurrentColor] = useState("#000000");
     const [timeout_start_time, setTimeoutStartTime] = useState<number | null>(null);
+    const [is_readonly, setIsReadonly] = useState(false);
 
     // when pixel is submitted, switch to show timeout mode for the widget
     const handle_pixel_submitted = useCallback(
@@ -51,8 +52,18 @@ export default function Home() {
             }, info.remaining);
         });
 
+        socket.on("readonly", (readonly) => {
+            setIsReadonly(readonly);
+            if (readonly) {
+                alert("The canvas is now in read only mode. You cannot place pixels at this time.");
+            }
+        });
+
         // check for any timeouts on page load
         socket.emit("check_timeout");
+
+        // check if the canvas is in readonly mode
+        socket.emit("check_readonly");
 
         return () => {
             socket.disconnect();
@@ -63,21 +74,23 @@ export default function Home() {
         <div className="flex-1">
             <PixelGrid
                 current_color={current_color}
-                can_submit={timeout_start_time === null}
+                can_submit={!is_readonly && timeout_start_time === null}
 
                 on_pixel_submitted={handle_pixel_submitted}
                 on_pixel_update_rejected={handle_pixel_update_rejected}
             />
 
-            <FloatingWidget
-                mode={timeout_start_time ? "timeout" : "color"}
+            {!is_readonly &&
+                <FloatingWidget
+                    mode={timeout_start_time ? "timeout" : "color"}
 
-                current_color={current_color}
-                on_color_change={setCurrentColor}
+                    current_color={current_color}
+                    on_color_change={setCurrentColor}
 
-                start_time={timeout_start_time ?? -1}
-                duration={PIXEL_TIMEOUT_MS}
-            />
+                    start_time={timeout_start_time ?? -1}
+                    duration={PIXEL_TIMEOUT_MS}
+                />
+            }
         </div>
     );
 }
