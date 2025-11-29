@@ -210,6 +210,20 @@ const main = async () => {
         // send updated connected users list to admin room
         io.to("admin").emit("connected_users", Array.from(connected_users));
 
+        // determine number of currently connected unique discord users
+        const unique_connected_user_ids = new Set<string>();
+        connected_users.forEach((user) => {
+            if (user.user_id) {
+                unique_connected_user_ids.add(user.user_id);
+            }
+        });
+
+        // update in-memory stats cache
+        stats.set("connected_unique_users", unique_connected_user_ids.size);
+
+        // emit updated stats to all clients in stats room
+        io.to("stats").emit("stats", Object.fromEntries(stats));
+
         // send full grid to client when requested
         socket.on("request_full_grid", () => {
             console.log(`Full grid requested by: ${socket.id}`);

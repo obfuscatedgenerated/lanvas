@@ -6,11 +6,13 @@ import NumberFlow from "@number-flow/react";
 
 interface StatsData {
     total_pixels_placed: number;
+    connected_unique_users: number;
 }
 
 const StatsList = ({ stats }: { stats: StatsData }) => (
     <ul className="text-xl mb-16">
         <li><b>Total pixels placed:</b> <NumberFlow value={stats.total_pixels_placed}/></li>
+        <li><b>Connected users:</b> <NumberFlow value={stats.connected_unique_users}/></li>
     </ul>
 );
 
