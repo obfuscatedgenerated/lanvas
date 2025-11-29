@@ -7,6 +7,7 @@ import {useState, useCallback, useEffect} from "react";
 import PixelGrid from "@/components/PixelGrid";
 import FloatingWidget from "@/components/FloatingWidget";
 import {socket} from "@/socket";
+import FloatingHelp from "@/components/FloatingHelp";
 
 const PIXEL_TIMEOUT_MS = process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS ? parseInt(process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS) : 30000;
 
@@ -71,26 +72,30 @@ export default function Home() {
     }, []);
 
     return (
-        <div className="flex-1">
-            <PixelGrid
-                current_color={current_color}
-                can_submit={!is_readonly && timeout_start_time === null}
+        <>
+            <FloatingHelp />
 
-                on_pixel_submitted={handle_pixel_submitted}
-                on_pixel_update_rejected={handle_pixel_update_rejected}
-            />
-
-            {!is_readonly &&
-                <FloatingWidget
-                    mode={timeout_start_time ? "timeout" : "color"}
-
+            <div className="flex-1">
+                <PixelGrid
                     current_color={current_color}
-                    on_color_change={setCurrentColor}
+                    can_submit={!is_readonly && timeout_start_time === null}
 
-                    start_time={timeout_start_time ?? -1}
-                    duration={PIXEL_TIMEOUT_MS}
+                    on_pixel_submitted={handle_pixel_submitted}
+                    on_pixel_update_rejected={handle_pixel_update_rejected}
                 />
-            }
-        </div>
+
+                {!is_readonly &&
+                    <FloatingWidget
+                        mode={timeout_start_time ? "timeout" : "color"}
+
+                        current_color={current_color}
+                        on_color_change={setCurrentColor}
+
+                        start_time={timeout_start_time ?? -1}
+                        duration={PIXEL_TIMEOUT_MS}
+                    />
+                }
+            </div>
+        </>
     );
 }
