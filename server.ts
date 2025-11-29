@@ -70,6 +70,8 @@ interface ConnectedUserDetails {
 
 const connected_users = new Set<ConnectedUserDetails>();
 
+const stats = new Map<string, number>();
+
 interface SocketWithJWT extends Socket {
     user?: JWT
 }
@@ -105,6 +107,20 @@ const load_banned_users = async () => {
     }
 }
 
+const load_stats = async () => {
+    const stats_res = await pool.query("SELECT key, value FROM stats");
+    for (const row of stats_res.rows) {
+        const value = parseInt(row.value, 10);
+
+        if (isNaN(value)) {
+            console.error(`Invalid stat value for key ${row.key}: ${row.value}`);
+            continue;
+        }
+
+        stats.set(row.key, value);
+    }
+}
+
 const main = async () => {
     await app.prepare();
 
@@ -117,6 +133,11 @@ const main = async () => {
     await load_banned_users();
 
     console.log(`Loaded ${banned_user_ids.length} banned users from database.`);
+
+    // load stats from database
+    await load_stats();
+
+    console.log(`Loaded ${stats.size} stats from database.`);
 
     // load config value "readonly" from database if it exists
     // default to false if not set
@@ -274,6 +295,9 @@ const main = async () => {
                         [user_id, socket.user.name, socket.user.picture || null]
                     );
 
+                    // create a transaction to ensure both pixel and stats are updated together
+                    await pool.query("BEGIN");
+
                     // then upsert the pixel
                     await pool.query(
                         `INSERT INTO pixels (x, y, color, author_id)
@@ -281,6 +305,20 @@ const main = async () => {
                          ON CONFLICT (x, y) DO UPDATE SET color = EXCLUDED.color, author_id = EXCLUDED.author_id`,
                         [x, y, color, user_id]
                     );
+
+                    // and increment the total_pixels_placed stat, as well as returning the new total
+                    const stats_res = await pool.query(
+                        `INSERT INTO stats (key, value)
+                         VALUES ('total_pixels_placed', 1)
+                         ON CONFLICT (key) DO UPDATE SET value = stats.value + 1
+                         RETURNING value`,
+                    );
+
+                    await pool.query("COMMIT");
+
+                    // update in-memory stats cache
+                    const new_total = parseInt(stats_res.rows[0].value, 10);
+                    stats.set("total_pixels_placed", new_total);
 
                     console.log(`Database updated for pixel at (${x}, ${y})`);
                 } catch (db_error) {
@@ -624,3 +662,5 @@ const main = async () => {
 }
 
 main();
+
+// TODO: unique users stat
