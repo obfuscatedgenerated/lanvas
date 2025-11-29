@@ -10,10 +10,10 @@ interface StatsData {
 }
 
 const StatsList = ({ stats }: { stats: StatsData }) => (
-    <ul className="text-xl mb-16">
-        <li><b>Total pixels placed:</b> <NumberFlow value={stats.total_pixels_placed}/></li>
-        <li><b>Connected users:</b> <NumberFlow value={stats.connected_unique_users}/></li>
-    </ul>
+    <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-xl mb-16">
+        <b>Total pixels placed:</b> <NumberFlow value={stats.total_pixels_placed}/>
+        <b>Connected users:</b> <NumberFlow value={stats.connected_unique_users}/>
+    </div>
 );
 
 export default function StatsPage() {
