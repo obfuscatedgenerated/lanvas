@@ -6,8 +6,10 @@ import {useState, useCallback, useEffect} from "react";
 
 import PixelGrid from "@/components/PixelGrid";
 import FloatingWidget from "@/components/FloatingWidget";
-import {socket} from "@/socket";
 import FloatingHelp from "@/components/FloatingHelp";
+import FloatingAdminMessage from "@/components/FloatingAdminMessage";
+
+import {socket} from "@/socket";
 
 const PIXEL_TIMEOUT_MS = process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS ? parseInt(process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS) : 30000;
 
@@ -73,6 +75,8 @@ export default function Home() {
 
     return (
         <>
+            <FloatingAdminMessage />
+
             <div className="flex-1">
                 <PixelGrid
                     current_color={current_color}

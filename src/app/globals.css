@@ -10,6 +10,17 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-doodle: var(--font-doodle);
+
+  --animate-scroll-from-right: scroll-from-right 25s linear forwards;
+
+  @keyframes scroll-from-right {
+    0% {
+      transform: translateX(100vw);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
 }
 
 body {

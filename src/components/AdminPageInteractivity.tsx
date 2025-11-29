@@ -145,6 +145,26 @@ const AdminPageInteractivity = () => {
         [ban_user_id_input]
     );
 
+    const [message_input, setMessageInput] = useState("");
+    const [persistent_checkbox, setPersistentCheckbox] = useState(false);
+
+    const on_send_message_click = useCallback(
+        () => {
+            const message = message_input;
+            const persist = persistent_checkbox;
+
+            const confirmed = confirm(`Are you sure want to send message "${message}" with persist=${persist}? This will be shown to all connected users, and overwrite any existing message.`);
+            if (!confirmed) {
+                return;
+            }
+
+            // submit message
+            socket.emit("admin_send_message", {message, persist});
+            setMessageInput("");
+        },
+        [message_input, persistent_checkbox]
+    );
+
     // TODO: refreshing ban list, refreshing global grid, clearing global grid
     return (
         <>
@@ -202,6 +222,32 @@ const AdminPageInteractivity = () => {
                 {is_readonly !== readonly_checkbox && (
                     <span className="text-yellow-400 ml-2">(pending change)</span>
                 )}
+            </label>
+
+            <label className="flex items-center justify-center gap-4">
+                Broadcast message (send an empty message to clear):
+
+                <input
+                    type="text"
+                    className="bg-gray-700 border border-gray-500 text-gray-100 text-md rounded-lg py-1 px-2 w-200"
+                    value={message_input}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                />
+
+                <label>
+                    Persistent?
+
+                    <input
+                        type="checkbox"
+                        className="ml-2"
+                        checked={persistent_checkbox}
+                        onChange={(e) => setPersistentCheckbox(e.target.checked)}
+                    />
+                </label>
+
+                <FancyButton onClick={on_send_message_click}>
+                    Send message
+                </FancyButton>
             </label>
         </>
     )

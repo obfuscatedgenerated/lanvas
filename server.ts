@@ -575,6 +575,29 @@ const main = async () => {
             }
         });
 
+        socket.on("admin_send_message", (payload) => {
+            const user = socket.user;
+            if (!user || !user.sub) {
+                return;
+            }
+
+            // check if their id matches the DISCORD_ADMIN_USER_ID env var
+            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
+                console.log(`Unauthorised admin_send_message attempt by ${socket.id} (user id: ${user.sub})`);
+                return;
+            }
+
+            const {message, persist} = payload;
+            if (typeof message !== "string") {
+                return;
+            }
+
+            // TODO: store persistent messages in database and send to clients on connection
+
+            // broadcast the admin message to all clients
+            io.emit("admin_message", {message, persist});
+        });
+
         socket.on("disconnect", () => {
             console.log(`Client disconnected: ${socket.id}`);
 
