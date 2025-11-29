@@ -222,6 +222,17 @@ const main = async () => {
             socket.emit("full_author_data", author_data);
         });
 
+        // join stats room and send current stats to client when requested
+        socket.on("join_stats", () => {
+            if (socket.rooms.has("stats")) {
+                return;
+            }
+
+            console.log(`Joining stats room: ${socket.id}`);
+            socket.join("stats");
+            socket.emit("stats", Object.fromEntries(stats));
+        });
+
         // handle pixel updates from clients
         socket.on("pixel_update", async (payload) => {
             try {
@@ -321,6 +332,9 @@ const main = async () => {
                     stats.set("total_pixels_placed", new_total);
 
                     console.log(`Database updated for pixel at (${x}, ${y})`);
+
+                    // emit updated stats to all clients in stats room
+                    io.to("stats").emit("stats", Object.fromEntries(stats));
                 } catch (db_error) {
                     console.error("Database error during pixel update:", db_error);
 
