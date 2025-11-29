@@ -73,8 +73,6 @@ export default function Home() {
 
     return (
         <>
-            <FloatingHelp />
-
             <div className="flex-1">
                 <PixelGrid
                     current_color={current_color}
@@ -96,6 +94,8 @@ export default function Home() {
                     />
                 }
             </div>
+
+            <FloatingHelp />
         </>
     );
 }
