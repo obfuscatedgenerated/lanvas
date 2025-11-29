@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { socket } from "@/socket";
+import NumberFlow from "@number-flow/react";
 
 interface StatsData {
     total_pixels_placed: number;
@@ -9,7 +10,7 @@ interface StatsData {
 
 const StatsList = ({ stats }: { stats: StatsData }) => (
     <ul className="text-xl mb-16">
-        <li><b>Total pixels placed:</b> {stats.total_pixels_placed}</li>
+        <li><b>Total pixels placed:</b> <NumberFlow value={stats.total_pixels_placed}/></li>
     </ul>
 );
 
