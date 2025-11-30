@@ -71,6 +71,7 @@ interface ConnectedUserDetails {
 const connected_users = new Set<ConnectedUserDetails>();
 
 const stats = new Map<string, number>();
+const manual_stat_keys = new Set<string>();
 
 interface SocketWithJWT extends Socket {
     user?: JWT
@@ -118,6 +119,12 @@ const load_stats = async () => {
         }
 
         stats.set(row.key, value);
+
+        if (row.manual) {
+            manual_stat_keys.add(row.key);
+        } else {
+            manual_stat_keys.delete(row.key);
+        }
     }
 }
 
@@ -662,6 +669,82 @@ const main = async () => {
 
             // broadcast the admin message to all clients
             io.emit("admin_message", {message, persist});
+        });
+
+        socket.on("admin_request_manual_stats", () => {
+            const user = socket.user;
+            if (!user || !user.sub) {
+                return;
+            }
+
+            // check if their id matches the DISCORD_ADMIN_USER_ID env var
+            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
+                console.log(`Unauthorised admin_request_manual_stats attempt by ${socket.id} (user id: ${user.sub})`);
+                return;
+            }
+
+            // filter stats to only manual ones
+            const manual_stats: {[key: string]: number} = {};
+            for (const key of manual_stat_keys) {
+                const value = stats.get(key);
+                if (typeof value === "number") {
+                    manual_stats[key] = value;
+                }
+            }
+
+            socket.emit("manual_stats", manual_stats);
+        });
+
+        socket.on("admin_update_manual_stat", async (payload) => {
+            const user = socket.user;
+            if (!user || !user.sub) {
+                return;
+            }
+
+            // check if their id matches the DISCORD_ADMIN_USER_ID env var
+            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
+                console.log(`Unauthorised admin_update_manual_stat attempt by ${socket.id} (user id: ${user.sub})`);
+                return;
+            }
+
+            const {key, value} = payload;
+            if (typeof key !== "string" || typeof value !== "number" || isNaN(value)) {
+                return;
+            }
+
+            if (!manual_stat_keys.has(key)) {
+                console.log(`Stat key ${key} is not marked as manual, cannot update via admin_update_manual_stat`);
+                return;
+            }
+
+            // update in database
+            try {
+                await pool.query(
+                    `INSERT INTO stats (key, value, manual) VALUES ($1, $2, true)
+                     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, manual = EXCLUDED.manual`,
+                    [key, value]
+                );
+                console.log(`Manual stat ${key} updated to ${value} in database by admin ${user.name} (id: ${user.sub})`);
+
+                // update in-memory stats cache
+                stats.set(key, value);
+
+                // emit updated stats to all clients in stats room
+                io.to("stats").emit("stats", Object.fromEntries(stats));
+
+                // emit updated manual stats to admin clients
+                const manual_stats: {[key: string]: number} = {};
+                for (const manual_key of manual_stat_keys) {
+                    const stat_value = stats.get(manual_key);
+                    if (typeof stat_value === "number") {
+                        manual_stats[manual_key] = stat_value;
+                    }
+                }
+
+                io.to("admin").emit("manual_stats", manual_stats);
+            } catch (db_error) {
+                console.error("Database error during updating manual stat:", db_error);
+            }
         });
 
         socket.on("disconnect", () => {
