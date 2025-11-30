@@ -40,7 +40,7 @@ export default async function AdminPage() {
     }
 
     return (
-        <div className="p-8 flex flex-col gap-4 items-start">
+        <div className="p-8 flex flex-col gap-4 items-start overflow-y-scroll">
             <h1 className="text-3xl font-bold">Admin Page</h1>
 
             <Suspense fallback="Loading...">

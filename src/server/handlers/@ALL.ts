@@ -11,7 +11,9 @@ export * as admin_update_manual_stat from "./admin/update_manual_stat";
 export * as admin_delete_manual_stat from "./admin/delete_manual_stat";
 export * as admin_refresh_grid_data from "./admin/refresh_grid_data";
 export * as admin_set_grid_size from "./admin/set_grid_size";
-export * as refresh_banned_users from "./admin/refresh_banned_users";
+export * as admin_refresh_banned_users from "./admin/refresh_banned_users";
+export * as admin_start_poll from "./admin/start_poll";
+export * as admin_end_poll from "./admin/end_poll";
 
 export * as check_readonly from "./check_readonly";
 export * as check_timeout from "./check_timeout";
@@ -20,3 +22,4 @@ export * as join_stats from "./join_stats";
 export * as pixel_update from "./pixel_update";
 export * as request_full_author_data from "./request_full_author_data";
 export * as request_full_grid from "./request_full_grid";
+export * as poll_vote from "./poll_vote";

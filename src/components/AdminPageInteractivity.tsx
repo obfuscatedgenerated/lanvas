@@ -177,6 +177,141 @@ const ManualStatsList = ({manual_stats}: { manual_stats: {[key: string]: number}
     </div>
 );
 
+const PollOptionsList = ({options, editable, on_options_edited}: {options: string[], editable?: boolean, on_options_edited?: (new_options: string[]) => void}) => (
+    <>
+        <table className="table-fixed bg-neutral-900 mt-2">
+            <thead>
+            <tr className="border-neutral-600 border-b-1">
+                <th className="w-200">Option</th>
+                {editable && <th className="w-15"></th>}
+            </tr>
+            </thead>
+            <tbody>
+                {options.map((option, index) => (
+                    <tr key={index}>
+                        <td className="select-text p-2">
+                            {editable ? (
+                                <input
+                                    type="text"
+                                    className="w-full"
+                                    value={option}
+                                    onChange={(e) => {
+                                        const new_options = [...options];
+                                        new_options[index] = e.target.value;
+
+                                        if (on_options_edited) {
+                                            on_options_edited(new_options);
+                                        }
+                                    }}
+                                />
+                            ) : (
+                                option
+                            )}
+                        </td>
+
+                        {editable && (
+                            <td className="p-2">
+                                <FancyButton onClick={() => {
+                                    const new_options = options.filter((_, i) => i !== index);
+
+                                    if (on_options_edited) {
+                                        on_options_edited(new_options);
+                                    }
+                                }}>
+                                    Delete
+                                </FancyButton>
+                            </td>
+                        )}
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+
+        {editable && (
+            <FancyButton className="mt-2" onClick={() => {
+                const new_options = [...options, ""];
+
+                if (on_options_edited) {
+                    on_options_edited(new_options);
+                }
+            }}>
+                Add option
+            </FancyButton>
+        )}
+    </>
+);
+
+const PollForm = () => {
+    const [poll_started, setPollStarted] = useState(false);
+
+    const [question_input, setQuestionInput] = useState("");
+    const [options_input, setOptionsInput] = useState([] as string[]);
+
+    const start_poll = useCallback(
+        () => {
+            if (question_input.trim().length === 0) {
+                alert("Question cannot be empty");
+                return;
+            }
+
+            if (options_input.length < 2) {
+                alert("At least two options are required");
+                return;
+            }
+
+            socket.emit("admin_start_poll", {question: question_input, options: options_input});
+            setPollStarted(true);
+        },
+        [question_input, options_input]
+    );
+
+    const end_poll = useCallback(
+        () => {
+            socket.emit("admin_end_poll");
+            setPollStarted(false);
+        },
+        []
+    );
+
+    // TODO: show live results while poll is ongoing
+
+    return (
+      <div>
+          <label>
+              Question:
+              <input
+                  type="text"
+                  className="ml-2 bg-gray-700 border border-gray-500 text-gray-100 text-md rounded-lg py-1 px-2 w-200"
+                  value={question_input}
+                  onChange={(e) => setQuestionInput(e.target.value)}
+              />
+          </label>
+
+          <PollOptionsList options={options_input} editable={!poll_started} on_options_edited={setOptionsInput} />
+
+          <FancyButton className="mt-4" onClick={() => {
+              if (poll_started) {
+                  const confirmed = confirm("Are you sure want to end the poll?");
+                  if (!confirmed) {
+                      return;
+                  }
+
+                  end_poll();
+              } else {
+                  const confirmed = confirm("Are you sure want to start the poll?");
+                  if (!confirmed) {
+                      return;
+                  }
+
+                  start_poll();
+              }
+          }}>
+              {poll_started ? "End Poll" : "Start Poll"}
+          </FancyButton>
+      </div>
+    );
+}
+
 const AdminPageInteractivity = () => {
     const [banned_user_ids, setBannedUserIds] = useState<string[]>([]);
     const [banned_usernames_cache, setBannedUsernamesCache] = useState<{ [user_id: string]: string }>({});
@@ -202,6 +337,13 @@ const AdminPageInteractivity = () => {
         socket.on("connected_users", setConnectedUsers);
         socket.on("readonly", setIsReadonly);
         socket.on("manual_stats", setManualStats);
+
+        socket.on("end_poll", ({results, total_votes, winners}: {results: Record<string, number>, total_votes: number, winners: string[]}) => {
+            const winner_votes = winners.length > 0 ? results[winners[0]] : 0;
+            const winner_percentage = total_votes > 0 ? ((winner_votes / total_votes) * 100).toFixed(2) : "0.00";
+
+            alert(`Poll ended!\nWinner${winners.length > 1 ? "s" : ""}: ${winners.join(", ")} with ${winner_votes} votes${winners.length > 1 ? " each" : ""} (${winner_percentage}%)\n\nResults:\n${JSON.stringify(results, null, 2)}`);
+        });
 
         socket.on("config_value", ({key, value}) => {
             switch (key) {
@@ -477,6 +619,9 @@ const AdminPageInteractivity = () => {
                     Send message
                 </FancyButton>
             </label>
+
+            <h2 className="text-xl font-medium mb-2 mt-4">Polls</h2>
+            <PollForm />
         </>
     )
 }
