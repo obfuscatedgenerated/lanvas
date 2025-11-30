@@ -8,7 +8,7 @@ import GridCanvas, {type GridCanvasRef} from "@/components/GridCanvas";
 import CursorTooltipWrapper from "@/components/CursorTooltipWrapper";
 
 import type { Author } from "@/types";
-import AuthorTooltipContent from "@/components/AuthorTooltipContent";
+import PixelTooltipContent from "@/components/PixelTooltipContent";
 import useMediaQuery from "@/hooks/useMediaQuery";
 
 const PIXEL_SIZE = 10; // use slight oversampling. could also instead use pixelated on parent, but that leads to weird subpixel artifacts
@@ -161,7 +161,7 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
         [can_submit, resolve_pixel, current_color, on_pixel_submitted]
     );
 
-    const [hovered_author, setHoveredAuthor] = useState<Author | null>(null);
+    const [hovered_pixel, setHoveredPixel] = useState<{author: Author, x: number, y: number} | null>(null);
     const handle_mouse_move = useCallback(
         (event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
             if (!grid_canvas_ref.current || !socket) return;
@@ -172,14 +172,19 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
             const { pixel_x, pixel_y } = resolved_pixel;
 
             const author = author_data.current[pixel_y]?.[pixel_x];
-            setHoveredAuthor(author ?? null);
+            if (!author) {
+                setHoveredPixel(null);
+                return;
+            }
+
+            setHoveredPixel({ author, x: pixel_x, y: pixel_y });
         },
         [resolve_pixel]
     );
 
     const handle_mouse_leave = useCallback(
         () => {
-            setHoveredAuthor(null);
+            setHoveredPixel(null);
         },
         []
     );
@@ -188,8 +193,8 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
 
     return (
         <CursorTooltipWrapper
-            content={hovered_author && <AuthorTooltipContent author={hovered_author} />}
-            visible={can_hover && hovered_author !== null}
+            content={hovered_pixel && <PixelTooltipContent {...hovered_pixel} />}
+            visible={can_hover && hovered_pixel !== null}
         >
             <TransformWrapper
                 ref={transform_wrapper_ref}
