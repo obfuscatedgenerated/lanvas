@@ -385,34 +385,6 @@ const AdminPageInteractivity = () => {
                 </FancyButton>
             </label>
 
-            <h2 className="text-xl font-medium mb-2">Connected users</h2>
-
-            <ConnectedUserList connected_users={connected_users} />
-
-            <h2 className="text-xl font-medium mb-2">Banned users</h2>
-
-            <UserList
-                user_ids={banned_user_ids}
-                usernames={banned_usernames_cache}
-                action_text="Unban"
-                on_action_click={on_unban_click}
-            />
-
-            <div>
-                <label>
-                    User ID:
-                    <input
-                        className="bg-gray-700 border border-gray-500 text-gray-100 text-md rounded-lg py-1 px-2 mt-4 mx-2"
-                        value={ban_user_id_input}
-                        onChange={(e) => setBanUserIdInput(e.target.value)}
-                        autoComplete="off"
-                    />
-                </label>
-                <FancyButton onClick={on_ban_click}>
-                    Ban user
-                </FancyButton>
-            </div>
-
             <label>
                 <input
                     type="checkbox"
@@ -441,7 +413,38 @@ const AdminPageInteractivity = () => {
                 )}
             </label>
 
-            <label className="flex items-center justify-center gap-4">
+            <h2 className="text-xl font-medium mb-2">Connected users</h2>
+
+            <ConnectedUserList connected_users={connected_users} />
+
+            <h2 className="text-xl font-medium mb-2">Banned users</h2>
+
+            <UserList
+                user_ids={banned_user_ids}
+                usernames={banned_usernames_cache}
+                action_text="Unban"
+                on_action_click={on_unban_click}
+            />
+
+            <div>
+                <label>
+                    User ID:
+                    <input
+                        className="bg-gray-700 border border-gray-500 text-gray-100 text-md rounded-lg py-1 px-2 mt-4 mx-2"
+                        value={ban_user_id_input}
+                        onChange={(e) => setBanUserIdInput(e.target.value)}
+                        autoComplete="off"
+                    />
+                </label>
+                <FancyButton onClick={on_ban_click}>
+                    Ban user
+                </FancyButton>
+            </div>
+
+            <h2 className="text-xl font-medium mb-2 mt-4">Manual stats</h2>
+            <ManualStatsList manual_stats={manual_stats} />
+
+            <label className="flex items-center justify-center gap-4 my-4">
                 Broadcast message (send an empty message to clear):
 
                 <input
@@ -466,9 +469,6 @@ const AdminPageInteractivity = () => {
                     Send message
                 </FancyButton>
             </label>
-
-            <h2 className="text-xl font-medium mb-2 mt-4">Manual stats</h2>
-            <ManualStatsList manual_stats={manual_stats} />
         </>
     )
 }
