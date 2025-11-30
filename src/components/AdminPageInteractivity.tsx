@@ -273,6 +273,17 @@ const PollForm = () => {
         []
     );
 
+    // check for existing poll on mount
+    useEffect(() => {
+        socket.on("poll", ({question, options, counts}: {question: string, options: string[], counts: number[]}) => {
+            setQuestionInput(question);
+            setOptionsInput(options);
+            setPollStarted(true);
+        });
+
+        socket.emit("check_poll");
+    }, []);
+
     // TODO: show live results while poll is ongoing
 
     return (
@@ -284,6 +295,7 @@ const PollForm = () => {
                   className="ml-2 bg-gray-700 border border-gray-500 text-gray-100 text-md rounded-lg py-1 px-2 w-200"
                   value={question_input}
                   onChange={(e) => setQuestionInput(e.target.value)}
+                  disabled={poll_started}
               />
           </label>
 

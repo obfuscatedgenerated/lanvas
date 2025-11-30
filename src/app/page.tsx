@@ -12,6 +12,7 @@ import FloatingAdminMessage from "@/components/FloatingAdminMessage";
 import {socket} from "@/socket";
 import {DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
 import {CONFIG_KEY_PIXEL_TIMEOUT_MS} from "@/consts";
+import FloatingPoll from "@/components/FloatingPoll";
 
 export default function Home() {
     const [current_color, setCurrentColor] = useState("#000000");
@@ -94,6 +95,7 @@ export default function Home() {
     return (
         <>
             <FloatingAdminMessage />
+            <FloatingPoll />
 
             <div className="flex-1">
                 <PixelGrid

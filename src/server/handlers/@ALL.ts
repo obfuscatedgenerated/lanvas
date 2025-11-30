@@ -23,3 +23,4 @@ export * as pixel_update from "./pixel_update";
 export * as request_full_author_data from "./request_full_author_data";
 export * as request_full_grid from "./request_full_grid";
 export * as poll_vote from "./poll_vote";
+export * as check_poll from "./check_poll";

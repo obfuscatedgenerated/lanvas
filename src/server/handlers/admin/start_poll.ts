@@ -15,7 +15,7 @@ export const handler: SocketHandlerFunction = ({io, payload}) => {
     console.log(`Admin started poll: ${question} [${options.join(", ")}]`);
 
     // broadcast the poll to all connected clients
-    io.emit("poll", {question, options});
+    io.emit("poll", {question, options, counts: Array(options.length).fill(0)});
 }
 
 export const flags: SocketHandlerFlags = {
