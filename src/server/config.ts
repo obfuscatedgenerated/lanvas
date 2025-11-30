@@ -110,5 +110,4 @@ export const set_config = async (pool: Pool, key: string, value: unknown, is_pub
     }
 }
 
-// TODO: store vital config keys centrally somewhere to keep them stable
 // TODO: automatic default resolution from defaults file?

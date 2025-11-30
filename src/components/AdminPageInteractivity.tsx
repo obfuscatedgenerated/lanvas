@@ -4,7 +4,14 @@ import {useEffect, useState, useCallback} from "react";
 import {socket} from "@/socket";
 
 import FancyButton from "@/components/FancyButton";
+
 import {DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH, DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
+import {
+    CONFIG_KEY_GRID_HEIGHT,
+    CONFIG_KEY_GRID_WIDTH,
+    CONFIG_KEY_PIXEL_TIMEOUT_MS,
+    CONFIG_KEY_READONLY
+} from "@/consts";
 
 interface UserListProps {
     user_ids: string[];
@@ -198,16 +205,16 @@ const AdminPageInteractivity = () => {
 
         socket.on("config_value", ({key, value}) => {
             switch (key) {
-                case "readonly":
+                case CONFIG_KEY_READONLY:
                     setIsReadonly(!!value);
                     break;
-                case "grid_width":
+                case CONFIG_KEY_GRID_WIDTH:
                     setWidthInput(value || DEFAULT_GRID_WIDTH);
                     break;
-                case "grid_height":
+                case CONFIG_KEY_GRID_HEIGHT:
                     setHeightInput(value || DEFAULT_GRID_HEIGHT);
                     break;
-                case "pixel_timeout_ms":
+                case CONFIG_KEY_PIXEL_TIMEOUT_MS:
                     setPixelTimeoutInput(value || DEFAULT_PIXEL_TIMEOUT_MS);
                     break;
             }
@@ -218,9 +225,9 @@ const AdminPageInteractivity = () => {
         socket.emit("admin_request_connected_users");
         socket.emit("admin_request_manual_stats");
 
-        socket.emit("admin_get_config_value", "grid_width");
-        socket.emit("admin_get_config_value", "grid_height");
-        socket.emit("admin_get_config_value", "pixel_timeout_ms");
+        socket.emit("admin_get_config_value", CONFIG_KEY_GRID_WIDTH);
+        socket.emit("admin_get_config_value", CONFIG_KEY_GRID_HEIGHT);
+        socket.emit("admin_get_config_value", CONFIG_KEY_PIXEL_TIMEOUT_MS);
 
         return () => {
             socket.disconnect();
@@ -339,7 +346,7 @@ const AdminPageInteractivity = () => {
             }
 
             // submit change
-            socket.emit("admin_set_config_value", {key: "pixel_timeout_ms", value: timeout, is_public: true});
+            socket.emit("admin_set_config_value", {key: CONFIG_KEY_PIXEL_TIMEOUT_MS, value: timeout, is_public: true});
         },
         [pixel_timeout_input]
     );

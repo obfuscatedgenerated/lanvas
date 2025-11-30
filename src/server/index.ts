@@ -10,6 +10,7 @@ import {parse as parse_cookies} from "cookie";
 
 import {Pool} from "pg";
 import {Author} from "@/types";
+
 import {
     DEFAULT_GRID_COLOR,
     DEFAULT_GRID_HEIGHT,
@@ -17,6 +18,13 @@ import {
     DEFAULT_PIXEL_TIMEOUT_MS,
     DEFAULT_READONLY
 } from "@/defaults";
+
+import {
+    CONFIG_KEY_GRID_HEIGHT,
+    CONFIG_KEY_GRID_WIDTH,
+    CONFIG_KEY_PIXEL_TIMEOUT_MS,
+    CONFIG_KEY_READONLY
+} from "@/consts";
 
 import {
     get_config,
@@ -115,8 +123,8 @@ const load_stats = async () => {
 }
 
 const load_pixels = async (): Promise<number> => {
-    const grid_height = get_config("grid_height", DEFAULT_GRID_HEIGHT);
-    const grid_width = get_config("grid_width", DEFAULT_GRID_WIDTH);
+    const grid_height = get_config(CONFIG_KEY_GRID_HEIGHT, DEFAULT_GRID_HEIGHT);
+    const grid_width = get_config(CONFIG_KEY_GRID_WIDTH, DEFAULT_GRID_WIDTH);
 
     grid_data = initialise_grid_data(grid_height, grid_width);
     author_data = initialise_author_data(grid_height, grid_width);
@@ -161,7 +169,7 @@ const main = async () => {
     const conf_key_count = await load_config(pool);
     console.log(`Loaded ${conf_key_count} config entries from database.`);
 
-    console.log("Grid size:", get_config("grid_width", 100), "x", get_config("grid_height", 100));
+    console.log("Grid size:", get_config(CONFIG_KEY_GRID_WIDTH, 100), "x", get_config(CONFIG_KEY_GRID_HEIGHT, 100));
 
     // load banned users from database
     await load_banned_users();
@@ -276,15 +284,15 @@ const main = async () => {
                 // basic validation of incoming data
                 if (
                     !(
-                        typeof x === "number" && x >= 0 && x < get_config("grid_width", DEFAULT_GRID_WIDTH) &&
-                        typeof y === "number" && y >= 0 && y < get_config("grid_height", DEFAULT_GRID_HEIGHT) &&
+                        typeof x === "number" && x >= 0 && x < get_config(CONFIG_KEY_GRID_WIDTH, DEFAULT_GRID_WIDTH) &&
+                        typeof y === "number" && y >= 0 && y < get_config(CONFIG_KEY_GRID_HEIGHT, DEFAULT_GRID_HEIGHT) &&
                         typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color)
                     )
                 ) {
                     return;
                 }
 
-                if (get_config("readonly", false)) {
+                if (get_config(CONFIG_KEY_READONLY, false)) {
                     socket.emit("pixel_update_rejected", {reason: "readonly"});
                     return;
                 }
@@ -327,7 +335,7 @@ const main = async () => {
                 // set new timeout for user
                 timeouts[user_id] = {
                     started: current_time,
-                    ends: current_time + get_config("pixel_timeout_ms", DEFAULT_PIXEL_TIMEOUT_MS)
+                    ends: current_time + get_config(CONFIG_KEY_PIXEL_TIMEOUT_MS, DEFAULT_PIXEL_TIMEOUT_MS)
                 };
 
                 // broadcast the pixel update to all connected clients
@@ -417,7 +425,7 @@ const main = async () => {
         });
 
         socket.on("check_readonly", () => {
-            socket.emit("readonly", get_config("readonly", DEFAULT_READONLY));
+            socket.emit("readonly", get_config(CONFIG_KEY_READONLY, DEFAULT_READONLY));
         });
 
         socket.on("get_public_config_value", (key: string) => {
@@ -687,16 +695,16 @@ const main = async () => {
             // persist to database
             try {
                 await pool.query(
-                    `INSERT INTO config (key, value, public) VALUES ('grid_width', $1, true), ('grid_height', $2, true)
+                    `INSERT INTO config (key, value, public) VALUES ($1, $2, true), ($3, $4, true)
                      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-                    [width, height]
+                    [CONFIG_KEY_GRID_WIDTH, width, CONFIG_KEY_GRID_HEIGHT, height]
                 );
                 console.log(`Grid size persisted to database as ${width} x ${height}`);
 
                 // update in memory config too
                 // already handled persistence ourself, so use IN_MEMORY_ONLY strategy
-                await set_config(pool, "grid_width", width, true, ConfigPersistStrategy.IN_MEMORY_ONLY);
-                await set_config(pool, "grid_height", height, true, ConfigPersistStrategy.IN_MEMORY_ONLY);
+                await set_config(pool, CONFIG_KEY_GRID_WIDTH, width, true, ConfigPersistStrategy.IN_MEMORY_ONLY);
+                await set_config(pool, CONFIG_KEY_GRID_HEIGHT, height, true, ConfigPersistStrategy.IN_MEMORY_ONLY);
 
                 // update in-memory grid with new size
                 await load_pixels();
@@ -704,16 +712,16 @@ const main = async () => {
                 console.log(`Grid size changed to ${width} x ${height} by admin ${user.name} (id: ${user.sub})`);
 
                 // broadcast the new full grid to all clients and config changes
-                io.emit("config_value", {key: "grid_width", value: width});
-                io.emit("config_value", {key: "grid_height", value: height});
+                io.emit("config_value", {key: CONFIG_KEY_GRID_WIDTH, value: width});
+                io.emit("config_value", {key: CONFIG_KEY_GRID_HEIGHT, value: height});
                 io.emit("full_grid", grid_data);
                 io.emit("full_author_data", author_data);
             } catch (db_error) {
                 console.error("Database error during changing grid size, please set in DB manually to ensure the setting is kept:", db_error);
 
                 // emit old config values to admin to revert their client
-                socket.emit("config_value", {key: "grid_width", value: get_config("grid_width", DEFAULT_GRID_WIDTH)});
-                socket.emit("config_value", {key: "grid_height", value: get_config("grid_height", DEFAULT_GRID_HEIGHT)});
+                socket.emit("config_value", {key: CONFIG_KEY_GRID_WIDTH, value: get_config(CONFIG_KEY_GRID_WIDTH, DEFAULT_GRID_WIDTH)});
+                socket.emit("config_value", {key: CONFIG_KEY_GRID_HEIGHT, value: get_config(CONFIG_KEY_GRID_HEIGHT, DEFAULT_GRID_HEIGHT)});
             }
         });
 
@@ -751,7 +759,7 @@ const main = async () => {
                 return;
             }
 
-            await set_config(pool, "readonly", payload);
+            await set_config(pool, CONFIG_KEY_READONLY, payload);
             console.log(`Readonly mode set to ${payload}`);
 
             // broadcast the new readonly value to all clients

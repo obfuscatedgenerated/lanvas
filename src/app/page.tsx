@@ -11,6 +11,7 @@ import FloatingAdminMessage from "@/components/FloatingAdminMessage";
 
 import {socket} from "@/socket";
 import {DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
+import {CONFIG_KEY_PIXEL_TIMEOUT_MS} from "@/consts";
 
 export default function Home() {
     const [current_color, setCurrentColor] = useState("#000000");
@@ -71,7 +72,7 @@ export default function Home() {
         socket.on("config_value", ({key, value}) => {
             console.log("Received config value:", key, value);
 
-            if (key === "pixel_timeout_ms") {
+            if (key === CONFIG_KEY_PIXEL_TIMEOUT_MS) {
                 setPixelTimeoutMs(value);
             }
         });
@@ -83,7 +84,7 @@ export default function Home() {
         socket.emit("check_readonly");
 
         // request timeout config value
-        socket.emit("get_public_config_value", "pixel_timeout_ms");
+        socket.emit("get_public_config_value", CONFIG_KEY_PIXEL_TIMEOUT_MS);
 
         return () => {
             socket.disconnect();
