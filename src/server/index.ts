@@ -17,11 +17,6 @@ import {
 } from "@/server/types";
 
 import {
-    DEFAULT_GRID_HEIGHT,
-    DEFAULT_GRID_WIDTH,
-} from "@/defaults";
-
-import {
     CONFIG_KEY_GRID_HEIGHT,
     CONFIG_KEY_GRID_WIDTH,
 } from "@/consts";
@@ -29,11 +24,10 @@ import {
 import {
     get_config,
     load_config,
-    set_config,
-    ConfigPersistStrategy
 } from "@/server/config";
 
-import {get_author_data, get_grid_data, load_pixels} from "@/server/grid";
+import {load_pixels} from "@/server/grid";
+import {load_banned_users} from "@/server/banlist";
 
 import * as handlers from "@/server/handlers/@ALL";
 
@@ -67,22 +61,11 @@ const timeouts: {[user_id: string]: {
     ends: number;
 }} = {};
 
-let banned_user_ids: string[] = [];
-let banned_usernames_cache: {[user_id: string]: string} = {};
-
 const connected_users = new Set<ConnectedUserDetails>();
 const unique_connected_user_ids = new Set<string>();
 
 const stats = new Map<string, number>();
 const manual_stat_keys = new Set<string>();
-
-const load_banned_users = async () => {
-    const banned_users_res = await pool.query("SELECT user_id, username_at_ban FROM banned_user_ids");
-    for (const row of banned_users_res.rows) {
-        banned_user_ids.push(row.user_id);
-        banned_usernames_cache[row.user_id] = row.username_at_ban;
-    }
-}
 
 const load_stats = async () => {
     const stats_res = await pool.query("SELECT key, value, manual FROM stats");
@@ -125,9 +108,9 @@ const main = async () => {
     console.log("Grid size:", get_config(CONFIG_KEY_GRID_WIDTH, 100), "x", get_config(CONFIG_KEY_GRID_HEIGHT, 100));
 
     // load banned users from database
-    await load_banned_users();
+    const ban_count = await load_banned_users(pool);
 
-    console.log(`Loaded ${banned_user_ids.length} banned users from database.`);
+    console.log(`Loaded ${ban_count} banned users from database.`);
 
     // load stats from database
     await load_stats();
@@ -231,25 +214,6 @@ const main = async () => {
                 console.log(`Unauthorised admin_refresh_banned_users attempt by ${socket.id} (user id: ${user.sub})`);
                 return;
             }
-
-            // reload banned users from database
-            // TODO: instead of affecting global value and reverting, use a staging value
-            const old_banned_user_ids = banned_user_ids.slice();
-            const old_banned_usernames_cache = structuredClone(banned_usernames_cache);
-            try {
-                banned_user_ids = [];
-                banned_usernames_cache = {};
-                console.log("Reloading banned users from database...");
-                await load_banned_users();
-                console.log(`Reloaded ${banned_user_ids.length} banned users from database.`);
-
-                // send the updated list of banned user ids back to the requester
-                socket.emit("banned_user_ids", banned_user_ids);
-            } catch (db_error) {
-                console.error("Database error during reloading banned users, keeping old list:", db_error);
-                banned_user_ids = old_banned_user_ids;
-                banned_usernames_cache = old_banned_usernames_cache;
-            }
         });
 
         socket.on("disconnect", () => {
@@ -311,8 +275,6 @@ const main = async () => {
                     pool,
                     payload,
                     timeouts,
-                    banned_user_ids,
-                    banned_usernames_cache,
                     connected_users,
                     unique_connected_user_ids,
                     stats,

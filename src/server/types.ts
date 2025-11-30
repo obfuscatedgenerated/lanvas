@@ -21,13 +21,11 @@ export interface SocketHandlerContext {
     io: Server;
     payload: any;
 
-    // TODO: move these to modules. for now will send all relevant data references as context
+    // TODO: move these to singletons. for now will send all relevant data references as context
     timeouts: {[user_id: string]: {
             started: number;
             ends: number;
         }};
-    banned_user_ids: string[];
-    banned_usernames_cache: {[user_id: string]: string};
     connected_users: Set<ConnectedUserDetails>;
     unique_connected_user_ids: Set<string>;
     stats: Map<string, number>;
