@@ -3,37 +3,39 @@ import "dotenv/config";
 import {createServer} from "node:http";
 import next from "next";
 
-import {Server, type Socket} from "socket.io";
+import {Server} from "socket.io";
 
-import {getToken, JWT} from "next-auth/jwt";
+import {getToken} from "next-auth/jwt";
 import {parse as parse_cookies} from "cookie";
 
 import {Pool} from "pg";
+
 import {Author} from "@/types";
+import {
+    ConnectedUserDetails,
+    SocketWithJWT,
+    SocketHandler
+} from "@/server/types";
 
 import {
     DEFAULT_GRID_COLOR,
     DEFAULT_GRID_HEIGHT,
     DEFAULT_GRID_WIDTH,
-    DEFAULT_PIXEL_TIMEOUT_MS,
-    DEFAULT_READONLY
 } from "@/defaults";
 
 import {
     CONFIG_KEY_GRID_HEIGHT,
     CONFIG_KEY_GRID_WIDTH,
-    CONFIG_KEY_PIXEL_TIMEOUT_MS,
-    CONFIG_KEY_READONLY
 } from "@/consts";
 
 import {
     get_config,
-    get_config_raw,
-    is_config_key_public,
     load_config,
     set_config,
     ConfigPersistStrategy
 } from "@/server/config";
+
+import * as handlers from "@/server/handlers/@ALL";
 
 const dev = process.env.NODE_ENV !== "production";
 
@@ -56,7 +58,7 @@ const port = parseInt(process.argv[3], 10) || 3000;
 
 // when using middleware `hostname` and `port` must be provided below
 const app = next({dev, hostname, port});
-const handler = app.getRequestHandler();
+const req_handler = app.getRequestHandler();
 
 const initialise_grid_data = (height: number, width: number) => Array.from({ length: height }, () => Array(width).fill(DEFAULT_GRID_COLOR));
 
@@ -77,22 +79,11 @@ const timeouts: {[user_id: string]: {
 let banned_user_ids: string[] = [];
 let banned_usernames_cache: {[user_id: string]: string} = {};
 
-interface ConnectedUserDetails {
-    socket_id: string;
-    user_id?: string;
-    username?: string;
-    context?: string;
-}
-
 const connected_users = new Set<ConnectedUserDetails>();
 const unique_connected_user_ids = new Set<string>();
 
 const stats = new Map<string, number>();
 const manual_stat_keys = new Set<string>();
-
-interface SocketWithJWT extends Socket {
-    user?: JWT
-}
 
 const load_banned_users = async () => {
     const banned_users_res = await pool.query("SELECT user_id, username_at_ban FROM banned_user_ids");
@@ -187,7 +178,21 @@ const main = async () => {
 
     console.log(`Loaded ${loaded_pixel_count} pixels from database.`);
 
-    const http_server = createServer(handler);
+    // read out handler names to verify they are loaded, as well as double checking flags for safety
+    console.log(`Loaded ${Object.keys(handlers).length} socket handlers:`);
+    for (const handler_name of Object.keys(handlers)) {
+        console.log(`- ${handler_name}`);
+
+        if (handler_name.startsWith("admin_")) {
+            //@ts-expect-error handler guaranteed to exist from above
+            const handler = handlers[handler_name] as SocketHandler;
+            if (!handler.flags || !handler.flags.require_admin === undefined) {
+                console.warn(`  WARNING: handler with admin prefix is missing require_admin flag!!! It will not be protected as intended. If this is intentional, set require_admin to false explicitly.`);
+            }
+        }
+    }
+
+    const http_server = createServer(req_handler);
 
     const io = new Server(http_server);
 
@@ -252,362 +257,7 @@ const main = async () => {
         // emit updated stats to all clients in stats room
         io.to("stats").emit("stats", Object.fromEntries(stats));
 
-        // send full grid to client when requested
-        socket.on("request_full_grid", () => {
-            console.log(`Full grid requested by: ${socket.id}`);
-            socket.emit("full_grid", grid_data);
-        });
-
-        // send full author data to client when requested
-        socket.on("request_full_author_data", () => {
-            console.log(`Full author data requested by: ${socket.id}`);
-            socket.emit("full_author_data", author_data);
-        });
-
-        // join stats room and send current stats to client when requested
-        socket.on("join_stats", () => {
-            if (socket.rooms.has("stats")) {
-                return;
-            }
-
-            console.log(`Joining stats room: ${socket.id}`);
-            socket.join("stats");
-            socket.emit("stats", Object.fromEntries(stats));
-        });
-
-        // handle pixel updates from clients
-        socket.on("pixel_update", async (payload) => {
-            try {
-                const {x, y, color} = payload;
-                //console.log(`Received pixel_update from ${socket.id}:`, payload);
-
-                // basic validation of incoming data
-                if (
-                    !(
-                        typeof x === "number" && x >= 0 && x < get_config(CONFIG_KEY_GRID_WIDTH, DEFAULT_GRID_WIDTH) &&
-                        typeof y === "number" && y >= 0 && y < get_config(CONFIG_KEY_GRID_HEIGHT, DEFAULT_GRID_HEIGHT) &&
-                        typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color)
-                    )
-                ) {
-                    return;
-                }
-
-                if (get_config(CONFIG_KEY_READONLY, false)) {
-                    socket.emit("pixel_update_rejected", {reason: "readonly"});
-                    return;
-                }
-
-                if (!socket.user || !socket.user.sub || !socket.user.name) {
-                    socket.emit("pixel_update_rejected", {reason: "unauthenticated"});
-                    return;
-                }
-
-                // check if user is banned
-                const user_id = socket.user.sub;
-                if (banned_user_ids.includes(user_id)) {
-                    socket.emit("pixel_update_rejected", {reason: "banned"});
-                    return;
-                }
-
-                // check user isn't in timeout period
-                const current_time = Date.now();
-                if (timeouts[user_id] && timeouts[user_id].ends > current_time) {
-                    // user is still in timeout period
-                    const wait_time = Math.ceil((timeouts[user_id].ends - current_time) / 1000);
-                    socket.emit("pixel_update_rejected", {reason: "timeout", wait_time});
-                    return;
-                }
-
-                const author = {
-                    user_id,
-                    name: socket.user.name,
-                    avatar_url: socket.user.picture || null,
-                };
-
-                // we will do an optimistic update, so we store the old state in case we need to revert
-                const old_color = grid_data[y][x];
-                const old_author = author_data[y][x];
-
-                grid_data[y][x] = color;
-                author_data[y][x] = author;
-                console.log(`Pixel updated at (${x}, ${y}) to ${color} by user ${socket.user.name} (id: ${user_id})`);
-
-                // set new timeout for user
-                timeouts[user_id] = {
-                    started: current_time,
-                    ends: current_time + get_config(CONFIG_KEY_PIXEL_TIMEOUT_MS, DEFAULT_PIXEL_TIMEOUT_MS)
-                };
-
-                // broadcast the pixel update to all connected clients
-                io.emit("pixel_update", {x, y, color, author});
-
-                // try to update the database
-                try {
-                    // first upsert the user details in case they have changed
-                    await pool.query(
-                        `INSERT INTO user_details (user_id, username, avatar_url)
-                         VALUES ($1, $2, $3)
-                         ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username, avatar_url = EXCLUDED.avatar_url`,
-                        [user_id, socket.user.name, socket.user.picture || null]
-                    );
-
-                    // create a transaction to ensure both pixel and stats are updated together
-                    await pool.query("BEGIN");
-
-                    // then upsert the pixel
-                    await pool.query(
-                        `INSERT INTO pixels (x, y, color, author_id)
-                         VALUES ($1, $2, $3, $4)
-                         ON CONFLICT (x, y) DO UPDATE SET color = EXCLUDED.color, author_id = EXCLUDED.author_id`,
-                        [x, y, color, user_id]
-                    );
-
-                    // and increment the total_pixels_placed stat, as well as returning the new total
-                    const stats_res = await pool.query(
-                        `INSERT INTO stats (key, value)
-                         VALUES ('total_pixels_placed', 1)
-                         ON CONFLICT (key) DO UPDATE SET value = stats.value + 1
-                         RETURNING value`,
-                    );
-
-                    await pool.query("COMMIT");
-
-                    // update in-memory stats cache
-                    const new_total = parseInt(stats_res.rows[0].value, 10);
-                    stats.set("total_pixels_placed", new_total);
-
-                    console.log(`Database updated for pixel at (${x}, ${y})`);
-
-                    // emit updated stats to all clients in stats room
-                    io.to("stats").emit("stats", Object.fromEntries(stats));
-                } catch (db_error) {
-                    console.error("Database error during pixel update:", db_error);
-
-                    // revert in-memory state
-                    // TODO: dealing with conflicting edits could be improved here to avoid race condition if one is reverted but another edit has happened since
-                    grid_data[y][x] = old_color;
-                    author_data[y][x] = old_author;
-
-                    // notify clients to revert the pixel
-                    io.emit("pixel_update", {x, y, color: old_color, author: old_author});
-
-                    // remove the timeout since the update failed
-                    delete timeouts[user_id];
-
-                    // notify the user that their update failed to reset their client timer
-                    socket.emit("pixel_update_rejected", {reason: "database_error"});
-                }
-            } catch (error) {
-                console.error("pixel_update failed", error);
-            }
-        });
-
-        socket.on("check_timeout", () => {
-            const user = socket.user;
-            if (!user || !user.sub) {
-                return;
-            }
-
-            const timeout = timeouts[user.sub];
-            const current_time = Date.now();
-            if (timeout && timeout.ends > current_time) {
-                const remaining = timeout.ends - current_time;
-                const elapsed = current_time - timeout.started;
-
-                socket.emit("timeout_info", {
-                    started: timeout.started,
-                    remaining,
-                    elapsed,
-                    ends: timeout.ends,
-                    checked_at: current_time
-                });
-            }
-        });
-
-        socket.on("check_readonly", () => {
-            socket.emit("readonly", get_config(CONFIG_KEY_READONLY, DEFAULT_READONLY));
-        });
-
-        socket.on("get_public_config_value", (key: string) => {
-            if (is_config_key_public(key)) {
-                socket.emit("config_value", {key, value: get_config_raw(key) });
-            }
-        });
-
-        socket.on("admin_get_config_value", (key: string) => {
-            const user = socket.user;
-            if (!user || !user.sub) {
-                return;
-            }
-
-            // check if their id matches the DISCORD_ADMIN_USER_ID env var
-            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
-                console.log(`Unauthorised admin_get_config_value attempt by ${socket.id} (user id: ${user.sub})`);
-                return;
-            }
-
-            socket.emit("config_value", {key, value: get_config_raw(key) });
-        });
-
-        socket.on("admin_set_config_value", async (payload) => {
-            const user = socket.user;
-            if (!user || !user.sub) {
-                return;
-            }
-
-            // check if their id matches the DISCORD_ADMIN_USER_ID env var
-            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
-                console.log(`Unauthorised admin_set_config_value attempt by ${socket.id} (user id: ${user.sub})`);
-                return;
-            }
-
-            const {key, value, is_public} = payload;
-
-            if (is_public === undefined) {
-                console.log(`admin_set_config_value missing is_public by ${socket.id} (user id: ${user.sub})`);
-                return;
-            }
-
-            // update in-memory config
-            await set_config(pool, key, value, is_public);
-            console.log(`Config key ${key} set to ${value} by admin ${user.name} (id: ${user.sub}), public: ${is_public}`);
-
-            // if public, broadcast the new value to all clients
-            if (is_public) {
-                io.emit("config_value", {key, value});
-            } else {
-                // otherwise only send to admin room
-                io.to("admin").emit("config_value", {key, value});
-            }
-        });
-
-        socket.on("admin_ban_user", async (payload) => {
-            const user = socket.user;
-            if (!user || !user.sub) {
-                return;
-            }
-
-            // check if their id matches the DISCORD_ADMIN_USER_ID env var
-            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
-                console.log(`Unauthorised admin_ban_user attempt by ${socket.id} (user id: ${user.sub})`);
-                return;
-            }
-
-            // check for user_id in payload
-            const {user_id} = payload;
-            if (typeof user_id !== "string" || !user_id) {
-                return;
-            }
-
-            // validate bigint
-            try {
-                if (user_id !== String(BigInt(user_id))) {
-                    console.log(`Got invalid bigint ${user_id}`);
-                    return;
-                }
-            } catch (err) {
-                console.log(`Got invalid bigint ${user_id} with error: ${err}`);
-                return;
-            }
-
-            // add to banned list if not already present
-            if (!banned_user_ids.includes(user_id)) {
-                banned_user_ids.push(user_id);
-                console.log(`User id ${user_id} banned by admin ${user.name} (id: ${user.sub})`);
-
-                // look up the username, assuming we have it
-                let username = null;
-                try {
-                    const res = await pool.query("SELECT username FROM user_details WHERE user_id = $1", [user_id]);
-                    if (res.rows.length > 0) {
-                        console.log(`Banned user id ${user_id} corresponds to username: ${res.rows[0].username}`);
-                        username = res.rows[0].username;
-                    } else {
-                        console.log(`Banned user id ${user_id} has no known username in the database.`);
-                    }
-                } catch (db_error) {
-                    console.error("Database error during fetching banned user's username:", db_error);
-                }
-
-                // also add to database
-                try {
-                    await pool.query(
-                        `INSERT INTO banned_user_ids (user_id, username_at_ban) VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING`,
-                        [user_id, username]
-                    );
-                    console.log(`User id ${user_id} added to banned_user_ids table`);
-                } catch (db_error) {
-                    console.error("Database error during banning user, please add to DB manually to ensure the ban is kept:", db_error);
-                }
-            }
-        });
-
-        socket.on("admin_unban_user", async (payload) => {
-            const user = socket.user;
-            if (!user || !user.sub) {
-                return;
-            }
-
-            // check if their id matches the DISCORD_ADMIN_USER_ID env var
-            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
-                console.log(`Unauthorised admin_unban_user attempt by ${socket.id} (user id: ${user.sub})`);
-                return;
-            }
-
-            // check for user_id in payload
-            const {user_id} = payload;
-            if (typeof user_id !== "string" || !user_id) {
-                return;
-            }
-
-            // validate bigint
-            try {
-                if (user_id !== String(BigInt(user_id))) {
-                    console.log(`Got invalid bigint ${user_id}`);
-                    return;
-                }
-            } catch (err) {
-                console.log(`Got invalid bigint ${user_id} with error: ${err}`);
-                return;
-            }
-
-            const index = banned_user_ids.indexOf(user_id);
-            if (index !== -1) {
-                banned_user_ids.splice(index, 1);
-                console.log(`User id ${user_id} unbanned by admin ${user.name} (id: ${user.sub})`);
-
-                // also remove from database
-                try {
-                    await pool.query(
-                        `DELETE FROM banned_user_ids WHERE user_id = $1`,
-                        [user_id]
-                    );
-                    console.log(`User id ${user_id} removed from banned_user_ids table`);
-                } catch (db_error) {
-                    console.error("Database error during unbanning user, please remove from DB manually to ensure the unban is kept:", db_error);
-                }
-            }
-        });
-
-        socket.on("admin_request_banned_users", async () => {
-            const user = socket.user;
-            if (!user || !user.sub) {
-                return;
-            }
-
-            // check if their id matches the DISCORD_ADMIN_USER_ID env var
-            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
-                console.log(`Unauthorised admin_request_banned_users attempt by ${socket.id} (user id: ${user.sub})`);
-                return;
-            }
-
-            // send the list of banned user ids back to the requester
-            socket.emit("banned_user_ids", banned_user_ids);
-
-            // send the username cache object too. lazy approach but means very little tweaks to data caching here are made, and no expensive augmenting
-            socket.emit("banned_usernames_cache", banned_usernames_cache);
-        });
-
+        // TODO: need to move banned users to module to make this work as handler. will define inline for now
         socket.on("admin_refresh_banned_users", async () => {
             const user = socket.user;
             if (!user || !user.sub) {
@@ -640,6 +290,7 @@ const main = async () => {
             }
         });
 
+        // TODO: need to move grid data to module to make this work as handler. will define inline for now
         socket.on("admin_refresh_grid", async () => {
             const user = socket.user;
             if (!user || !user.sub) {
@@ -672,6 +323,7 @@ const main = async () => {
             }
         });
 
+        // TODO: need to move load_pixels to module to make this work as handler. will define inline for now
         socket.on("admin_set_grid_size", async (payload) => {
             const user = socket.user;
             if (!user || !user.sub) {
@@ -725,214 +377,6 @@ const main = async () => {
             }
         });
 
-        socket.on("admin_request_connected_users", () => {
-            const user = socket.user;
-            if (!user || !user.sub) {
-                return;
-            }
-
-            // check if their id matches the DISCORD_ADMIN_USER_ID env var
-            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
-                console.log(`Unauthorised admin_request_connected_users attempt by ${socket.id} (user id: ${user.sub})`);
-                return;
-            }
-
-            // send the list of connected users back to the requester
-            socket.emit("connected_users", Array.from(connected_users));
-        });
-
-        socket.on("admin_set_readonly", async (payload) => {
-            // kept for backwards compatibility
-
-            const user = socket.user;
-            if (!user || !user.sub) {
-                return;
-            }
-
-            // check if their id matches the DISCORD_ADMIN_USER_ID env var
-            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
-                console.log(`Unauthorised admin_set_readonly attempt by ${socket.id} (user id: ${user.sub})`);
-                return;
-            }
-
-            if (typeof payload !== "boolean") {
-                return;
-            }
-
-            await set_config(pool, CONFIG_KEY_READONLY, payload);
-            console.log(`Readonly mode set to ${payload}`);
-
-            // broadcast the new readonly value to all clients
-            io.emit("readonly", payload);
-        });
-
-        socket.on("admin_send_message", (payload) => {
-            const user = socket.user;
-            if (!user || !user.sub) {
-                return;
-            }
-
-            // check if their id matches the DISCORD_ADMIN_USER_ID env var
-            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
-                console.log(`Unauthorised admin_send_message attempt by ${socket.id} (user id: ${user.sub})`);
-                return;
-            }
-
-            const {message, persist} = payload;
-            if (typeof message !== "string") {
-                return;
-            }
-
-            // TODO: store persistent messages in database and send to clients on connection
-
-            // broadcast the admin message to all clients
-            io.emit("admin_message", {message, persist});
-        });
-
-        socket.on("admin_request_manual_stats", () => {
-            const user = socket.user;
-            if (!user || !user.sub) {
-                return;
-            }
-
-            // check if their id matches the DISCORD_ADMIN_USER_ID env var
-            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
-                console.log(`Unauthorised admin_request_manual_stats attempt by ${socket.id} (user id: ${user.sub})`);
-                return;
-            }
-
-            // filter stats to only manual ones
-            const manual_stats: {[key: string]: number} = {};
-            for (const key of manual_stat_keys) {
-                const value = stats.get(key);
-                if (typeof value === "number") {
-                    manual_stats[key] = value;
-                }
-            }
-
-            socket.emit("manual_stats", manual_stats);
-        });
-
-        socket.on("admin_update_manual_stat", async (payload) => {
-            const user = socket.user;
-            if (!user || !user.sub) {
-                return;
-            }
-
-            // check if their id matches the DISCORD_ADMIN_USER_ID env var
-            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
-                console.log(`Unauthorised admin_update_manual_stat attempt by ${socket.id} (user id: ${user.sub})`);
-                return;
-            }
-
-            const {key, value} = payload;
-            if (typeof key !== "string" || typeof value !== "number" || isNaN(value)) {
-                return;
-            }
-
-            if (key.length === 0) {
-                console.log("Stat key cannot be empty, cannot update via admin_update_manual_stat");
-                return;
-            }
-
-            if (key.length > 200) {
-                console.log(`Stat key ${key} is too long, cannot update via admin_update_manual_stat`);
-                return;
-            }
-
-            // if the stat key exists but is not marked as manual, reject the update
-            // if it doesn't exist, we allow creating new manual stats
-            if (stats.has(key) && !manual_stat_keys.has(key)) {
-                console.log(`Stat key ${key} is not marked as manual, cannot update via admin_update_manual_stat`);
-                return;
-            }
-
-            // update in database
-            try {
-                await pool.query(
-                    `INSERT INTO stats (key, value, manual) VALUES ($1, $2, true)
-                     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, manual = EXCLUDED.manual`,
-                    [key, value]
-                );
-                console.log(`Manual stat ${key} updated to ${value} in database by admin ${user.name} (id: ${user.sub})`);
-
-                // update in-memory stats cache
-                stats.set(key, value);
-                manual_stat_keys.add(key);
-
-                // emit updated stats to all clients in stats room
-                io.to("stats").emit("stats", Object.fromEntries(stats));
-
-                // emit updated manual stats to admin clients
-                const manual_stats: {[key: string]: number} = {};
-                for (const manual_key of manual_stat_keys) {
-                    const stat_value = stats.get(manual_key);
-                    if (typeof stat_value === "number") {
-                        manual_stats[manual_key] = stat_value;
-                    }
-                }
-
-                io.to("admin").emit("manual_stats", manual_stats);
-            } catch (db_error) {
-                console.error("Database error during updating manual stat:", db_error);
-            }
-        });
-
-        socket.on("admin_delete_manual_stat", async (payload) => {
-            const user = socket.user;
-            if (!user || !user.sub) {
-                return;
-            }
-
-            // check if their id matches the DISCORD_ADMIN_USER_ID env var
-            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
-                console.log(`Unauthorised admin_delete_manual_stat attempt by ${socket.id} (user id: ${user.sub})`);
-                return;
-            }
-
-            if (typeof payload !== "string") {
-                return;
-            }
-
-            if (!stats.has(payload)) {
-                console.log(`Stat key ${payload} does not exist, cannot delete via admin_delete_manual_stat`);
-                return;
-            }
-
-            if (!manual_stat_keys.has(payload)) {
-                console.log(`Stat key ${payload} is not marked as manual, cannot delete via admin_delete_manual_stat`);
-                return;
-            }
-
-            // delete from database
-            try {
-                await pool.query(
-                    `DELETE FROM stats WHERE key = $1`,
-                    [payload]
-                );
-                console.log(`Manual stat ${payload} deleted from database by admin ${user.name} (id: ${user.sub})`);
-
-                // update in-memory stats cache
-                stats.delete(payload);
-                manual_stat_keys.delete(payload);
-
-                // emit updated stats to all clients in stats room
-                io.to("stats").emit("stats", Object.fromEntries(stats));
-
-                // emit updated manual stats to admin clients
-                const manual_stats: {[key: string]: number} = {};
-                for (const manual_key of manual_stat_keys) {
-                    const stat_value = stats.get(manual_key);
-                    if (typeof stat_value === "number") {
-                        manual_stats[manual_key] = stat_value;
-                    }
-                }
-                io.to("admin").emit("manual_stats", manual_stats);
-            } catch (db_error) {
-                console.error("Database error during deleting manual stat:", db_error);
-            }
-        });
-
         socket.on("disconnect", () => {
             console.log(`Client disconnected: ${socket.id}`);
 
@@ -963,6 +407,51 @@ const main = async () => {
 
                 // emit updated stats to all clients in stats room
                 io.to("stats").emit("stats", Object.fromEntries(stats));
+            }
+        });
+
+        // register all handlers
+        for (const [handler_name, h] of Object.entries(handlers)) {
+            const handler = h as SocketHandler;
+
+            socket.on(handler_name, (payload) => {
+                // check for admin if required
+                if (handler.flags && handler.flags.require_admin) {
+                    const user = socket.user;
+                    if (!user || !user.sub) {
+                        return;
+                    }
+
+                    // check if their id matches the DISCORD_ADMIN_USER_ID env var
+                    if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
+                        console.log(`Unauthorised ${handler_name} attempt by ${socket.id} (user id: ${user.sub})`);
+                        return;
+                    }
+                }
+
+                // invoke the handler
+                handler.handler({
+                    io,
+                    socket,
+                    pool,
+                    payload,
+                    grid_data,
+                    author_data,
+                    timeouts,
+                    banned_user_ids,
+                    banned_usernames_cache,
+                    connected_users,
+                    unique_connected_user_ids,
+                    stats,
+                    manual_stat_keys,
+                });
+            });
+        }
+
+        // register a catch-all for unknown events
+        socket.onAny((event, ...args) => {
+            if (!socket.eventNames().includes(event)) {
+                console.warn(`Unknown event received from ${socket.id}: ${event}`, args);
             }
         });
     });

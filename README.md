@@ -32,5 +32,4 @@ npm start
 
 - Support mobile properly, including sizing, breakpoints, and proper use of react-zoom-pan-pinch without conflicting with tapping to draw
 - Improve stability by dealing with conflicting edits safely
-- Separate the server wrapper to separate files with the handler pattern, uniting duplicate code such as admin checking
 - Option to autoscale the timer based on number of connected users
