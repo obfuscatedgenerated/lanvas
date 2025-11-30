@@ -68,12 +68,12 @@ const FloatingPoll = () => {
     const total_votes = results ? results.reduce((a, b) => a + b, 0) : 0;
 
     return (
-        <div className={`z-9999 fixed top-20 right-10 w-64 bg-neutral-600 border border-neutral-500 rounded shadow-lg p-4 transition-opacity duration-500 ${poll_state === PollState.HIDDEN ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
-            {question && <h3 className="text-lg font-semibold mb-2">{question}</h3>}
+        <div className={`z-9999 fixed top-20 right-10 min-w-64 max-w-100 bg-neutral-600 border border-neutral-500 rounded shadow-lg p-4 transition-opacity duration-500 ${poll_state === PollState.HIDDEN ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+            {question && <h3 className="text-lg font-semibold mb-2 break-words">{question}</h3>}
             {options && options.map((option, index) => (
                 <button
                     key={index}
-                    className={`${chosen_option_index === index ? "outline-2 outline-orange-200/80" : ""} ${winners && winners.includes(option) ? "shadow-[0_0_20px_5px_rgba(234,179,8,0.6)] !bg-yellow-200 text-black" : ""} flex justify-between w-full mb-2 px-3 py-2 bg-orange-700 hover:bg-orange-600 transition-all rounded disabled:bg-neutral-400 cursor-pointer disabled:cursor-not-allowed`}
+                    className={`${chosen_option_index === index ? "outline-2 outline-orange-200/80" : ""} ${winners && winners.includes(option) ? "shadow-[0_0_20px_5px_rgba(234,179,8,0.6)] !bg-yellow-200 text-black" : ""} flex justify-between w-full mb-2 break-words px-3 py-2 bg-orange-700 hover:bg-orange-600 transition-all rounded disabled:bg-neutral-400 cursor-pointer disabled:cursor-not-allowed`}
                     onClick={() => {
                         if (poll_state === PollState.ACTIVE) {
                             socket.emit("poll_vote", index);
