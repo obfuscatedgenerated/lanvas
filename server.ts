@@ -458,6 +458,11 @@ const main = async () => {
 
             const {key, value, is_public} = payload;
 
+            if (is_public === undefined) {
+                console.log(`admin_set_config_value missing is_public by ${socket.id} (user id: ${user.sub})`);
+                return;
+            }
+
             // update in-memory config
             config.set(key, value);
             if (is_public) {

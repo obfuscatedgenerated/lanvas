@@ -68,7 +68,7 @@ export default function Home() {
             }
         });
 
-        socket.on("config_value", (key, value) => {
+        socket.on("config_value", ({key, value}) => {
             console.log("Received config value:", key, value);
 
             if (key === "pixel_timeout_ms") {

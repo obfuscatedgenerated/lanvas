@@ -4,7 +4,7 @@ import {useEffect, useState, useCallback} from "react";
 import {socket} from "@/socket";
 
 import FancyButton from "@/components/FancyButton";
-import {DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH} from "@/defaults";
+import {DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH, DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
 
 interface UserListProps {
     user_ids: string[];
@@ -204,6 +204,9 @@ const AdminPageInteractivity = () => {
                 case "grid_height":
                     setHeightInput(value || DEFAULT_GRID_HEIGHT);
                     break;
+                case "pixel_timeout_ms":
+                    setPixelTimeoutInput(value || DEFAULT_PIXEL_TIMEOUT_MS);
+                    break;
             }
         });
 
@@ -211,8 +214,10 @@ const AdminPageInteractivity = () => {
         socket.emit("admin_request_banned_users");
         socket.emit("admin_request_connected_users");
         socket.emit("admin_request_manual_stats");
+
         socket.emit("admin_get_config_value", "grid_width");
         socket.emit("admin_get_config_value", "grid_height");
+        socket.emit("admin_get_config_value", "pixel_timeout_ms");
 
         return () => {
             socket.disconnect();
@@ -314,13 +319,35 @@ const AdminPageInteractivity = () => {
         [width_input, height_input]
     );
 
+    const [pixel_timeout_input, setPixelTimeoutInput] = useState("");
+
+    const on_save_pixel_timeout_click = useCallback(
+        () => {
+            const timeout = parseInt(String(pixel_timeout_input), 10);
+
+            if (isNaN(timeout) || timeout < 0) {
+                alert(`Invalid timeout: ${pixel_timeout_input}`);
+                return;
+            }
+
+            const confirmed = confirm(`Are you sure want to change pixel timeout to ${timeout}ms? This will not affect existing timeouts.`);
+            if (!confirmed) {
+                return;
+            }
+
+            // submit change
+            socket.emit("admin_set_config_value", {key: "pixel_timeout_ms", value: timeout, is_public: true});
+        },
+        [pixel_timeout_input]
+    );
+
     // TODO: refreshing ban list, refreshing global grid, clearing global grid
     return (
         <>
-            <h2 className="text-xl font-medium mb-2">Grid size</h2>
+            <h2 className="text-xl font-medium mb-2">Game config</h2>
             <div className="flex gap-4">
                 <label>
-                    Width:
+                    Grid width:
                     <input
                         type="number"
                         className="bg-gray-700 border border-gray-500 text-gray-100 text-md rounded-lg py-1 px-2 mx-2 w-20"
@@ -330,7 +357,7 @@ const AdminPageInteractivity = () => {
                 </label>
 
                 <label>
-                    Height:
+                    Grid height:
                     <input
                         type="number"
                         className="bg-gray-700 border border-gray-500 text-gray-100 text-md rounded-lg py-1 px-2 mx-2 w-20"
@@ -343,6 +370,20 @@ const AdminPageInteractivity = () => {
                     Save grid size
                 </FancyButton>
             </div>
+
+            <label>
+                Timeout per pixel (ms):
+                <input
+                    type="number"
+                    className="bg-gray-700 border border-gray-500 text-gray-100 text-md rounded-lg py-1 px-2 mx-2 w-32"
+                    value={pixel_timeout_input}
+                    onChange={(e) => setPixelTimeoutInput(e.target.value)}
+                />
+
+                <FancyButton onClick={on_save_pixel_timeout_click}>
+                    Save pixel timeout
+                </FancyButton>
+            </label>
 
             <h2 className="text-xl font-medium mb-2">Connected users</h2>
 
