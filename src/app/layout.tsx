@@ -15,7 +15,7 @@ const font_doodle = Playpen_Sans({
 });
 
 export const metadata: Metadata = {
-    title: "LANvas",
+    title: `LANvas${process.env.NEXT_PUBLIC_LAN_NUMBER ? ` ${process.env.NEXT_PUBLIC_LAN_NUMBER}` : ""}`,
     description: "",
     metadataBase: new URL("https://lanvas.ollieg.codes")
 };
