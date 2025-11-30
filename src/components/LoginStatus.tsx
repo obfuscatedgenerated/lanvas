@@ -2,7 +2,6 @@
 
 import {SessionProvider, signOut, useSession} from "next-auth/react"
 import Image from "next/image";
-import Link from "next/link";
 import {UserWithAdminFlag} from "@/auth";
 import FancyButton, {fancy_button_class} from "@/components/FancyButton";
 
@@ -16,18 +15,18 @@ const LoginStatusInternal = () => {
 
     if (status === "authenticated") {
         return (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 sm:gap-3">
                 <Image src={user.image || ''} alt="" draggable="false" width={32} height={32} className="rounded-full" />
 
-                <div className="text-sm sm:text-lg flex flex-col sm:flex-row sm:items-center sm:gap-1">
+                <div className="hidden sm:text-lg sm:flex sm:flex-row sm:items-center sm:gap-1">
                     <span>Signed in as </span>
                     <b>{user.name}</b>
                 </div>
 
                 {(user as UserWithAdminFlag).is_admin &&
-                    <Link href="/admin" className={fancy_button_class}>
+                    <a href="/admin" className={fancy_button_class}>
                         Admin
-                    </Link>
+                    </a>
                 }
 
                 <FancyButton onClick={() => signOut()}>
