@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { socket } from "@/socket";
+import {X} from "lucide-react";
 
 enum PollState {
     HIDDEN,
@@ -11,6 +12,7 @@ enum PollState {
 
 const FloatingPoll = () => {
     const [poll_state, setPollState] = useState<PollState>(PollState.HIDDEN);
+    const [user_hiding, setUserHiding] = useState<boolean>(false);
 
     const [question, setQuestion] = useState<string | null>(null);
     const [options, setOptions] = useState<string[] | null>(null);
@@ -33,6 +35,7 @@ const FloatingPoll = () => {
             setResults(Array(new_options.length).fill(0));
             setWinners(null);
             setChosenOptionIndex(null);
+            setUserHiding(false);
 
             setPollState(PollState.ACTIVE);
         });
@@ -53,6 +56,7 @@ const FloatingPoll = () => {
             const counts = options ? options.map(option => final_results[option] || 0) : null;
             setResults(counts);
             setWinners(winners);
+            setUserHiding(false);
 
             hide_timeout.current = setTimeout(() => {
                 setPollState(PollState.HIDDEN);
@@ -66,10 +70,18 @@ const FloatingPoll = () => {
     }, [options]);
 
     const total_votes = results ? results.reduce((a, b) => a + b, 0) : 0;
+    const hidden = poll_state === PollState.HIDDEN || user_hiding;
 
     return (
-        <div className={`z-9999 fixed top-20 right-10 min-w-64 max-w-100 bg-neutral-600 border border-neutral-500 rounded shadow-lg p-4 transition-opacity duration-500 ${poll_state === PollState.HIDDEN ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
-            {question && <h3 className="text-lg font-semibold mb-2 break-words">{question}</h3>}
+        <div className={`z-9999 fixed right-[50vw] translate-x-[50%] sm:translate-x-0 top-20 sm:right-10 min-w-64 max-w-9/10 sm:max-w-100 bg-neutral-600 border border-neutral-500 rounded shadow-lg p-4 transition-opacity duration-500 ${hidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+            <div className="w-full flex items-start justify-between mb-2">
+                {question && <h3 className="text-lg font-semibold break-words max-w-[92.5%]">{question}</h3>}
+
+                <button title="Hide poll" className="cursor-pointer" onClick={() => setUserHiding(true)}>
+                    <X />
+                </button>
+            </div>
+
             {options && options.map((option, index) => (
                 <button
                     key={index}
