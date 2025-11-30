@@ -1,6 +1,8 @@
 import type {SocketHandlerFunction, SocketHandlerFlags} from "@/server/types";
 
-export const handler: SocketHandlerFunction = async ({payload, banned_user_ids, banned_usernames_cache, pool, socket}) => {
+import {ban_user, get_banned_user_ids, get_banned_usernames_cache, is_user_banned} from "@/server/banlist";
+
+export const handler: SocketHandlerFunction = async ({io, payload, pool, socket}) => {
     const user = socket.user!;
 
     // check for user_id in payload
@@ -21,10 +23,7 @@ export const handler: SocketHandlerFunction = async ({payload, banned_user_ids, 
     }
 
     // add to banned list if not already present
-    if (!banned_user_ids.includes(user_id)) {
-        banned_user_ids.push(user_id);
-        console.log(`User id ${user_id} banned by admin ${user.name} (id: ${user.sub})`);
-
+    if (!is_user_banned(user_id)) {
         // look up the username, assuming we have it
         let username = null;
         try {
@@ -39,8 +38,8 @@ export const handler: SocketHandlerFunction = async ({payload, banned_user_ids, 
             console.error("Database error during fetching banned user's username:", db_error);
         }
 
-        // TODO wasnt here before but seems necessary? check if that's correct
-        banned_usernames_cache[user_id] = username;
+        ban_user(user_id, username);
+        console.log(`User id ${user_id} banned by admin ${user.name} (id: ${user.sub})`);
 
         // also add to database
         try {
@@ -52,6 +51,10 @@ export const handler: SocketHandlerFunction = async ({payload, banned_user_ids, 
         } catch (db_error) {
             console.error("Database error during banning user, please add to DB manually to ensure the ban is kept:", db_error);
         }
+
+        // send updated banlist to all admins
+        io.to("admin").emit("banned_user_ids", get_banned_user_ids());
+        io.to("admin").emit("banned_usernames_cache", get_banned_usernames_cache());
     }
 }
 

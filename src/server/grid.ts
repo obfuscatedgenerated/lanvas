@@ -59,6 +59,58 @@ export const get_author_data = (clone = false): (Author | null)[][] => {
     return author_data;
 }
 
+export const get_cell_color = (x: number, y: number): string | undefined => {
+    if (y >= 0 && y < grid_data.length && x >= 0 && x < grid_data[0].length) {
+        return grid_data[y][x];
+    }
+    return undefined;
+}
+
+export const get_cell_author = (x: number, y: number): Author | null | undefined => {
+    if (y >= 0 && y < author_data.length && x >= 0 && x < author_data[0].length) {
+        return author_data[y][x];
+    }
+    return undefined;
+}
+
+export const get_cell = (x: number, y: number): {color: string; author: Author | null} | undefined => {
+    if (y >= 0 && y < grid_data.length && x >= 0 && x < grid_data[0].length) {
+        return {
+            color: grid_data[y][x],
+            author: author_data[y][x],
+        };
+    }
+    return undefined;
+}
+
+export const set_cell_color = (x: number, y: number, color: string): boolean => {
+    if (y >= 0 && y < grid_data.length && x >= 0 && x < grid_data[0].length) {
+        grid_data[y][x] = color;
+        return true;
+    }
+
+    return false;
+}
+
+export const set_cell_author = (x: number, y: number, author: Author | null): boolean => {
+    if (y >= 0 && y < author_data.length && x >= 0 && x < author_data[0].length) {
+        author_data[y][x] = author;
+        return true;
+    }
+
+    return false;
+}
+
+export const set_cell = (x: number, y: number, color: string, author: Author | null): boolean => {
+    if (y >= 0 && y < grid_data.length && x >= 0 && x < grid_data[0].length) {
+        grid_data[y][x] = color;
+        author_data[y][x] = author;
+        return true;
+    }
+
+    return false;
+}
+
 export const overwrite_grid_data = (new_grid_data: string[][]): void => {
     grid_data = new_grid_data;
 }

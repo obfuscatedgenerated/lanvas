@@ -241,9 +241,8 @@ const AdminPageInteractivity = () => {
                 return;
             }
 
-            // submit unban and refresh list
+            // submit unban
             socket.emit("admin_unban_user", {user_id});
-            socket.emit("admin_request_banned_users");
         },
         [banned_usernames_cache]
     );
@@ -270,9 +269,8 @@ const AdminPageInteractivity = () => {
                 return;
             }
 
-            // submit ban and refresh list
+            // submit ban
             socket.emit("admin_ban_user", {user_id});
-            socket.emit("admin_request_banned_users");
 
             setBanUserIdInput("");
         },

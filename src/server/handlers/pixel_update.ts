@@ -9,10 +9,12 @@ import {
     CONFIG_KEY_READONLY
 } from "@/consts";
 import {DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH, DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
+import {is_user_banned} from "@/server/banlist";
+import {get_cell, get_cell_color, set_cell} from "@/server/grid";
 
 // handle pixel updates from clients
 
-export const handler: SocketHandlerFunction = async ({socket, payload, grid_data, author_data, timeouts, banned_user_ids, io, pool, stats}) => {
+export const handler: SocketHandlerFunction = async ({socket, payload, timeouts, io, pool, stats}) => {
     try {
         const {x, y, color} = payload;
         //console.log(`Received pixel_update from ${socket.id}:`, payload);
@@ -40,7 +42,7 @@ export const handler: SocketHandlerFunction = async ({socket, payload, grid_data
 
         // check if user is banned
         const user_id = socket.user.sub;
-        if (banned_user_ids.includes(user_id)) {
+        if (is_user_banned(user_id)) {
             socket.emit("pixel_update_rejected", {reason: "banned"});
             return;
         }
@@ -61,11 +63,9 @@ export const handler: SocketHandlerFunction = async ({socket, payload, grid_data
         };
 
         // we will do an optimistic update, so we store the old state in case we need to revert
-        const old_color = grid_data[y][x];
-        const old_author = author_data[y][x];
+        const {color: old_color, author: old_author} = get_cell(x, y)!;
 
-        grid_data[y][x] = color;
-        author_data[y][x] = author;
+        set_cell(x, y, color, author);
         console.log(`Pixel updated at (${x}, ${y}) to ${color} by user ${socket.user.name} (id: ${user_id})`);
 
         // set new timeout for user
@@ -121,8 +121,7 @@ export const handler: SocketHandlerFunction = async ({socket, payload, grid_data
 
             // revert in-memory state
             // TODO: dealing with conflicting edits could be improved here to avoid race condition if one is reverted but another edit has happened since
-            grid_data[y][x] = old_color;
-            author_data[y][x] = old_author;
+            set_cell(x, y, old_color, old_author);
 
             // notify clients to revert the pixel
             io.emit("pixel_update", {x, y, color: old_color, author: old_author});

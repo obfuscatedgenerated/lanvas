@@ -1,5 +1,4 @@
 import type {SocketHandlerFunction, SocketHandlerFlags} from "@/server/types";
-import {socket} from "@/socket";
 
 export const handler: SocketHandlerFunction = async ({pool, payload, io, socket, stats, manual_stat_keys}) => {
     const user = socket.user!;

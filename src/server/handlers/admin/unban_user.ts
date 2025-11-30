@@ -1,6 +1,8 @@
 import type {SocketHandlerFunction, SocketHandlerFlags} from "@/server/types";
 
-export const handler: SocketHandlerFunction = async ({payload, banned_user_ids, pool, socket}) => {
+import {get_banned_user_ids, get_banned_usernames_cache, is_user_banned, unban_user} from "@/server/banlist";
+
+export const handler: SocketHandlerFunction = async ({io, payload, pool, socket}) => {
     const user = socket.user!;
 
     // check for user_id in payload
@@ -20,9 +22,8 @@ export const handler: SocketHandlerFunction = async ({payload, banned_user_ids, 
         return;
     }
 
-    const index = banned_user_ids.indexOf(user_id);
-    if (index !== -1) {
-        banned_user_ids.splice(index, 1);
+    if (is_user_banned(user_id)) {
+        unban_user(user_id);
         console.log(`User id ${user_id} unbanned by admin ${user.name} (id: ${user.sub})`);
 
         // also remove from database
@@ -35,6 +36,10 @@ export const handler: SocketHandlerFunction = async ({payload, banned_user_ids, 
         } catch (db_error) {
             console.error("Database error during unbanning user, please remove from DB manually to ensure the unban is kept:", db_error);
         }
+
+        // send updated banlist to all admins
+        io.to("admin").emit("banned_user_ids", get_banned_user_ids());
+        io.to("admin").emit("banned_usernames_cache", get_banned_usernames_cache());
     }
 }
 
