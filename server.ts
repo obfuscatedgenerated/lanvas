@@ -158,6 +158,17 @@ const load_pixels = async (): Promise<number> => {
 }
 
 const main = async () => {
+    // check the database connection
+    console.log("Checking database connection...");
+    try {
+        await pool.query("SELECT 1");
+        console.log("Connected to the database successfully.");
+    } catch (error) {
+        console.error("Failed to connect to the database:", error);
+        console.error("Database connection failed, exiting.");
+        process.exit(1);
+    }
+
     await app.prepare();
 
     // load config from database
