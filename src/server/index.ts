@@ -18,6 +18,15 @@ import {
     DEFAULT_READONLY
 } from "@/defaults";
 
+import {
+    get_config,
+    get_config_raw,
+    is_config_key_public,
+    load_config,
+    set_config,
+    ConfigPersistStrategy
+} from "@/server/config";
+
 const dev = process.env.NODE_ENV !== "production";
 
 const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET;
@@ -49,9 +58,6 @@ const initialise_author_data = (height: number, width: number) => Array.from({ l
 let grid_data: string[][] = [];
 
 let author_data: (Author | null)[][] = [];
-
-const config = new Map<string, unknown>();
-const public_config_keys = new Set<string>();
 
 // TODO: could reduce redundancy further by storing user ids only in author_data and having a separate user map
 
@@ -108,27 +114,6 @@ const load_stats = async () => {
     }
 }
 
-const load_config = async () => {
-    const config_res = await pool.query("SELECT key, value, public FROM config");
-    for (const row of config_res.rows) {
-        config.set(row.key, row.value);
-
-        if (row.public) {
-            public_config_keys.add(row.key);
-        } else {
-            public_config_keys.delete(row.key);
-        }
-    }
-}
-
-const get_config = <T>(key: string, default_value: T): T => {
-    if (config.has(key)) {
-        return config.get(key) as T;
-    } else {
-        return default_value;
-    }
-}
-
 const load_pixels = async (): Promise<number> => {
     const grid_height = get_config("grid_height", DEFAULT_GRID_HEIGHT);
     const grid_width = get_config("grid_width", DEFAULT_GRID_WIDTH);
@@ -173,9 +158,8 @@ const main = async () => {
     await app.prepare();
 
     // load config from database
-    await load_config();
-    console.log(`Loaded ${config.size} config entries from database.`);
-    console.log("Public config keys:", Array.from(public_config_keys).join(", "));
+    const conf_key_count = await load_config(pool);
+    console.log(`Loaded ${conf_key_count} config entries from database.`);
 
     console.log("Grid size:", get_config("grid_width", 100), "x", get_config("grid_height", 100));
 
@@ -437,8 +421,8 @@ const main = async () => {
         });
 
         socket.on("get_public_config_value", (key: string) => {
-            if (public_config_keys.has(key)) {
-                socket.emit("config_value", {key, value: config.get(key)});
+            if (is_config_key_public(key)) {
+                socket.emit("config_value", {key, value: get_config_raw(key) });
             }
         });
 
@@ -454,7 +438,7 @@ const main = async () => {
                 return;
             }
 
-            socket.emit("config_value", {key, value: config.get(key)});
+            socket.emit("config_value", {key, value: get_config_raw(key) });
         });
 
         socket.on("admin_set_config_value", async (payload) => {
@@ -477,12 +461,7 @@ const main = async () => {
             }
 
             // update in-memory config
-            config.set(key, value);
-            if (is_public) {
-                public_config_keys.add(key);
-            } else {
-                public_config_keys.delete(key);
-            }
+            await set_config(pool, key, value, is_public);
             console.log(`Config key ${key} set to ${value} by admin ${user.name} (id: ${user.sub}), public: ${is_public}`);
 
             // if public, broadcast the new value to all clients
@@ -491,18 +470,6 @@ const main = async () => {
             } else {
                 // otherwise only send to admin room
                 io.to("admin").emit("config_value", {key, value});
-            }
-
-            // persist to database
-            try {
-                await pool.query(
-                    `INSERT INTO config (key, value, public) VALUES ($1, $2, $3)
-                     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, public = EXCLUDED.public`,
-                    [key, value, is_public]
-                );
-                console.log(`Config key ${key} persisted to database`);
-            } catch (db_error) {
-                console.error("Database error during setting config value, please set in DB manually to ensure the setting is kept:", db_error);
             }
         });
 
@@ -727,8 +694,9 @@ const main = async () => {
                 console.log(`Grid size persisted to database as ${width} x ${height}`);
 
                 // update in memory config too
-                config.set("grid_width", width);
-                config.set("grid_height", height);
+                // already handled persistence ourself, so use IN_MEMORY_ONLY strategy
+                await set_config(pool, "grid_width", width, true, ConfigPersistStrategy.IN_MEMORY_ONLY);
+                await set_config(pool, "grid_height", height, true, ConfigPersistStrategy.IN_MEMORY_ONLY);
 
                 // update in-memory grid with new size
                 await load_pixels();
@@ -783,23 +751,11 @@ const main = async () => {
                 return;
             }
 
-            config.set("readonly", payload);
+            await set_config(pool, "readonly", payload);
             console.log(`Readonly mode set to ${payload}`);
 
             // broadcast the new readonly value to all clients
             io.emit("readonly", payload);
-
-            // persist to database
-            try {
-                await pool.query(
-                    `INSERT INTO config (key, value) VALUES ('readonly', $1)
-                     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-                    [payload ? "true" : "false"]
-                );
-                console.log(`Readonly mode persisted to database as ${payload}`);
-            } catch (db_error) {
-                console.error("Database error during setting readonly mode, please set in DB manually to ensure the setting is kept:", db_error);
-            }
         });
 
         socket.on("admin_send_message", (payload) => {
