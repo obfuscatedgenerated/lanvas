@@ -10,12 +10,11 @@ import CursorTooltipWrapper from "@/components/CursorTooltipWrapper";
 import type { Author } from "@/types";
 import PixelTooltipContent from "@/components/PixelTooltipContent";
 import useMediaQuery from "@/hooks/useMediaQuery";
+import {DEFAULT_GRID_COLOR} from "@/defaults";
 
 const PIXEL_SIZE = 10; // use slight oversampling. could also instead use pixelated on parent, but that leads to weird subpixel artifacts
-const GRID_WIDTH = process.env.NEXT_PUBLIC_GRID_WIDTH ? parseInt(process.env.NEXT_PUBLIC_GRID_WIDTH) : 100;
-const GRID_HEIGHT = process.env.NEXT_PUBLIC_GRID_HEIGHT ? parseInt(process.env.NEXT_PUBLIC_GRID_HEIGHT) : 100;
 
-const create_empty_grid = () => Array.from({ length: GRID_HEIGHT }, () => Array(GRID_WIDTH).fill("#FFFFFF"));
+const create_empty_grid = (height: number, width: number) => Array.from({ length: height }, () => Array(width).fill(DEFAULT_GRID_COLOR));
 
 interface PixelGridProps {
     current_color: string;
@@ -28,33 +27,42 @@ interface PixelGridProps {
 type AuthorData = (Author | null)[][];
 
 const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pixel_update_rejected }: PixelGridProps) => {
-    const [grid_data, setGridData] = useState(create_empty_grid);
+    const [grid_width, setGridWidth] = useState(0);
+    const [grid_height, setGridHeight] = useState(0);
+
+    const [grid_data, setGridData] = useState(create_empty_grid(grid_height, grid_width));
     const author_data = useRef<AuthorData>([]);
 
     const grid_canvas_ref = useRef<GridCanvasRef>(null);
 
     const transform_wrapper_ref = useRef<ReactZoomPanPinchContentRef>(null);
 
-    // center transform on mount
+    // center transform on mount or size change
     useEffect(() => {
         // this is a hack
         setTimeout(() => {
             if (transform_wrapper_ref.current) {
                 transform_wrapper_ref.current.setTransform(
-                    window.innerWidth / 2 - (GRID_WIDTH * PIXEL_SIZE) / 2 * 0.66,
-                    window.innerHeight / 2 - (GRID_HEIGHT * PIXEL_SIZE) / 2 * 0.66,
+                    window.innerWidth / 2 - (grid_width * PIXEL_SIZE) / 2 * 0.66,
+                    window.innerHeight / 2 - (grid_height * PIXEL_SIZE) / 2 * 0.66,
                     0.66,
                     0
                 );
             }
         }, 10);
-    }, []);
+    }, [grid_width, grid_height]);
 
     // setup socket listeners
     useEffect(() => {
         socket.on("connect", () => console.log("Connected!", socket.id));
 
         socket.on("full_grid", (initial_grid) => {
+            // determine grid size
+            setGridHeight(initial_grid.length);
+            setGridWidth(initial_grid[0].length);
+
+            console.log(`Grid size: ${initial_grid[0].length}x${initial_grid.length}`);
+
             setGridData(initial_grid);
             console.log("Initial grid received");
         });
@@ -127,10 +135,10 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
         const pixel_y = Math.floor(adjusted_y / PIXEL_SIZE);
 
         // validate
-        if (pixel_x < 0 || pixel_x >= GRID_WIDTH || pixel_y < 0 || pixel_y >= GRID_HEIGHT) return null;
+        if (pixel_x < 0 || pixel_x >= grid_width || pixel_y < 0 || pixel_y >= grid_height) return null;
         
         return { pixel_x, pixel_y };
-    }, []);
+    }, [grid_width, grid_height]);
 
     // click handler
     const handle_pixel_click = useCallback(
@@ -150,7 +158,7 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
             console.log(`Clicked pixel: (${pixel_x}, ${pixel_y}) with color ${current_color}`);
 
             // pre-validate
-            if (pixel_x < 0 || pixel_x >= GRID_WIDTH || pixel_y < 0 || pixel_y >= GRID_HEIGHT) return;
+            if (pixel_x < 0 || pixel_x >= grid_width || pixel_y < 0 || pixel_y >= grid_height) return;
 
             socket.emit("pixel_update", { x: pixel_x, y: pixel_y, color: current_color });
 
@@ -158,7 +166,7 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
                 on_pixel_submitted(pixel_x, pixel_y, current_color);
             }
         },
-        [can_submit, resolve_pixel, current_color, on_pixel_submitted]
+        [can_submit, resolve_pixel, current_color, on_pixel_submitted, grid_width, grid_height]
     );
 
     const [hovered_pixel, setHoveredPixel] = useState<{author: Author, x: number, y: number} | null>(null);
@@ -221,8 +229,8 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
                         on_mouse_leave={handle_mouse_leave}
 
                         pixel_size={PIXEL_SIZE}
-                        grid_height={GRID_HEIGHT}
-                        grid_width={GRID_WIDTH}
+                        grid_height={grid_height}
+                        grid_width={grid_width}
                     />
                 </TransformComponent>
             </TransformWrapper>

@@ -5,7 +5,7 @@
 -- Dumped from database version 14.4
 -- Dumped by pg_dump version 14.4
 
--- Started on 2025-11-30 00:29:38
+-- Started on 2025-11-30 01:57:08
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -42,7 +42,8 @@ ALTER TABLE public.banned_user_ids OWNER TO postgres;
 
 CREATE TABLE public.config (
     key character varying(100) NOT NULL,
-    value json NOT NULL
+    value json NOT NULL,
+    public boolean NOT NULL
 );
 
 
@@ -198,7 +199,7 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_details TO lanvas;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES  TO lanvas;
 
 
--- Completed on 2025-11-30 00:29:38
+-- Completed on 2025-11-30 01:57:08
 
 --
 -- PostgreSQL database dump complete

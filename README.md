@@ -32,5 +32,4 @@ npm start
 
 - Support mobile properly, including sizing, breakpoints, and proper use of react-zoom-pan-pinch without conflicting with tapping to draw
 - Improve stability by dealing with conflicting edits safely
-- Move configuration of the canvas size and timer to the database rather than having to rebuild the client (and subsequently require all clients to reload)
 - Separate the server wrapper to separate files with the handler pattern, uniting duplicate code such as admin checking

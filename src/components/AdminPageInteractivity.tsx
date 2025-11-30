@@ -4,6 +4,7 @@ import {useEffect, useState, useCallback} from "react";
 import {socket} from "@/socket";
 
 import FancyButton from "@/components/FancyButton";
+import {DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH} from "@/defaults";
 
 interface UserListProps {
     user_ids: string[];
@@ -192,11 +193,26 @@ const AdminPageInteractivity = () => {
         socket.on("readonly", setIsReadonly);
         socket.on("manual_stats", setManualStats);
 
-        // request readonly state, ban list and connected users on load
+        socket.on("config_value", ({key, value}) => {
+            switch (key) {
+                case "readonly":
+                    setIsReadonly(!!value);
+                    break;
+                case "grid_width":
+                    setWidthInput(value || DEFAULT_GRID_WIDTH);
+                    break;
+                case "grid_height":
+                    setHeightInput(value || DEFAULT_GRID_HEIGHT);
+                    break;
+            }
+        });
+
         socket.emit("check_readonly");
         socket.emit("admin_request_banned_users");
         socket.emit("admin_request_connected_users");
         socket.emit("admin_request_manual_stats");
+        socket.emit("admin_get_config_value", "grid_width");
+        socket.emit("admin_get_config_value", "grid_height");
 
         return () => {
             socket.disconnect();
@@ -268,9 +284,66 @@ const AdminPageInteractivity = () => {
         [message_input, persistent_checkbox]
     );
 
+    const [width_input, setWidthInput] = useState("");
+    const [height_input, setHeightInput] = useState("");
+
+    const on_save_grid_size_click = useCallback(
+        () => {
+            const width = parseInt(String(width_input), 10);
+
+            if (isNaN(width) || width <= 0) {
+                alert(`Invalid width: ${width_input}`);
+                return;
+            }
+
+            const height = parseInt(String(height_input), 10);
+
+            if (isNaN(height) || height <= 0) {
+                alert(`Invalid height: ${height_input}`);
+                return;
+            }
+
+            const confirmed = confirm(`Are you sure want to change grid size to ${width}x${height}?`);
+            if (!confirmed) {
+                return;
+            }
+
+            // submit change
+            socket.emit("admin_set_grid_size", {width, height});
+        },
+        [width_input, height_input]
+    );
+
     // TODO: refreshing ban list, refreshing global grid, clearing global grid
     return (
         <>
+            <h2 className="text-xl font-medium mb-2">Grid size</h2>
+            <div className="flex gap-4">
+                <label>
+                    Width:
+                    <input
+                        type="number"
+                        className="bg-gray-700 border border-gray-500 text-gray-100 text-md rounded-lg py-1 px-2 mx-2 w-20"
+                        value={width_input}
+                        onChange={(e) => setWidthInput(e.target.value)}
+                    />
+                </label>
+
+                <label>
+                    Height:
+                    <input
+                        type="number"
+                        className="bg-gray-700 border border-gray-500 text-gray-100 text-md rounded-lg py-1 px-2 mx-2 w-20"
+                        value={height_input}
+                        onChange={(e) => setHeightInput(e.target.value)}
+                    />
+                </label>
+
+                <FancyButton onClick={on_save_grid_size_click}>
+                    Save grid size
+                </FancyButton>
+            </div>
+
             <h2 className="text-xl font-medium mb-2">Connected users</h2>
 
             <ConnectedUserList connected_users={connected_users} />
@@ -360,3 +433,5 @@ const AdminPageInteractivity = () => {
 }
 
 export default AdminPageInteractivity;
+
+// TODO: tidy this up into components

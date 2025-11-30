@@ -9,6 +9,8 @@ import {getToken, JWT} from "next-auth/jwt";
 import {parse as parse_cookies} from "cookie";
 
 import {Pool} from "pg";
+import {Author} from "@/types";
+import {DEFAULT_GRID_COLOR, DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH, DEFAULT_READONLY} from "@/defaults";
 
 const dev = process.env.NODE_ENV !== "production";
 
@@ -34,26 +36,19 @@ const app = next({dev, hostname, port});
 const handler = app.getRequestHandler();
 
 // TODO: move these values to the database so they can be changed without redeploying, and transmit the values to the client via ws rather than baked in env vars
-const GRID_WIDTH = process.env.NEXT_PUBLIC_GRID_WIDTH ? parseInt(process.env.NEXT_PUBLIC_GRID_WIDTH) : 100;
-const GRID_HEIGHT = process.env.NEXT_PUBLIC_GRID_HEIGHT ? parseInt(process.env.NEXT_PUBLIC_GRID_HEIGHT) : 100;
 const PIXEL_TIMEOUT_MS = process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS ? parseInt(process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS) : 30000;
 
-console.log(`Grid size: ${GRID_WIDTH}x${GRID_HEIGHT}`);
+const initialise_grid_data = (height: number, width: number) => Array.from({ length: height }, () => Array(width).fill(DEFAULT_GRID_COLOR));
 
-const initialise_grid_data = () => Array.from({length: GRID_HEIGHT}, () =>
-    Array(GRID_WIDTH).fill("#FFFFFF")
-);
-
-const initialise_author_data = () => Array.from({length: GRID_HEIGHT}, () =>
-    Array(GRID_WIDTH).fill(null)
-);
+const initialise_author_data = (height: number, width: number) => Array.from({ length: height }, () => Array(width).fill(null));
 
 // in memory caches with default empty values
-let grid_data = initialise_grid_data();
+let grid_data: string[][] = [];
 
-let author_data = initialise_author_data();
+let author_data: (Author | null)[][] = [];
 
-let readonly = false;
+const config = new Map<string, unknown>();
+const public_config_keys = new Set<string>();
 
 // TODO: could reduce redundancy further by storing user ids only in author_data and having a separate user map
 
@@ -76,29 +71,6 @@ const manual_stat_keys = new Set<string>();
 
 interface SocketWithJWT extends Socket {
     user?: JWT
-}
-
-const load_pixels = async () => {
-    const pixels = await pool.query("SELECT x, y, color, author_id, author.username, author.avatar_url FROM pixels JOIN user_details AS author ON pixels.author_id = author.user_id");
-
-    let loaded_pixel_count = 0;
-    for (const row of pixels.rows) {
-        const {x, y, color, author_id, username, avatar_url} = row;
-
-        // load each pixel into the in-memory grids
-        if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
-            grid_data[y][x] = color;
-            author_data[y][x] = {
-                user_id: author_id,
-                name: username,
-                avatar_url,
-            };
-
-            loaded_pixel_count++;
-        }
-    }
-
-    return loaded_pixel_count;
 }
 
 const load_banned_users = async () => {
@@ -129,13 +101,64 @@ const load_stats = async () => {
     }
 }
 
+const load_config = async () => {
+    const config_res = await pool.query("SELECT key, value, public FROM config");
+    for (const row of config_res.rows) {
+        config.set(row.key, row.value);
+
+        if (row.public) {
+            public_config_keys.add(row.key);
+        } else {
+            public_config_keys.delete(row.key);
+        }
+    }
+}
+
+const get_config = <T>(key: string, default_value: T): T => {
+    if (config.has(key)) {
+        return config.get(key) as T;
+    } else {
+        return default_value;
+    }
+}
+
+const load_pixels = async (): Promise<number> => {
+    const grid_height = get_config("grid_height", DEFAULT_GRID_HEIGHT);
+    const grid_width = get_config("grid_width", DEFAULT_GRID_WIDTH);
+
+    grid_data = initialise_grid_data(grid_height, grid_width);
+    author_data = initialise_author_data(grid_height, grid_width);
+
+    const pixels = await pool.query("SELECT x, y, color, author_id, author.username, author.avatar_url FROM pixels JOIN user_details AS author ON pixels.author_id = author.user_id");
+
+    let loaded_pixel_count = 0;
+    for (const row of pixels.rows) {
+        const {x, y, color, author_id, username, avatar_url} = row;
+
+        // load each pixel into the in-memory grids
+        if (x >= 0 && x < grid_width && y >= 0 && y < grid_height) {
+            grid_data[y][x] = color;
+            author_data[y][x] = {
+                user_id: author_id,
+                name: username,
+                avatar_url,
+            };
+
+            loaded_pixel_count++;
+        }
+    }
+
+    return loaded_pixel_count;
+}
+
 const main = async () => {
     await app.prepare();
 
-    // load existing pixels from database
-    const loaded_pixel_count = await load_pixels();
+    // load config from database
+    await load_config();
+    console.log(`Loaded ${config.size} config entries from database.`);
 
-    console.log(`Loaded ${loaded_pixel_count} pixels from database.`);
+    console.log("Grid size:", get_config("grid_width", 100), "x", get_config("grid_height", 100));
 
     // load banned users from database
     await load_banned_users();
@@ -148,20 +171,10 @@ const main = async () => {
     console.log(`Loaded ${stats.size} stats from database.`);
     console.log(`Manual stats keys: ${Array.from(manual_stat_keys).join(", ")}`);
 
-    // load config value "readonly" from database if it exists
-    // default to false if not set
-    try {
-        const res = await pool.query("SELECT value FROM config WHERE key = 'readonly'");
-        if (res.rows.length > 0) {
-            readonly = res.rows[0].value === 'true';
-        } else {
-            readonly = false;
-        }
-        console.log(`Readonly mode is ${readonly ? "enabled" : "disabled"}.`);
-    } catch (db_error) {
-        console.error("Database error during loading config, defaulting to readonly = false:", db_error);
-        readonly = false;
-    }
+    // load existing pixels from database
+    const loaded_pixel_count = await load_pixels();
+
+    console.log(`Loaded ${loaded_pixel_count} pixels from database.`);
 
     const http_server = createServer(handler);
 
@@ -259,15 +272,15 @@ const main = async () => {
                 // basic validation of incoming data
                 if (
                     !(
-                        typeof x === "number" && x >= 0 && x < GRID_WIDTH &&
-                        typeof y === "number" && y >= 0 && y < GRID_HEIGHT &&
+                        typeof x === "number" && x >= 0 && x < get_config("grid_width", DEFAULT_GRID_WIDTH) &&
+                        typeof y === "number" && y >= 0 && y < get_config("grid_height", DEFAULT_GRID_HEIGHT) &&
                         typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color)
                     )
                 ) {
                     return;
                 }
 
-                if (readonly) {
+                if (get_config("readonly", false)) {
                     socket.emit("pixel_update_rejected", {reason: "readonly"});
                     return;
                 }
@@ -396,7 +409,72 @@ const main = async () => {
         });
 
         socket.on("check_readonly", () => {
-            socket.emit("readonly", readonly);
+            socket.emit("readonly", get_config("readonly", DEFAULT_READONLY));
+        });
+
+        socket.on("get_public_config_value", (key: string) => {
+            if (public_config_keys.has(key)) {
+                socket.emit("config_value", {key, value: config.get(key)});
+            }
+        });
+
+        socket.on("admin_get_config_value", (key: string) => {
+            const user = socket.user;
+            if (!user || !user.sub) {
+                return;
+            }
+
+            // check if their id matches the DISCORD_ADMIN_USER_ID env var
+            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
+                console.log(`Unauthorised admin_get_config_value attempt by ${socket.id} (user id: ${user.sub})`);
+                return;
+            }
+
+            socket.emit("config_value", {key, value: config.get(key)});
+        });
+
+        socket.on("admin_set_config_value", async (payload) => {
+            const user = socket.user;
+            if (!user || !user.sub) {
+                return;
+            }
+
+            // check if their id matches the DISCORD_ADMIN_USER_ID env var
+            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
+                console.log(`Unauthorised admin_set_config_value attempt by ${socket.id} (user id: ${user.sub})`);
+                return;
+            }
+
+            const {key, value, is_public} = payload;
+
+            // update in-memory config
+            config.set(key, value);
+            if (is_public) {
+                public_config_keys.add(key);
+            } else {
+                public_config_keys.delete(key);
+            }
+            console.log(`Config key ${key} set to ${value} by admin ${user.name} (id: ${user.sub}), public: ${is_public}`);
+
+            // if public, broadcast the new value to all clients
+            if (is_public) {
+                io.emit("config_value", {key, value});
+            } else {
+                // otherwise only send to admin room
+                io.to("admin").emit("config_value", {key, value});
+            }
+
+            // persist to database
+            try {
+                await pool.query(
+                    `INSERT INTO config (key, value, public) VALUES ($1, $2, $3)
+                     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, public = EXCLUDED.public`,
+                    [key, value, is_public]
+                );
+                console.log(`Config key ${key} persisted to database`);
+            } catch (db_error) {
+                console.error("Database error during setting config value, please set in DB manually to ensure the setting is kept:", db_error);
+            }
         });
 
         socket.on("admin_ban_user", async (payload) => {
@@ -575,11 +653,8 @@ const main = async () => {
             const old_grid_data = grid_data.slice();
             const old_author_data = author_data.slice();
             try {
-                // clear grid and author data
-                grid_data = initialise_grid_data();
-                author_data = initialise_author_data();
-
                 console.log("Reloading grid from database...");
+
                 const pixel_count = await load_pixels();
                 console.log(`Reloaded ${pixel_count} pixels from database.`);
 
@@ -590,6 +665,58 @@ const main = async () => {
                 console.error("Database error during reloading pixels, keeping old grids:", db_error);
                 grid_data = old_grid_data;
                 author_data = old_author_data;
+            }
+        });
+
+        socket.on("admin_set_grid_size", async (payload) => {
+            const user = socket.user;
+            if (!user || !user.sub) {
+                return;
+            }
+
+            // check if their id matches the DISCORD_ADMIN_USER_ID env var
+            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
+                console.log(`Unauthorised admin_set_grid_size attempt by ${socket.id} (user id: ${user.sub})`);
+                return;
+            }
+
+            const {width, height} = payload;
+            if (
+                !(typeof width === "number" && width > 0 && width <= 1000 &&
+                  typeof height === "number" && height > 0 && height <= 1000)
+            ) {
+                return;
+            }
+
+            // persist to database
+            try {
+                await pool.query(
+                    `INSERT INTO config (key, value, public) VALUES ('grid_width', $1, true), ('grid_height', $2, true)
+                     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+                    [width, height]
+                );
+                console.log(`Grid size persisted to database as ${width} x ${height}`);
+
+                // update in memory config too
+                config.set("grid_width", width);
+                config.set("grid_height", height);
+
+                // update in-memory grid with new size
+                await load_pixels();
+
+                console.log(`Grid size changed to ${width} x ${height} by admin ${user.name} (id: ${user.sub})`);
+
+                // broadcast the new full grid to all clients and config changes
+                io.emit("config_value", {key: "grid_width", value: width});
+                io.emit("config_value", {key: "grid_height", value: height});
+                io.emit("full_grid", grid_data);
+                io.emit("full_author_data", author_data);
+            } catch (db_error) {
+                console.error("Database error during changing grid size, please set in DB manually to ensure the setting is kept:", db_error);
+
+                // emit old config values to admin to revert their client
+                socket.emit("config_value", {key: "grid_width", value: get_config("grid_width", DEFAULT_GRID_WIDTH)});
+                socket.emit("config_value", {key: "grid_height", value: get_config("grid_height", DEFAULT_GRID_HEIGHT)});
             }
         });
 
@@ -610,6 +737,8 @@ const main = async () => {
         });
 
         socket.on("admin_set_readonly", async (payload) => {
+            // kept for backwards compatibility
+
             const user = socket.user;
             if (!user || !user.sub) {
                 return;
@@ -625,20 +754,20 @@ const main = async () => {
                 return;
             }
 
-            readonly = payload;
-            console.log(`Readonly mode set to ${readonly}`);
+            config.set("readonly", payload);
+            console.log(`Readonly mode set to ${payload}`);
 
             // broadcast the new readonly value to all clients
-            io.emit("readonly", readonly);
+            io.emit("readonly", payload);
 
             // persist to database
             try {
                 await pool.query(
                     `INSERT INTO config (key, value) VALUES ('readonly', $1)
                      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-                    [readonly ? "true" : "false"]
+                    [payload ? "true" : "false"]
                 );
-                console.log(`Readonly mode persisted to database as ${readonly}`);
+                console.log(`Readonly mode persisted to database as ${payload}`);
             } catch (db_error) {
                 console.error("Database error during setting readonly mode, please set in DB manually to ensure the setting is kept:", db_error);
             }
@@ -859,3 +988,4 @@ main();
 
 // TODO: unique users ever stat
 // TODO: move manual stat calc to a function or cache
+// TODO: remove duplication of readonly and set config readonly, as clinets currently only listen when its admin_set_readonly event
