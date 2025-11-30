@@ -16,7 +16,7 @@ const FloatingPoll = () => {
 
     const [question, setQuestion] = useState<string | null>(null);
     const [options, setOptions] = useState<string[] | null>(null);
-    const [results, setResults] = useState<number[] | null>(null);
+    const [counts, setCounts] = useState<number[] | null>(null);
     const [winners, setWinners] = useState<string[] | null>(null);
 
     const [chosen_option_index, setChosenOptionIndex] = useState<number | null>(null);
@@ -24,7 +24,7 @@ const FloatingPoll = () => {
 
     // setup socket listeners
     useEffect(() => {
-        socket.on("poll", ({ question: new_question, options: new_options }: { question: string; options: string[] }) => {
+        socket.on("poll", ({ question: new_question, options: new_options, counts: new_counts }: { question: string; options: string[]; counts: number[] }) => {
             // cancel any hide timeout
             if (hide_timeout.current) {
                 clearTimeout(hide_timeout.current);
@@ -32,7 +32,8 @@ const FloatingPoll = () => {
 
             setQuestion(new_question);
             setOptions(new_options);
-            setResults(Array(new_options.length).fill(0));
+            setCounts(new_counts);
+
             setWinners(null);
             setChosenOptionIndex(null);
             setUserHiding(false);
@@ -40,8 +41,8 @@ const FloatingPoll = () => {
             setPollState(PollState.ACTIVE);
         });
 
-        socket.on("poll_counts", (counts: number[]) => {
-            setResults(counts);
+        socket.on("poll_counts", (new_counts: number[]) => {
+            setCounts(new_counts);
         });
         
         // check for existing poll on mount
@@ -53,8 +54,8 @@ const FloatingPoll = () => {
         socket.on("end_poll", ({ winners, results: final_results }: { winners: string[]; results: Record<string, number> }) => {
             setPollState(PollState.ENDED);
 
-            const counts = options ? options.map(option => final_results[option] || 0) : null;
-            setResults(counts);
+            const new_counts = options ? options.map(option => final_results[option] || 0) : null;
+            setCounts(new_counts);
             setWinners(winners);
             setUserHiding(false);
 
@@ -69,7 +70,7 @@ const FloatingPoll = () => {
         }
     }, [options]);
 
-    const total_votes = results ? results.reduce((a, b) => a + b, 0) : 0;
+    const total_votes = counts ? counts.reduce((a, b) => a + b, 0) : 0;
     const hidden = poll_state === PollState.HIDDEN || user_hiding;
 
     return (
@@ -96,10 +97,10 @@ const FloatingPoll = () => {
                     title={poll_state === PollState.ACTIVE ? "Click to vote for this option" : ""}
                 >
                     {option}
-                    {results && results[index] !== undefined && (
+                    {counts && counts[index] !== undefined && (
                         <div className="flex gap-1">
-                            <span className="text-sm">{results[index]} vote{results[index] !== 1 ? "s" : ""}</span>
-                            <span className="text-sm">({total_votes > 0 ? ((results[index] / total_votes) * 100).toFixed(1) : "0.0"}%)</span>
+                            <span className="text-sm">{counts[index]} vote{counts[index] !== 1 ? "s" : ""}</span>
+                            <span className="text-sm">({total_votes > 0 ? ((counts[index] / total_votes) * 100).toFixed(1) : "0.0"}%)</span>
                         </div>
                     )}
                 </button>
