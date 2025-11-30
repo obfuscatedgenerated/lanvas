@@ -708,6 +708,16 @@ const main = async () => {
                 return;
             }
 
+            if (key.length === 0) {
+                console.log("Stat key cannot be empty, cannot update via admin_update_manual_stat");
+                return;
+            }
+
+            if (key.length > 200) {
+                console.log(`Stat key ${key} is too long, cannot update via admin_update_manual_stat`);
+                return;
+            }
+
             // if the stat key exists but is not marked as manual, reject the update
             // if it doesn't exist, we allow creating new manual stats
             if (stats.has(key) && !manual_stat_keys.has(key)) {

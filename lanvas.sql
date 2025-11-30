@@ -5,7 +5,7 @@
 -- Dumped from database version 14.4
 -- Dumped by pg_dump version 14.4
 
--- Started on 2025-11-30 00:00:54
+-- Started on 2025-11-30 00:29:38
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -69,7 +69,7 @@ ALTER TABLE public.pixels OWNER TO postgres;
 --
 
 CREATE TABLE public.stats (
-    key character varying NOT NULL,
+    key character varying(200) NOT NULL,
     value integer NOT NULL,
     manual boolean DEFAULT false NOT NULL
 );
@@ -128,7 +128,7 @@ ALTER TABLE ONLY public.pixels
 
 
 --
--- TOC entry 3191 (class 2606 OID 25402)
+-- TOC entry 3191 (class 2606 OID 25405)
 -- Name: stats stats_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -198,7 +198,7 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_details TO lanvas;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES  TO lanvas;
 
 
--- Completed on 2025-11-30 00:00:54
+-- Completed on 2025-11-30 00:29:38
 
 --
 -- PostgreSQL database dump complete

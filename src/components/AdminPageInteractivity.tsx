@@ -131,6 +131,11 @@ const ManualStatsList = ({manual_stats}: { manual_stats: {[key: string]: number}
                 return;
             }
 
+            if (key.length > 200) {
+                alert("Key too long! Max length is 200 characters.");
+                return;
+            }
+
             // check key doesn't already exist
             if (manual_stats[key] !== undefined) {
                 alert(`Stat with key ${key} already exists!`);
