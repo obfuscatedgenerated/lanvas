@@ -1,8 +1,7 @@
 "use client";
 
 import {usePathname} from "next/navigation";
-
-import {fancy_button_class} from "@/components/FancyButton";
+import {ChartNoAxesCombined} from "lucide-react";
 
 const ConditionalStatsLink = () => {
     const pathname = usePathname();
@@ -12,8 +11,8 @@ const ConditionalStatsLink = () => {
     }
 
     return (
-        <a href="/stats" className={fancy_button_class}>
-            Stats
+        <a href="/stats" title="View statistics" target="_blank">
+            <ChartNoAxesCombined />
         </a>
     );
 }
