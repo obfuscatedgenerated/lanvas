@@ -74,7 +74,7 @@ const FloatingPoll = () => {
 
     return (
         <div className={`z-9999 fixed right-[50vw] translate-x-[50%] sm:translate-x-0 top-20 sm:right-10 min-w-64 max-w-9/10 sm:max-w-100 bg-neutral-600 border border-neutral-500 rounded shadow-lg p-4 transition-opacity duration-500 ${hidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
-            <div className="w-full flex items-start justify-between mb-2">
+            <div className="w-full flex items-start justify-between mb-2 gap-2">
                 {question && <h3 className="text-lg font-semibold break-words max-w-[92.5%]">{question}</h3>}
 
                 <button title="Hide poll" className="cursor-pointer" onClick={() => setUserHiding(true)}>
@@ -93,6 +93,7 @@ const FloatingPoll = () => {
                         }
                     }}
                     disabled={poll_state !== PollState.ACTIVE}
+                    title={poll_state === PollState.ACTIVE ? "Click to vote for this option" : ""}
                 >
                     {option}
                     {results && results[index] !== undefined && (
