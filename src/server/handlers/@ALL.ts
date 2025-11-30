@@ -9,6 +9,8 @@ export * as admin_send_message from "./admin/send_message";
 export * as admin_request_manual_stats from "./admin/request_manual_stats";
 export * as admin_update_manual_stat from "./admin/update_manual_stat";
 export * as admin_delete_manual_stat from "./admin/delete_manual_stat";
+export * as admin_refresh_grid_data from "./admin/refresh_grid_data";
+export * as admin_set_grid_size from "./admin/set_grid_size";
 
 export * as check_readonly from "./check_readonly";
 export * as check_timeout from "./check_timeout";

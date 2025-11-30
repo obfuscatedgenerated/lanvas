@@ -10,7 +10,6 @@ import {parse as parse_cookies} from "cookie";
 
 import {Pool} from "pg";
 
-import {Author} from "@/types";
 import {
     ConnectedUserDetails,
     SocketWithJWT,
@@ -18,7 +17,6 @@ import {
 } from "@/server/types";
 
 import {
-    DEFAULT_GRID_COLOR,
     DEFAULT_GRID_HEIGHT,
     DEFAULT_GRID_WIDTH,
 } from "@/defaults";
@@ -34,6 +32,8 @@ import {
     set_config,
     ConfigPersistStrategy
 } from "@/server/config";
+
+import {get_author_data, get_grid_data, load_pixels} from "@/server/grid";
 
 import * as handlers from "@/server/handlers/@ALL";
 
@@ -59,15 +59,6 @@ const port = parseInt(process.argv[3], 10) || 3000;
 // when using middleware `hostname` and `port` must be provided below
 const app = next({dev, hostname, port});
 const req_handler = app.getRequestHandler();
-
-const initialise_grid_data = (height: number, width: number) => Array.from({ length: height }, () => Array(width).fill(DEFAULT_GRID_COLOR));
-
-const initialise_author_data = (height: number, width: number) => Array.from({ length: height }, () => Array(width).fill(null));
-
-// in memory caches with default empty values
-let grid_data: string[][] = [];
-
-let author_data: (Author | null)[][] = [];
 
 // TODO: could reduce redundancy further by storing user ids only in author_data and having a separate user map
 
@@ -113,35 +104,6 @@ const load_stats = async () => {
     }
 }
 
-const load_pixels = async (): Promise<number> => {
-    const grid_height = get_config(CONFIG_KEY_GRID_HEIGHT, DEFAULT_GRID_HEIGHT);
-    const grid_width = get_config(CONFIG_KEY_GRID_WIDTH, DEFAULT_GRID_WIDTH);
-
-    grid_data = initialise_grid_data(grid_height, grid_width);
-    author_data = initialise_author_data(grid_height, grid_width);
-
-    const pixels = await pool.query("SELECT x, y, color, author_id, author.username, author.avatar_url FROM pixels JOIN user_details AS author ON pixels.author_id = author.user_id");
-
-    let loaded_pixel_count = 0;
-    for (const row of pixels.rows) {
-        const {x, y, color, author_id, username, avatar_url} = row;
-
-        // load each pixel into the in-memory grids
-        if (x >= 0 && x < grid_width && y >= 0 && y < grid_height) {
-            grid_data[y][x] = color;
-            author_data[y][x] = {
-                user_id: author_id,
-                name: username,
-                avatar_url,
-            };
-
-            loaded_pixel_count++;
-        }
-    }
-
-    return loaded_pixel_count;
-}
-
 const main = async () => {
     // check the database connection
     console.log("Checking database connection...");
@@ -174,7 +136,7 @@ const main = async () => {
     console.log(`Manual stats keys: ${Array.from(manual_stat_keys).join(", ")}`);
 
     // load existing pixels from database
-    const loaded_pixel_count = await load_pixels();
+    const loaded_pixel_count = await load_pixels(pool);
 
     console.log(`Loaded ${loaded_pixel_count} pixels from database.`);
 
@@ -290,93 +252,6 @@ const main = async () => {
             }
         });
 
-        // TODO: need to move grid data to module to make this work as handler. will define inline for now
-        socket.on("admin_refresh_grid", async () => {
-            const user = socket.user;
-            if (!user || !user.sub) {
-                return;
-            }
-
-            // check if their id matches the DISCORD_ADMIN_USER_ID env var
-            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
-                console.log(`Unauthorised admin_refresh_grid attempt by ${socket.id} (user id: ${user.sub})`);
-                return;
-            }
-            
-            // reload pixels and authors from the database
-            // TODO: instead of affecting global value and reverting, use a staging value
-            const old_grid_data = grid_data.slice();
-            const old_author_data = author_data.slice();
-            try {
-                console.log("Reloading grid from database...");
-
-                const pixel_count = await load_pixels();
-                console.log(`Reloaded ${pixel_count} pixels from database.`);
-
-                // broadcast the new grid to all clients
-                io.emit("full_grid", grid_data);
-                io.emit("full_author_data", author_data);
-            } catch (db_error) {
-                console.error("Database error during reloading pixels, keeping old grids:", db_error);
-                grid_data = old_grid_data;
-                author_data = old_author_data;
-            }
-        });
-
-        // TODO: need to move load_pixels to module to make this work as handler. will define inline for now
-        socket.on("admin_set_grid_size", async (payload) => {
-            const user = socket.user;
-            if (!user || !user.sub) {
-                return;
-            }
-
-            // check if their id matches the DISCORD_ADMIN_USER_ID env var
-            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
-                console.log(`Unauthorised admin_set_grid_size attempt by ${socket.id} (user id: ${user.sub})`);
-                return;
-            }
-
-            const {width, height} = payload;
-            if (
-                !(typeof width === "number" && width > 0 && width <= 1000 &&
-                  typeof height === "number" && height > 0 && height <= 1000)
-            ) {
-                return;
-            }
-
-            // persist to database
-            try {
-                await pool.query(
-                    `INSERT INTO config (key, value, public) VALUES ($1, $2, true), ($3, $4, true)
-                     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-                    [CONFIG_KEY_GRID_WIDTH, width, CONFIG_KEY_GRID_HEIGHT, height]
-                );
-                console.log(`Grid size persisted to database as ${width} x ${height}`);
-
-                // update in memory config too
-                // already handled persistence ourself, so use IN_MEMORY_ONLY strategy
-                await set_config(pool, CONFIG_KEY_GRID_WIDTH, width, true, ConfigPersistStrategy.IN_MEMORY_ONLY);
-                await set_config(pool, CONFIG_KEY_GRID_HEIGHT, height, true, ConfigPersistStrategy.IN_MEMORY_ONLY);
-
-                // update in-memory grid with new size
-                await load_pixels();
-
-                console.log(`Grid size changed to ${width} x ${height} by admin ${user.name} (id: ${user.sub})`);
-
-                // broadcast the new full grid to all clients and config changes
-                io.emit("config_value", {key: CONFIG_KEY_GRID_WIDTH, value: width});
-                io.emit("config_value", {key: CONFIG_KEY_GRID_HEIGHT, value: height});
-                io.emit("full_grid", grid_data);
-                io.emit("full_author_data", author_data);
-            } catch (db_error) {
-                console.error("Database error during changing grid size, please set in DB manually to ensure the setting is kept:", db_error);
-
-                // emit old config values to admin to revert their client
-                socket.emit("config_value", {key: CONFIG_KEY_GRID_WIDTH, value: get_config(CONFIG_KEY_GRID_WIDTH, DEFAULT_GRID_WIDTH)});
-                socket.emit("config_value", {key: CONFIG_KEY_GRID_HEIGHT, value: get_config(CONFIG_KEY_GRID_HEIGHT, DEFAULT_GRID_HEIGHT)});
-            }
-        });
-
         socket.on("disconnect", () => {
             console.log(`Client disconnected: ${socket.id}`);
 
@@ -435,8 +310,6 @@ const main = async () => {
                     socket,
                     pool,
                     payload,
-                    grid_data,
-                    author_data,
                     timeouts,
                     banned_user_ids,
                     banned_usernames_cache,

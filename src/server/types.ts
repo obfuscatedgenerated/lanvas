@@ -22,8 +22,6 @@ export interface SocketHandlerContext {
     payload: any;
 
     // TODO: move these to modules. for now will send all relevant data references as context
-    grid_data: string[][];
-    author_data: (Author | null)[][];
     timeouts: {[user_id: string]: {
             started: number;
             ends: number;
