@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { socket } from "@/socket";
 import NumberFlow from "@number-flow/react";
 
@@ -18,10 +18,10 @@ const known_stat_labels: { [key: string]: string } = {
 const StatsList = ({ stats }: { stats: StatsData }) => (
     <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-xl mb-16">
         {Object.entries(stats).map(([key, value]) => (
-            <>
+            <Fragment key={key}>
                 <b>{known_stat_labels[key] || key}:</b>
                 <NumberFlow value={value}/>
-            </>
+            </Fragment>
         ))}
     </div>
 );
