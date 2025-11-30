@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { socket } from "@/socket";
 
 enum PollState {
@@ -18,10 +18,16 @@ const FloatingPoll = () => {
     const [winners, setWinners] = useState<string[] | null>(null);
 
     const [chosen_option_index, setChosenOptionIndex] = useState<number | null>(null);
+    const hide_timeout = useRef<NodeJS.Timeout | null>(null);
 
     // setup socket listeners
     useEffect(() => {
         socket.on("poll", ({ question: new_question, options: new_options }: { question: string; options: string[] }) => {
+            // cancel any hide timeout
+            if (hide_timeout.current) {
+                clearTimeout(hide_timeout.current);
+            }
+
             setQuestion(new_question);
             setOptions(new_options);
             setResults(Array(new_options.length).fill(0));
@@ -48,8 +54,9 @@ const FloatingPoll = () => {
             setResults(counts);
             setWinners(winners);
 
-            setTimeout(() => {
+            hide_timeout.current = setTimeout(() => {
                 setPollState(PollState.HIDDEN);
+                hide_timeout.current = null;
             }, 5000); // hide after 5 seconds
         });
 
