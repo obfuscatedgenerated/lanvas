@@ -10,7 +10,13 @@ import {parse as parse_cookies} from "cookie";
 
 import {Pool} from "pg";
 import {Author} from "@/types";
-import {DEFAULT_GRID_COLOR, DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH, DEFAULT_READONLY} from "@/defaults";
+import {
+    DEFAULT_GRID_COLOR,
+    DEFAULT_GRID_HEIGHT,
+    DEFAULT_GRID_WIDTH,
+    DEFAULT_PIXEL_TIMEOUT_MS,
+    DEFAULT_READONLY
+} from "@/defaults";
 
 const dev = process.env.NODE_ENV !== "production";
 
@@ -35,9 +41,6 @@ const port = parseInt(process.argv[3], 10) || 3000;
 const app = next({dev, hostname, port});
 const handler = app.getRequestHandler();
 
-// TODO: move these values to the database so they can be changed without redeploying, and transmit the values to the client via ws rather than baked in env vars
-const PIXEL_TIMEOUT_MS = process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS ? parseInt(process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS) : 30000;
-
 const initialise_grid_data = (height: number, width: number) => Array.from({ length: height }, () => Array(width).fill(DEFAULT_GRID_COLOR));
 
 const initialise_author_data = (height: number, width: number) => Array.from({ length: height }, () => Array(width).fill(null));
@@ -52,7 +55,10 @@ const public_config_keys = new Set<string>();
 
 // TODO: could reduce redundancy further by storing user ids only in author_data and having a separate user map
 
-const timeouts: {[user_id: string]: number} = {};
+const timeouts: {[user_id: string]: {
+    started: number;
+    ends: number;
+}} = {};
 
 let banned_user_ids: string[] = [];
 let banned_usernames_cache: {[user_id: string]: string} = {};
@@ -157,6 +163,7 @@ const main = async () => {
     // load config from database
     await load_config();
     console.log(`Loaded ${config.size} config entries from database.`);
+    console.log("Public config keys:", Array.from(public_config_keys).join(", "));
 
     console.log("Grid size:", get_config("grid_width", 100), "x", get_config("grid_height", 100));
 
@@ -299,9 +306,9 @@ const main = async () => {
 
                 // check user isn't in timeout period
                 const current_time = Date.now();
-                if (timeouts[user_id] && timeouts[user_id] > current_time) {
+                if (timeouts[user_id] && timeouts[user_id].ends > current_time) {
                     // user is still in timeout period
-                    const wait_time = Math.ceil((timeouts[user_id] - current_time) / 1000);
+                    const wait_time = Math.ceil((timeouts[user_id].ends - current_time) / 1000);
                     socket.emit("pixel_update_rejected", {reason: "timeout", wait_time});
                     return;
                 }
@@ -321,7 +328,10 @@ const main = async () => {
                 console.log(`Pixel updated at (${x}, ${y}) to ${color} by user ${socket.user.name} (id: ${user_id})`);
 
                 // set new timeout for user
-                timeouts[user_id] = current_time + PIXEL_TIMEOUT_MS;
+                timeouts[user_id] = {
+                    started: current_time,
+                    ends: current_time + get_config("pixel_timeout_ms", DEFAULT_PIXEL_TIMEOUT_MS)
+                };
 
                 // broadcast the pixel update to all connected clients
                 io.emit("pixel_update", {x, y, color, author});
@@ -395,14 +405,15 @@ const main = async () => {
 
             const timeout = timeouts[user.sub];
             const current_time = Date.now();
-            if (timeout && timeout > current_time) {
-                const remaining = timeouts[user.sub] - current_time;
-                const elapsed = PIXEL_TIMEOUT_MS - remaining;
+            if (timeout && timeout.ends > current_time) {
+                const remaining = timeout.ends - current_time;
+                const elapsed = current_time - timeout.started;
+
                 socket.emit("timeout_info", {
-                    started: current_time - elapsed, // this does it backwards as we don't store when it was started, assumed the PIXEL_TIMEOUT_MS doesnt change
+                    started: timeout.started,
                     remaining,
                     elapsed,
-                    ends: timeout,
+                    ends: timeout.ends,
                     checked_at: current_time
                 });
             }

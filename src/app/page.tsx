@@ -10,31 +10,37 @@ import FloatingHelp from "@/components/FloatingHelp";
 import FloatingAdminMessage from "@/components/FloatingAdminMessage";
 
 import {socket} from "@/socket";
-
-const PIXEL_TIMEOUT_MS = process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS ? parseInt(process.env.NEXT_PUBLIC_PIXEL_TIMEOUT_MS) : 30000;
+import {DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
 
 export default function Home() {
     const [current_color, setCurrentColor] = useState("#000000");
+
     const [timeout_start_time, setTimeoutStartTime] = useState<number | null>(null);
+    const [timeout_end_time, setTimeoutEndTime] = useState<number | null>(null);
+
     const [is_readonly, setIsReadonly] = useState(false);
+    const [pixel_timeout_ms, setPixelTimeoutMs] = useState(DEFAULT_PIXEL_TIMEOUT_MS);
 
     // when pixel is submitted, switch to show timeout mode for the widget
     const handle_pixel_submitted = useCallback(
         () => {
             setTimeoutStartTime(Date.now());
+            setTimeoutEndTime(Date.now() + pixel_timeout_ms);
 
             // after timeout, switch back to color picker mode
             setTimeout(() => {
                 setTimeoutStartTime(null);
-            }, PIXEL_TIMEOUT_MS);
+                setTimeoutEndTime(null);
+            }, pixel_timeout_ms);
         },
-        []
+        [pixel_timeout_ms]
     );
 
     // if the update was rejected, undo the timeout state
     const handle_pixel_update_rejected = useCallback(
         () => {
             setTimeoutStartTime(null);
+            setTimeoutEndTime(null);
         },
         []
     );
@@ -44,14 +50,14 @@ export default function Home() {
         socket.on("connect", () => console.log("Connected!", socket.id));
 
         socket.on("timeout_info", (info) => {
-            console.log(info);
-
             // update timeout so far
             setTimeoutStartTime(info.started);
+            setTimeoutEndTime(info.ends);
 
             // after timeout, switch back to color picker mode
             setTimeout(() => {
                 setTimeoutStartTime(null);
+                setTimeoutEndTime(null);
             }, info.remaining);
         });
 
@@ -62,11 +68,22 @@ export default function Home() {
             }
         });
 
+        socket.on("config_value", (key, value) => {
+            console.log("Received config value:", key, value);
+
+            if (key === "pixel_timeout_ms") {
+                setPixelTimeoutMs(value);
+            }
+        });
+
         // check for any timeouts on page load
         socket.emit("check_timeout");
 
         // check if the canvas is in readonly mode
         socket.emit("check_readonly");
+
+        // request timeout config value
+        socket.emit("get_public_config_value", "pixel_timeout_ms");
 
         return () => {
             socket.disconnect();
@@ -94,7 +111,7 @@ export default function Home() {
                         on_color_change={setCurrentColor}
 
                         start_time={timeout_start_time ?? -1}
-                        duration={PIXEL_TIMEOUT_MS}
+                        duration={(timeout_end_time && timeout_start_time) ? (timeout_end_time - timeout_start_time) : -1}
                     />
                 }
             </div>
