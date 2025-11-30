@@ -202,20 +202,6 @@ const main = async () => {
         // emit updated stats to all clients in stats room
         io.to("stats").emit("stats", Object.fromEntries(stats));
 
-        // TODO: need to move banned users to module to make this work as handler. will define inline for now
-        socket.on("admin_refresh_banned_users", async () => {
-            const user = socket.user;
-            if (!user || !user.sub) {
-                return;
-            }
-
-            // check if their id matches the DISCORD_ADMIN_USER_ID env var
-            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
-                console.log(`Unauthorised admin_refresh_banned_users attempt by ${socket.id} (user id: ${user.sub})`);
-                return;
-            }
-        });
-
         socket.on("disconnect", () => {
             console.log(`Client disconnected: ${socket.id}`);
 
