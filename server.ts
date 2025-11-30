@@ -69,6 +69,7 @@ interface ConnectedUserDetails {
 }
 
 const connected_users = new Set<ConnectedUserDetails>();
+const unique_connected_user_ids = new Set<string>();
 
 const stats = new Map<string, number>();
 const manual_stat_keys = new Set<string>();
@@ -195,7 +196,7 @@ const main = async () => {
 
     io.on("connection", (sock) => {
         const socket = sock as SocketWithJWT;
-        if (!socket.user) {
+        if (!socket.user || !socket.user.sub) {
             console.log("Unauthenticated socket connection attempt.");
             socket.disconnect(true);
             return;
@@ -214,16 +215,10 @@ const main = async () => {
             username: socket.user.name || undefined,
         });
 
+        unique_connected_user_ids.add(socket.user.sub);
+
         // send updated connected users list to admin room
         io.to("admin").emit("connected_users", Array.from(connected_users));
-
-        // determine number of currently connected unique discord users
-        const unique_connected_user_ids = new Set<string>();
-        connected_users.forEach((user) => {
-            if (user.user_id) {
-                unique_connected_user_ids.add(user.user_id);
-            }
-        });
 
         // update in-memory stats cache
         stats.set("connected_unique_users", unique_connected_user_ids.size);
@@ -759,6 +754,25 @@ const main = async () => {
 
             // send updated connected users list to admin room
             io.to("admin").emit("connected_users", Array.from(connected_users));
+
+            // determine if user has any other active connections
+            let still_connected = false;
+            connected_users.forEach((user) => {
+                if (user.user_id === socket.user?.sub) {
+                    still_connected = true;
+                }
+            });
+
+            // if not, remove from unique connected user ids set
+            if (!still_connected && socket.user && socket.user.sub) {
+                unique_connected_user_ids.delete(socket.user.sub);
+
+                // update in-memory stats cache
+                stats.set("connected_unique_users", unique_connected_user_ids.size);
+
+                // emit updated stats to all clients in stats room
+                io.to("stats").emit("stats", Object.fromEntries(stats));
+            }
         });
     });
 
