@@ -7,12 +7,22 @@ import NumberFlow from "@number-flow/react";
 interface StatsData {
     total_pixels_placed: number;
     connected_unique_users: number;
+    [key: string]: number; // unknown additional stats
 }
+
+const known_stat_labels: { [key: string]: string } = {
+    total_pixels_placed: "Total pixels placed",
+    connected_unique_users: "Connected users",
+};
 
 const StatsList = ({ stats }: { stats: StatsData }) => (
     <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-xl mb-16">
-        <b>Total pixels placed:</b> <NumberFlow value={stats.total_pixels_placed}/>
-        <b>Connected users:</b> <NumberFlow value={stats.connected_unique_users}/>
+        {Object.entries(stats).map(([key, value]) => (
+            <>
+                <b>{known_stat_labels[key] || key}:</b>
+                <NumberFlow value={value}/>
+            </>
+        ))}
     </div>
 );
 

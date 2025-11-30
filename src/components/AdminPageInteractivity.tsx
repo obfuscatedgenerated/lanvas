@@ -67,11 +67,107 @@ const ConnectedUserList = ({connected_users}: { connected_users: ConnectedUserDe
     </table>
 );
 
+const ManualStatsList = ({manual_stats}: { manual_stats: {[key: string]: number} }) => (
+    <div className="flex gap-8 items-start">
+        <table className="table-fixed bg-neutral-900">
+            <thead>
+            <tr className="border-neutral-600 border-b-1">
+                <th className="w-50">Key</th>
+                <th className="w-50">Value</th>
+                <th className="w-15"></th>
+                <th className="w-15"></th>
+            </tr>
+            </thead>
+            <tbody>
+            {Object.entries(manual_stats).map(([key, value]) => (
+                <tr key={key}>
+                    <td className="text-center select-text">{key}</td>
+                    <td className="text-center select-text">{value}</td>
+                    <td className="p-2">
+                        <FancyButton onClick={() => {
+                            const new_value = prompt(`Enter new value for stat ${key}:`, String(value));
+                            if (new_value === null) {
+                                return;
+                            }
+
+                            const new_value_num = parseInt(new_value, 10);
+                            if (isNaN(new_value_num)) {
+                                alert(`Invalid number: ${new_value}`);
+                                return;
+                            }
+
+                            const confirmed = confirm(`Are you sure want to set stat ${key} to value ${new_value_num}?`);
+                            if (!confirmed) {
+                                return;
+                            }
+
+                            // submit change
+                            socket.emit("admin_update_manual_stat", {key, value: new_value_num});
+                        }}>
+                            Edit
+                        </FancyButton>
+                    </td>
+                    <td className="p-2 pl-0">
+                        <FancyButton onClick={() => {
+                            const confirmed = confirm(`Are you sure want to delete manual stat ${key}? This action cannot be undone.`);
+                            if (!confirmed) {
+                                return;
+                            }
+
+                            // submit change
+                            socket.emit("admin_delete_manual_stat", key);
+                        }}>
+                            Delete
+                        </FancyButton>
+                    </td>
+                </tr>
+            ))}
+            </tbody>
+        </table>
+
+        <FancyButton onClick={() => {
+            const key = prompt("Enter key for new manual stat:");
+            if (!key) {
+                return;
+            }
+
+            // check key doesn't already exist
+            if (manual_stats[key] !== undefined) {
+                alert(`Stat with key ${key} already exists!`);
+                return;
+            }
+
+            const value_str = prompt("Enter initial value for new manual stat (number):", "0");
+            if (value_str === null) {
+                return;
+            }
+
+            const value = parseInt(value_str, 10);
+            if (isNaN(value)) {
+                alert(`Invalid number: ${value_str}`);
+                return;
+            }
+
+            const confirmed = confirm(`Are you sure want to create new manual stat ${key} with value ${value}?`);
+            if (!confirmed) {
+                return;
+            }
+
+            // submit creation
+            socket.emit("admin_update_manual_stat", {key, value});
+        }}>
+            Create new manual stat
+        </FancyButton>
+    </div>
+);
+
 const AdminPageInteractivity = () => {
     const [banned_user_ids, setBannedUserIds] = useState<string[]>([]);
     const [banned_usernames_cache, setBannedUsernamesCache] = useState<{ [user_id: string]: string }>({});
 
     const [connected_users, setConnectedUsers] = useState<ConnectedUserDetails[]>([]);
+
+    const [manual_stats, setManualStats] = useState<{[key: string]: number}>({});
 
     const [is_readonly, setIsReadonly] = useState(false);
     const [readonly_checkbox, setReadonlyCheckbox] = useState(is_readonly);
@@ -89,11 +185,13 @@ const AdminPageInteractivity = () => {
         socket.on("banned_usernames_cache", setBannedUsernamesCache);
         socket.on("connected_users", setConnectedUsers);
         socket.on("readonly", setIsReadonly);
+        socket.on("manual_stats", setManualStats);
 
         // request readonly state, ban list and connected users on load
         socket.emit("check_readonly");
         socket.emit("admin_request_banned_users");
         socket.emit("admin_request_connected_users");
+        socket.emit("admin_request_manual_stats");
 
         return () => {
             socket.disconnect();
@@ -249,6 +347,9 @@ const AdminPageInteractivity = () => {
                     Send message
                 </FancyButton>
             </label>
+
+            <h2 className="text-xl font-medium mb-2 mt-4">Manual stats</h2>
+            <ManualStatsList manual_stats={manual_stats} />
         </>
     )
 }

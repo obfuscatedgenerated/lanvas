@@ -110,7 +110,7 @@ const load_banned_users = async () => {
 }
 
 const load_stats = async () => {
-    const stats_res = await pool.query("SELECT key, value FROM stats");
+    const stats_res = await pool.query("SELECT key, value, manual FROM stats");
     for (const row of stats_res.rows) {
         const value = parseInt(row.value, 10);
 
@@ -146,6 +146,7 @@ const main = async () => {
     await load_stats();
 
     console.log(`Loaded ${stats.size} stats from database.`);
+    console.log(`Manual stats keys: ${Array.from(manual_stat_keys).join(", ")}`);
 
     // load config value "readonly" from database if it exists
     // default to false if not set
@@ -707,7 +708,9 @@ const main = async () => {
                 return;
             }
 
-            if (!manual_stat_keys.has(key)) {
+            // if the stat key exists but is not marked as manual, reject the update
+            // if it doesn't exist, we allow creating new manual stats
+            if (stats.has(key) && !manual_stat_keys.has(key)) {
                 console.log(`Stat key ${key} is not marked as manual, cannot update via admin_update_manual_stat`);
                 return;
             }
@@ -723,6 +726,7 @@ const main = async () => {
 
                 // update in-memory stats cache
                 stats.set(key, value);
+                manual_stat_keys.add(key);
 
                 // emit updated stats to all clients in stats room
                 io.to("stats").emit("stats", Object.fromEntries(stats));
@@ -739,6 +743,61 @@ const main = async () => {
                 io.to("admin").emit("manual_stats", manual_stats);
             } catch (db_error) {
                 console.error("Database error during updating manual stat:", db_error);
+            }
+        });
+
+        socket.on("admin_delete_manual_stat", async (payload) => {
+            const user = socket.user;
+            if (!user || !user.sub) {
+                return;
+            }
+
+            // check if their id matches the DISCORD_ADMIN_USER_ID env var
+            if (user.sub !== process.env.DISCORD_ADMIN_USER_ID) {
+                console.log(`Unauthorised admin_delete_manual_stat attempt by ${socket.id} (user id: ${user.sub})`);
+                return;
+            }
+
+            if (typeof payload !== "string") {
+                return;
+            }
+
+            if (!stats.has(payload)) {
+                console.log(`Stat key ${payload} does not exist, cannot delete via admin_delete_manual_stat`);
+                return;
+            }
+
+            if (!manual_stat_keys.has(payload)) {
+                console.log(`Stat key ${payload} is not marked as manual, cannot delete via admin_delete_manual_stat`);
+                return;
+            }
+
+            // delete from database
+            try {
+                await pool.query(
+                    `DELETE FROM stats WHERE key = $1`,
+                    [payload]
+                );
+                console.log(`Manual stat ${payload} deleted from database by admin ${user.name} (id: ${user.sub})`);
+
+                // update in-memory stats cache
+                stats.delete(payload);
+                manual_stat_keys.delete(payload);
+
+                // emit updated stats to all clients in stats room
+                io.to("stats").emit("stats", Object.fromEntries(stats));
+
+                // emit updated manual stats to admin clients
+                const manual_stats: {[key: string]: number} = {};
+                for (const manual_key of manual_stat_keys) {
+                    const stat_value = stats.get(manual_key);
+                    if (typeof stat_value === "number") {
+                        manual_stats[manual_key] = stat_value;
+                    }
+                }
+                io.to("admin").emit("manual_stats", manual_stats);
+            } catch (db_error) {
+                console.error("Database error during deleting manual stat:", db_error);
             }
         });
 
@@ -788,4 +847,5 @@ const main = async () => {
 
 main();
 
-// TODO: unique users stat
+// TODO: unique users ever stat
+// TODO: move manual stat calc to a function or cache
