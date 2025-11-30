@@ -67,6 +67,7 @@ interface ConnectedUserDetails {
     socket_id: string;
     user_id?: string;
     username?: string;
+    context?: string;
 }
 
 const connected_users = new Set<ConnectedUserDetails>();
@@ -245,6 +246,7 @@ const main = async () => {
             socket_id: socket.id,
             user_id: socket.user.sub,
             username: socket.user.name || undefined,
+            context: socket.handshake.query.context as string | undefined,
         });
 
         unique_connected_user_ids.add(socket.user.sub);

@@ -45,6 +45,7 @@ interface ConnectedUserDetails {
     socket_id: string;
     user_id?: string;
     username?: string;
+    context?: string;
 }
 
 const ConnectedUserList = ({connected_users}: { connected_users: ConnectedUserDetails[] }) => (
@@ -54,14 +55,16 @@ const ConnectedUserList = ({connected_users}: { connected_users: ConnectedUserDe
             <th className="w-50">Socket ID</th>
             <th className="w-50">User ID</th>
             <th className="w-50">Username</th>
+            <th className="w-25">Context</th>
         </tr>
         </thead>
         <tbody>
-        {connected_users.map(({socket_id, user_id, username}) => (
+        {connected_users.map(({socket_id, user_id, username, context}) => (
             <tr key={socket_id}>
                 <td className="text-center select-text">{socket_id}</td>
                 <td className="text-center select-text">{user_id || "(unknown)"}</td>
                 <td className="text-center select-text">{username || "(unknown)"}</td>
+                <td className="text-center select-text">{context || "(unknown)"}</td>
             </tr>
         ))}
         </tbody>

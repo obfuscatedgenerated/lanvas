@@ -2,8 +2,13 @@
 
 import { io } from "socket.io-client";
 
+// TODO: dont let this run on server side
+
 export const socket = io({
     withCredentials: true,
+    query: {
+        context: typeof window !== "undefined" ? window.location.pathname : "SSR"
+    }
 });
 
 // TODO: make this work between page changes somehow so <Link /> can be used for navigation

@@ -46,6 +46,10 @@ export default function SignInForm() {
 
                     <p>At the end of the event, all pixels will be anonymised and all user details on record will be erased.</p>
 
+                    <p>For service integrity, prevent abuse, and facilitate moderation, site administrators have access to real-time session data. This includes your <strong>Socket ID, Discord User ID, username, and the specific page you are currently viewing</strong>.</p>
+
+                    <p><strong>This session data is ephemeral.</strong> It is retained only for the duration of your active WebSocket connection and is immediately discarded when you disconnect or close the page.</p>
+
                     <p>If your account is banned from the service, your user ID will be stored indefinitely to prevent access to the service. For private, internal records, your username as it was at the time of the ban may be stored.</p>
 
                     <p>To facilitate live previews, the canvas image data may be publicly accessible in certain circumstances.</p>
