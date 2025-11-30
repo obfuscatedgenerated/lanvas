@@ -11,3 +11,5 @@ export const handler: SocketHandlerFunction = ({socket, stats}) => {
     socket.join("stats");
     socket.emit("stats", Object.fromEntries(stats));
 }
+
+// TODO: could use context or namespace for this, but this is fine for now
