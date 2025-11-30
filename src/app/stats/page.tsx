@@ -16,10 +16,10 @@ const known_stat_labels: { [key: string]: string } = {
 };
 
 const StatsList = ({ stats }: { stats: StatsData }) => (
-    <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-xl mb-16">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] max-w-9/10 gap-x-6 gap-y-2 text-xl sm:text-2xl items-center mb-16">
         {Object.entries(stats).map(([key, value]) => (
             <Fragment key={key}>
-                <b>{known_stat_labels[key] || key}:</b>
+                <b className="break-words">{known_stat_labels[key] || key}:</b>
                 <NumberFlow value={value}/>
             </Fragment>
         ))}
@@ -45,7 +45,7 @@ export default function StatsPage() {
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen py-2">
-            <h1 className="text-4xl font-bold mb-8">Live Statistics</h1>
+            <h1 className="text-4xl sm:text-5xl font-bold mb-8">Live Statistics</h1>
             <StatsList stats={stats} />
         </div>
     );
