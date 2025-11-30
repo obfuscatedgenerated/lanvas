@@ -1,6 +1,6 @@
 # LANvas
 
-An r/place like web app for realtime collaborative editing of a pixel canvas. Developed in 12 hours with Next.js, WebSockets (with Socket.io), Tailwind, and PostgreSQL.
+An r/place like web app for realtime collaborative editing of a pixel canvas. Initially developed in 12 hours with Next.js, WebSockets (with Socket.io), Tailwind, and PostgreSQL.
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 

@@ -1,7 +1,8 @@
 {
   "name": "lanvas",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
+  "description": "An r/place like web app for realtime collaborative editing of a pixel canvas.",
+  "license": "AGPL-3.0",
   "type": "module",
   "scripts": {
     "dev": "tsx src/server/index.ts",
