@@ -4,6 +4,7 @@ import {useEffect, useState, useCallback} from "react";
 import {socket} from "@/socket";
 
 import FancyButton from "@/components/FancyButton";
+import PrometheusTable from "@/components/PrometheusTable";
 
 import {DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH, DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
 import {
@@ -347,6 +348,8 @@ const PrometheusMetrics = () => {
     const [poll_interval_ms, setPollIntervalMs] = useState<number>(1000);
     const [last_updated, setLastUpdated] = useState<Date | null>(null);
 
+    const [raw_mode, setRawMode] = useState<boolean>(false);
+
     const update_metrics = () => {
         socket.emit("admin_telemetry");
     };
@@ -370,12 +373,21 @@ const PrometheusMetrics = () => {
     }, [poll_interval_ms]);
 
     return (
-        <div className="mt-4">
+        <div className="mt-4 w-full">
             <h2 className="text-xl font-medium mb-2">Prometheus Metrics</h2>
 
-            <pre className="bg-gray-800 text-gray-100 p-4 rounded-lg max-h-96 overflow-y-auto">
-                {metrics}
-            </pre>
+            {raw_mode
+                ? (
+                    <pre className="bg-gray-800 text-gray-100 p-4 rounded-lg max-h-96 overflow-y-auto">
+                        {metrics}
+                    </pre>
+                )
+                : (
+                    <div className="max-h-96 overflow-y-auto w-full">
+                        <PrometheusTable metrics={metrics} className="w-full"  head_className="sticky top-0 bg-neutral-900" />
+                    </div>
+                )
+            }
 
             <div className="flex items-start gap-2 mt-2">
                 <label>
@@ -390,6 +402,17 @@ const PrometheusMetrics = () => {
 
                 <p className="text-sm text-gray-400 mt-1">Last updated: {last_updated ? last_updated.toLocaleString() : "Never"}</p>
             </div>
+
+            <label>
+                Raw mode:
+
+                <input
+                    type="checkbox"
+                    className="ml-2"
+                    checked={raw_mode}
+                    onChange={(e) => setRawMode(e.target.checked)}
+                />
+            </label>
         </div>
     );
 }
