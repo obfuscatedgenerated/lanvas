@@ -95,16 +95,27 @@ const PrometheusTable = ({metrics, className = "", body_className = "", head_cla
             </thead>
             <tbody className={body_className}>
             {parsed_metrics.map((family: MetricFamily) =>
-                family.metrics.map((metric: Metric, index: number) => (
-                    <Fragment key={`${family.name}-${index}`}>
+                (
+                    <Fragment key={family.name}>
                         <tr>
                             <td colSpan={2} className="bg-neutral-800 text-left px-2 py-1 border-neutral-600 border-b-1">
                                 <strong>{family.name}</strong> - {family.help} <i>({family.type})</i>
                             </td>
                         </tr>
-                        <PrometheusMetricRow metric={metric} type={family.type} />
+
+                        {family.metrics.length === 0 && (
+                            <tr className="border-neutral-600 border-b-1">
+                                <td colSpan={2} className="text-center italic">
+                                    (empty)
+                                </td>
+                            </tr>
+                        )}
+
+                        {family.metrics.map((metric: Metric, index: number) => (
+                            <PrometheusMetricRow key={index} metric={metric} type={family.type} />
+                        ))}
                     </Fragment>
-                ))
+                )
             )}
             </tbody>
         </table>

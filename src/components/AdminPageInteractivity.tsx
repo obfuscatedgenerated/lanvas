@@ -384,7 +384,7 @@ const PrometheusMetrics = () => {
                 )
                 : (
                     <div className="max-h-96 overflow-y-auto w-full">
-                        <PrometheusTable metrics={metrics} className="w-full"  head_className="sticky top-0 bg-neutral-900" />
+                        <PrometheusTable metrics={metrics} className="w-full select-text" head_className="sticky top-0 bg-neutral-900" />
                     </div>
                 )
             }
