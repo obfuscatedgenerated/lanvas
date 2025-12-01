@@ -16,20 +16,20 @@ const stats_order = [
     "connected_unique_users",
 ];
 
-const StatEntry = ({ stat_key, stats }: { stat_key: string; stats: StatsData }) => (
+const StatEntry = ({ stat_key, stats, className = "" }: { stat_key: string; stats: StatsData; className?: string }) => (
     <>
-        <b className="break-words">{known_stat_labels[stat_key] || stat_key}:</b>
+        <span className={`break-words ${className}`}>{known_stat_labels[stat_key] || stat_key}:</span>
         <NumberFlow value={stats[stat_key]} />
     </>
 );
 
-const StatsList = ({ stats }: { stats: StatsData }) => (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] max-w-9/10 gap-x-6 gap-y-2 text-xl sm:text-2xl items-center mb-16">
+const StatsList = ({ stats, className = "", entry_className = "" }: { stats: StatsData; className?: string; entry_className?: string }) => (
+    <div className={`grid grid-cols-[minmax(0,1fr)_auto] max-w-9/10 gap-x-6 gap-y-2 text-xl sm:text-2xl items-center ${className}`}>
         {stats_order.map((key) => {
             // render pre-ordered stats first
 
             if (key in stats) {
-                return <StatEntry key={key} stat_key={key} stats={stats} />;
+                return <StatEntry key={key} stat_key={key} stats={stats} className={entry_className} />;
             }
 
             return null;
@@ -42,7 +42,7 @@ const StatsList = ({ stats }: { stats: StatsData }) => (
                 return null; // already rendered
             }
 
-            return <StatEntry key={key} stat_key={key} stats={stats} />;
+            return <StatEntry key={key} stat_key={key} stats={stats} className={entry_className} />;
         })}
     </div>
 );

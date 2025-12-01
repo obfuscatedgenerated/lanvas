@@ -1,7 +1,7 @@
 import {Suspense} from "react";
 
 import LoginStatus from "@/components/LoginStatus";
-import ConditionalStatsLink from "@/components/ConditionalStatsLink";
+import StatsButtonAndPopup from "@/components/StatsButtonAndPopup";
 import GithubLogo from "@/components/GithubLogo";
 
 const Header = () => {
@@ -17,7 +17,7 @@ const Header = () => {
                 </a>
 
                 <Suspense>
-                    <ConditionalStatsLink />
+                    <StatsButtonAndPopup />
                 </Suspense>
 
                 <a href="https://github.com/obfuscatedgenerated/lanvas" rel="noreferrer noopener" target="_blank" title="View source on GitHub">

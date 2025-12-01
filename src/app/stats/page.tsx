@@ -30,7 +30,7 @@ export default function StatsPage() {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen py-2">
             <h1 className="text-4xl sm:text-5xl font-bold mb-8">Live Statistics</h1>
-            <StatsList stats={stats} />
+            <StatsList stats={stats} className="mb-16" entry_className="font-semibold" />
         </div>
     );
 }
