@@ -132,6 +132,13 @@ export const handler: SocketHandlerFunction = async ({socket, payload, timeouts,
 
             // notify the user that their update failed to reset their client timer
             socket.emit("pixel_update_rejected", {reason: "database_error"});
+
+            // rollback the transaction
+            try {
+                await pool.query("ROLLBACK");
+            } catch (rollback_error) {
+                console.error("Error rolling back transaction:", rollback_error);
+            }
         }
     } catch (error) {
         console.error("pixel_update failed", error);
