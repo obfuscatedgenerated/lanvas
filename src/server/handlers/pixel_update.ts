@@ -18,6 +18,8 @@ import {get_cell, set_cell} from "@/server/grid";
 // handle pixel updates from clients
 
 export const handler: SocketHandlerFunction = async ({socket, payload, timeouts, io, pool, stats}) => {
+    let client: PoolClient | null = null;
+
     try {
         const {x, y, color} = payload;
         //console.log(`Received pixel_update from ${socket.id}:`, payload);
@@ -82,10 +84,14 @@ export const handler: SocketHandlerFunction = async ({socket, payload, timeouts,
 
         // try to update the database
         let transaction_open = false;
-        let client: PoolClient | null = null;
+
+        console.log("wait for client");
+        client = await pool.connect();
+        console.log("got client");
+
         try {
             // first upsert the user details in case they have changed
-            await pool.query(
+            await client.query(
                 `INSERT INTO user_details (user_id, username, avatar_url)
                          VALUES ($1, $2, $3)
                          ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username, avatar_url = EXCLUDED.avatar_url`,
@@ -93,9 +99,6 @@ export const handler: SocketHandlerFunction = async ({socket, payload, timeouts,
             );
 
             // create a transaction to ensure both pixel and stats are updated together
-            console.log("wait for client");
-            client = await pool.connect();
-            console.log("got client");
             await client.query("BEGIN");
             transaction_open = true;
 
@@ -143,20 +146,19 @@ export const handler: SocketHandlerFunction = async ({socket, payload, timeouts,
             socket.emit("pixel_update_rejected", {reason: "database_error"});
 
             // rollback the transaction
-            if (transaction_open && client) {
+            if (transaction_open) {
                 try {
                     await client.query("ROLLBACK");
                 } catch (rollback_error) {
                     console.error("Error rolling back transaction:", rollback_error);
                 }
             }
-        } finally {
-            if (client) {
-                client.release();
-                client = null;
-            }
         }
     } catch (error) {
         console.error("pixel_update failed", error);
+    }  finally {
+        if (client) {
+            client.release();
+        }
     }
 }

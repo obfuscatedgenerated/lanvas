@@ -49,6 +49,7 @@ const pool = new Pool({
     user: process.env.PGUSER,
     password: process.env.PGPASSWORD,
     database: process.env.PGDATABASE,
+    min: 2, // keep 2 connections alive to prevent cold start delays
 });
 
 // monitor pg pool
