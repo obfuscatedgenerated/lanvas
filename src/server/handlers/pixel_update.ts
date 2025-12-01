@@ -1,5 +1,7 @@
 import type { SocketHandlerFunction } from "@/server/types";
 
+import type {PoolClient} from "pg";
+
 import {get_config} from "@/server/config";
 
 import {
@@ -80,6 +82,7 @@ export const handler: SocketHandlerFunction = async ({socket, payload, timeouts,
 
         // try to update the database
         let transaction_open = false;
+        let client: PoolClient | null = null;
         try {
             // first upsert the user details in case they have changed
             await pool.query(
@@ -90,11 +93,12 @@ export const handler: SocketHandlerFunction = async ({socket, payload, timeouts,
             );
 
             // create a transaction to ensure both pixel and stats are updated together
-            await pool.query("BEGIN");
+            client = await pool.connect();
+            await client.query("BEGIN");
             transaction_open = true;
 
             // then upsert the pixel
-            await pool.query(
+            await client.query(
                 `INSERT INTO pixels (x, y, color, author_id)
                          VALUES ($1, $2, $3, $4)
                          ON CONFLICT (x, y) DO UPDATE SET color = EXCLUDED.color, author_id = EXCLUDED.author_id`,
@@ -102,14 +106,14 @@ export const handler: SocketHandlerFunction = async ({socket, payload, timeouts,
             );
 
             // and increment the total_pixels_placed stat, as well as returning the new total
-            const stats_res = await pool.query(
+            const stats_res = await client.query(
                 `INSERT INTO stats (key, value)
                          VALUES ('total_pixels_placed', 1)
                          ON CONFLICT (key) DO UPDATE SET value = stats.value + 1
                          RETURNING value`,
             );
 
-            await pool.query("COMMIT");
+            await client.query("COMMIT");
             transaction_open = false;
 
             // update in-memory stats cache
@@ -137,12 +141,17 @@ export const handler: SocketHandlerFunction = async ({socket, payload, timeouts,
             socket.emit("pixel_update_rejected", {reason: "database_error"});
 
             // rollback the transaction
-            if (transaction_open) {
+            if (transaction_open && client) {
                 try {
-                    await pool.query("ROLLBACK");
+                    await client.query("ROLLBACK");
                 } catch (rollback_error) {
                     console.error("Error rolling back transaction:", rollback_error);
                 }
+            }
+        } finally {
+            if (client) {
+                client.release();
+                client = null;
             }
         }
     } catch (error) {
