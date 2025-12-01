@@ -11,7 +11,7 @@ import {parse as parse_cookies} from "cookie";
 
 import {Pool} from "pg";
 
-import register, {intercept_pool} from "@/server/prometheus";
+import register, {intercept_pool, register_intercept_metrics} from "@/server/prometheus";
 import {monitorPgPool} from "@christiangalsterer/node-postgres-prometheus-exporter";
 
 import {
@@ -55,6 +55,7 @@ const pool = new Pool({
 // monitor pg pool
 monitorPgPool(pool, register);
 intercept_pool(pool);
+register_intercept_metrics();
 
 console.log("Prometheus PostgreSQL pool monitoring enabled.");
 

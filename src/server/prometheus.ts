@@ -33,7 +33,21 @@ const query_avg = new Gauge({
     labelNames: ["command"],
 });
 
+export const register_intercept_metrics = () => {
+    register.registerMetric(query_histogram);
+    register.registerMetric(query_peak);
+    register.registerMetric(query_count);
+    register.registerMetric(query_avg);
+}
+
 export const intercept_pool = (pool: Pool) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((pool as any)._intercepted) {
+        return;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (pool as any)._intercepted = true;
+
     // modify pool.query to observe latency
     const original_query = pool.query.bind(pool);
 
@@ -80,13 +94,23 @@ export const intercept_pool = (pool: Pool) => {
 }
 
 export const intercept_client = (client: PoolClient) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((client as any)._intercepted) {
+        return;
+    }
+
+    // TODO: way to copy client, it affects the clients used for pool.query too, leading to double counting!
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (client as any)._intercepted = true;
+
     // modify client.query to observe latency
     const original_query = client.query.bind(client);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     client.query = async function (this: PoolClient, ...args: any[]): Promise<Result> {
         if (LOG_QUERIES) {
-            console.log("Executing query:", args[0]);
+            console.log("Executing query in client:", args[0]);
         }
 
         const command = (args[0] as string).trim().split(" ")[0].toUpperCase();
@@ -126,8 +150,3 @@ export const intercept_client = (client: PoolClient) => {
 }
 
 // TODO: unite logic
-
-register.registerMetric(query_histogram);
-register.registerMetric(query_peak);
-register.registerMetric(query_count);
-register.registerMetric(query_avg);
