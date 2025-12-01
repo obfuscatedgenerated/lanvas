@@ -2,7 +2,7 @@
 
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
-import Image from "next/image";
+
 import DiscordLogo from "@/components/DiscordLogo";
 
 export default function SignInForm() {

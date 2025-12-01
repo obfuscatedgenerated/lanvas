@@ -1,4 +1,4 @@
-import type {SocketHandlerFunction, SocketHandlerFlags} from "@/server/types";
+import type {SocketHandlerFunction} from "@/server/types";
 
 import {get_poll_question, get_poll_options, get_vote_counts} from "@/server/polls";
 

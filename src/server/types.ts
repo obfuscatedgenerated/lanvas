@@ -2,8 +2,6 @@ import type {Pool} from "pg";
 import type {Server, Socket} from "socket.io";
 import type {JWT} from "next-auth/jwt";
 
-import type {Author} from "@/types";
-
 export interface ConnectedUserDetails {
     socket_id: string;
     user_id?: string;

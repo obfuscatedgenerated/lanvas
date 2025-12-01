@@ -9,8 +9,9 @@ import {
     CONFIG_KEY_READONLY
 } from "@/consts";
 import {DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH, DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
+
 import {is_user_banned} from "@/server/banlist";
-import {get_cell, get_cell_color, set_cell} from "@/server/grid";
+import {get_cell, set_cell} from "@/server/grid";
 
 // handle pixel updates from clients
 
