@@ -15,6 +15,7 @@ export * as admin_refresh_banned_users from "./admin/refresh_banned_users";
 export * as admin_start_poll from "./admin/start_poll";
 export * as admin_end_poll from "./admin/end_poll";
 export * as admin_trigger_reload from "./admin/trigger_reload";
+export * as admin_telemetry from "./admin/telemetry";
 
 export * as check_readonly from "./check_readonly";
 export * as check_timeout from "./check_timeout";

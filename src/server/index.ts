@@ -11,6 +11,9 @@ import {parse as parse_cookies} from "cookie";
 
 import {Pool} from "pg";
 
+import register from "@/server/prometheus";
+import {monitorPgPool} from "@christiangalsterer/node-postgres-prometheus-exporter";
+
 import {
     ConnectedUserDetails,
     SocketWithJWT,
@@ -47,6 +50,10 @@ const pool = new Pool({
     password: process.env.PGPASSWORD,
     database: process.env.PGDATABASE,
 });
+
+// monitor pg pool
+monitorPgPool(pool, register);
+console.log("Prometheus PostgreSQL pool monitoring enabled.");
 
 const hostname = process.argv[2] || "localhost";
 const port = parseInt(process.argv[3], 10) || 3000;

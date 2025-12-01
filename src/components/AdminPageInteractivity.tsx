@@ -342,6 +342,58 @@ const PollForm = () => {
     );
 }
 
+const PrometheusMetrics = () => {
+    const [metrics, setMetrics] = useState<string>("");
+    const [poll_interval_ms, setPollIntervalMs] = useState<number>(1000);
+    const [last_updated, setLastUpdated] = useState<Date | null>(null);
+
+    const update_metrics = () => {
+        socket.emit("admin_telemetry");
+    };
+
+    // register socket listener
+    useEffect(() => {
+        socket.on("metrics", (data: string) => {
+            setMetrics(data);
+            setLastUpdated(new Date());
+        });
+
+        update_metrics();
+    }, []);
+
+    useEffect(() => {
+        const interval = setInterval(update_metrics, poll_interval_ms);
+
+        return () => {
+            clearInterval(interval);
+        }
+    }, [poll_interval_ms]);
+
+    return (
+        <div className="mt-4">
+            <h2 className="text-xl font-medium mb-2">Prometheus Metrics</h2>
+
+            <pre className="bg-gray-800 text-gray-100 p-4 rounded-lg max-h-96 overflow-y-auto">
+                {metrics}
+            </pre>
+
+            <div className="flex items-start gap-2 mt-2">
+                <label>
+                    Poll interval (ms):
+                    <input
+                        type="number"
+                        className="bg-gray-700 border border-gray-500 text-gray-100 text-md rounded-lg py-1 px-2 mx-2 w-32"
+                        value={poll_interval_ms}
+                        onChange={(e) => setPollIntervalMs(parseInt(e.target.value, 10))}
+                    />
+                </label>
+
+                <p className="text-sm text-gray-400 mt-1">Last updated: {last_updated ? last_updated.toLocaleString() : "Never"}</p>
+            </div>
+        </div>
+    );
+}
+
 const AdminPageInteractivity = () => {
     const [banned_user_ids, setBannedUserIds] = useState<string[]>([]);
     const [banned_usernames_cache, setBannedUsernamesCache] = useState<{ [user_id: string]: string }>({});
@@ -652,6 +704,8 @@ const AdminPageInteractivity = () => {
 
             <h2 className="text-xl font-medium mb-2 mt-4">Polls</h2>
             <PollForm />
+
+            <PrometheusMetrics />
 
             <FancyButton className="mt-4" onClick={() => {
                 const confirmed = confirm("Are you sure want to trigger a client reload for all connected users? This will make all users reload their page, and should be used sparingly. It is recommended to inform users beforehand via a broadcast message.");
