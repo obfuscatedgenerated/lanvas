@@ -634,6 +634,18 @@ const AdminPageInteractivity = () => {
 
             <h2 className="text-xl font-medium mb-2 mt-4">Polls</h2>
             <PollForm />
+
+            <FancyButton className="mt-4" onClick={() => {
+                const confirmed = confirm("Are you sure want to trigger a client reload for all connected users? This will make all users reload their page, and should be used sparingly. It is recommended to inform users beforehand via a broadcast message.");
+                if (!confirmed) {
+                    return;
+                }
+
+                // submit reload
+                socket.emit("admin_trigger_reload");
+            }}>
+                Trigger client reload
+            </FancyButton>
         </>
     )
 }

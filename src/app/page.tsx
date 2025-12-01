@@ -78,6 +78,11 @@ export default function Home() {
             }
         });
 
+        socket.on("reload", () => {
+            console.log("Received reload command from server, reloading page...");
+            window.location.reload();
+        });
+
         // check for any timeouts on page load
         socket.emit("check_timeout");
 

@@ -53,6 +53,11 @@ export default function StatsPage() {
             setStats(sorted_stats as StatsData);
         });
 
+        socket.on("reload", () => {
+            console.log("Received reload command from server, reloading page...");
+            window.location.reload();
+        });
+
         // join stats room and request stats on mount
         socket.emit("join_stats");
     }, []);
