@@ -25,8 +25,6 @@ export default function SignInForm() {
                 Sign in with Discord
             </button>
 
-            <p className="text-center font-semibold font-sans">Disclaimer: This is not an official event</p>
-
             <details className="flex flex-col w-full px-2">
                 <summary className="text-lg font-medium text-center">
                     Privacy Policy
