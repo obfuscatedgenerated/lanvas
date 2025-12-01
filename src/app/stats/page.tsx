@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Fragment } from "react";
+import { useEffect, useState } from "react";
 import { socket } from "@/socket";
 import NumberFlow from "@number-flow/react";
 
@@ -20,14 +20,34 @@ const stats_order = [
     "connected_unique_users",
 ];
 
+const StatEntry = ({ stat_key, stats }: { stat_key: string; stats: StatsData }) => (
+    <>
+        <b className="break-words">{known_stat_labels[stat_key] || stat_key}:</b>
+        <NumberFlow value={stats[stat_key]} />
+    </>
+);
+
 const StatsList = ({ stats }: { stats: StatsData }) => (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] max-w-9/10 gap-x-6 gap-y-2 text-xl sm:text-2xl items-center mb-16">
-        {Object.entries(stats).map(([key, value]) => (
-            <Fragment key={key}>
-                <b className="break-words">{known_stat_labels[key] || key}:</b>
-                <NumberFlow value={value}/>
-            </Fragment>
-        ))}
+        {stats_order.map((key) => {
+            // render pre-ordered stats first
+
+            if (key in stats) {
+                return <StatEntry key={key} stat_key={key} stats={stats} />;
+            }
+
+            return null;
+        })}
+
+        {Object.keys(stats).map((key) => {
+            // render any additional stats not in the known order
+
+            if (stats_order.includes(key)) {
+                return null; // already rendered
+            }
+
+            return <StatEntry key={key} stat_key={key} stats={stats} />;
+        })}
     </div>
 );
 
@@ -37,20 +57,7 @@ export default function StatsPage() {
     // register socket listener
     useEffect(() => {
         socket.on("stats", (data) => {
-            // sort stats according to predefined order, then whatever order recieved for unknown stats
-            const sorted_stats: Partial<StatsData> = {};
-            for (const key of stats_order) {
-                if (key in data) {
-                    sorted_stats[key] = data[key];
-                }
-            }
-            for (const [key, value] of Object.entries(data)) {
-                if (!(key in sorted_stats)) {
-                    // @ts-expect-error guaranteed to be correct type
-                    sorted_stats[key] = value;
-                }
-            }
-            setStats(sorted_stats as StatsData);
+            setStats(data);
         });
 
         socket.on("reload", () => {
