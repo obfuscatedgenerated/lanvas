@@ -237,22 +237,24 @@ const main = async () => {
             console.log(`Client disconnected: ${socket.id}`);
 
             // remove from connected users set
-            connected_users.forEach((user) => {
+            for (const user of connected_users) {
                 if (user.socket_id === socket.id) {
                     connected_users.delete(user);
+                    break;
                 }
-            });
+            }
 
             // send updated connected users list to admin room
             io.to("admin").emit("connected_users", Array.from(connected_users));
 
             // determine if user has any other active connections
             let still_connected = false;
-            connected_users.forEach((user) => {
+            for (const user of connected_users) {
                 if (user.user_id === socket.user?.sub) {
                     still_connected = true;
+                    break;
                 }
-            });
+            }
 
             // if not, remove from unique connected user ids set
             if (!still_connected && socket.user && socket.user.sub) {
