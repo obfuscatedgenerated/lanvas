@@ -177,16 +177,19 @@ const ManualStatsList = ({manual_stats}: { manual_stats: {[key: string]: number}
     </div>
 );
 
-const PollOptionsList = ({options, editable, on_options_edited}: {options: string[], editable?: boolean, on_options_edited?: (new_options: string[]) => void}) => (
-    <>
-        <table className="table-fixed bg-neutral-900 mt-2">
-            <thead>
-            <tr className="border-neutral-600 border-b-1">
-                <th className="w-200">Option</th>
-                {editable && <th className="w-15"></th>}
-            </tr>
-            </thead>
-            <tbody>
+const PollOptionsList = ({options, editable, on_options_edited, counts}: {options: string[], editable?: boolean, on_options_edited?: (new_options: string[]) => void, counts?: number[]}) => {
+    const total_count = counts ? counts.reduce((a, b) => a + b, 0) : 0;
+
+    return (
+        <>
+            <table className="table-fixed bg-neutral-900 mt-2">
+                <thead>
+                <tr className="border-neutral-600 border-b-1">
+                    <th className="w-200">Option</th>
+                    <th className="w-25"></th>
+                </tr>
+                </thead>
+                <tbody>
                 {options.map((option, index) => (
                     <tr key={index}>
                         <td className="select-text p-2">
@@ -209,43 +212,53 @@ const PollOptionsList = ({options, editable, on_options_edited}: {options: strin
                             )}
                         </td>
 
-                        {editable && (
-                            <td className="p-2">
-                                <FancyButton onClick={() => {
-                                    const new_options = options.filter((_, i) => i !== index);
+                        {editable
+                            ? (
+                                <td className="p-2">
+                                    <FancyButton onClick={() => {
+                                        const new_options = options.filter((_, i) => i !== index);
 
-                                    if (on_options_edited) {
-                                        on_options_edited(new_options);
-                                    }
-                                }}>
-                                    Delete
-                                </FancyButton>
-                            </td>
-                        )}
+                                        if (on_options_edited) {
+                                            on_options_edited(new_options);
+                                        }
+                                    }}>
+                                        Delete
+                                    </FancyButton>
+                                </td>
+                            )
+                            : (
+                                <td className="text-right select-text p-2">
+                                    {counts ? counts[index] : 0} votes ({total_count > 0 ? ((counts ? counts[index] : 0) / total_count * 100).toFixed(2) : "0.00"}%)
+                                </td>
+                            )
+                        }
                     </tr>
                 ))}
-            </tbody>
-        </table>
+                </tbody>
+            </table>
 
-        {editable && (
-            <FancyButton className="mt-2" onClick={() => {
-                const new_options = [...options, ""];
+            {editable && (
+                <FancyButton className="mt-2" onClick={() => {
+                    const new_options = [...options, ""];
 
-                if (on_options_edited) {
-                    on_options_edited(new_options);
-                }
-            }}>
-                Add option
-            </FancyButton>
-        )}
-    </>
-);
+                    if (on_options_edited) {
+                        on_options_edited(new_options);
+                    }
+                }}>
+                    Add option
+                </FancyButton>
+            )}
+        </>
+    );
+};
 
 const PollForm = () => {
     const [poll_started, setPollStarted] = useState(false);
 
     const [question_input, setQuestionInput] = useState("");
     const [options_input, setOptionsInput] = useState([] as string[]);
+
+    const [running_counts, setRunningCounts] = useState<number[] | null>(null);
 
     const start_poll = useCallback(
         () => {
@@ -279,12 +292,17 @@ const PollForm = () => {
             setQuestionInput(question);
             setOptionsInput(options);
             setPollStarted(true);
+            setRunningCounts(counts);
+        });
+
+        socket.on("poll_counts", (counts: number[]) => {
+            setRunningCounts(counts);
         });
 
         socket.emit("check_poll");
     }, []);
 
-    // TODO: show live results while poll is ongoing
+    // TODO: percentage bars?
 
     return (
       <div>
@@ -299,7 +317,7 @@ const PollForm = () => {
               />
           </label>
 
-          <PollOptionsList options={options_input} editable={!poll_started} on_options_edited={setOptionsInput} />
+          <PollOptionsList options={options_input} editable={!poll_started} on_options_edited={setOptionsInput} counts={running_counts || undefined} />
 
           <FancyButton className="mt-4" onClick={() => {
               if (poll_started) {
