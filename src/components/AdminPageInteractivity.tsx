@@ -477,6 +477,22 @@ const PrometheusMetrics = () => {
                             }
                         }
                     }
+                } else if (family.name === "nodejs_eventloop_lag_seconds") {
+                    for (const metric of family.metrics) {
+                        const lag_seconds = parseFloat(String(metric.value));
+                        if (lag_seconds > 1.0) {
+                            const alarm_text = "Very high event loop lag";
+                            if (!has_severe_alarm(alarm_text)) {
+                                add_severe_alarm(alarm_text);
+                            }
+                        } else if (lag_seconds > 0.5) {
+                            const alarm_text = "High event loop lag";
+
+                            if (!has_alarm(alarm_text)) {
+                                add_alarm(alarm_text);
+                            }
+                        }
+                    }
                 }
 
                 // TODO: memory usage alarms
