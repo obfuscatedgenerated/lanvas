@@ -464,16 +464,10 @@ const PrometheusMetrics = () => {
                         const avg_duration = parseFloat(String(metric.value));
 
                         if (avg_duration > 0.5) {
-                            const alarm_text = `Average query duration is high: ${avg_duration.toFixed(3)}s (${metric.labels[0]})`;
+                            const alarm_text = "High average query duration";
 
                             if (!has_alarm(alarm_text)) {
                                 add_alarm(alarm_text);
-                            }
-                        } else {
-                            const alarm_text = `Average query duration is high: ${avg_duration.toFixed(3)}s (${metric.labels[0]})`;
-
-                            if (has_alarm(alarm_text)) {
-                                remove_alarm_by_text(alarm_text);
                             }
                         }
                     }
