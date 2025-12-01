@@ -71,6 +71,22 @@ const timeouts: {[user_id: string]: {
     ends: number;
 }} = {};
 
+// clean up timeouts periodically
+setInterval(() => {
+    const current_time = Date.now();
+    let cleaned_count = 0;
+    for (const [user_id, timeout] of Object.entries(timeouts)) {
+        if (timeout.ends <= current_time) {
+            delete timeouts[user_id];
+            cleaned_count++;
+        }
+    }
+
+    if (cleaned_count > 0) {
+        console.log(`Cleaned up ${cleaned_count} expired timeouts.`);
+    }
+}, 60 * 1000);
+
 const connected_users = new Set<ConnectedUserDetails>();
 const unique_connected_user_ids = new Set<string>();
 
