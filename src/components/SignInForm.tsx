@@ -8,12 +8,19 @@ import DiscordLogo from "@/components/DiscordLogo";
 export default function SignInForm() {
     const searchParams = useSearchParams();
     const error = searchParams.get("error");
+    const callback_error = searchParams.get("callback_error");
 
     return (
         <div className="bg-neutral-800 rounded-2xl p-5 flex flex-col gap-3 w-9/10 max-w-9/10 sm:w-lg sm:max-w-lg">
-            {error && (
-                <div className="text-red-500">
-                    Sign-in failed.
+            {error && callback_error !== "access_denied" && (
+                <div className="text-red-500 text-center">
+                    Sign-in failed. Please try again.<br />Error code: {error} {callback_error && `(${callback_error})`}
+                </div>
+            )}
+
+            {callback_error === "access_denied" && (
+                <div className="text-yellow-400 text-center">
+                    You must authorise the application to sign in.<br />Please try again.
                 </div>
             )}
 
