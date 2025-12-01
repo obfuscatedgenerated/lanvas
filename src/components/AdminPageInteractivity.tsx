@@ -459,6 +459,24 @@ const PrometheusMetrics = () => {
                             }
                         }
                     }
+                } else if (family.name === "pool_query_duration_seconds_avg") {
+                    for (const metric of family.metrics) {
+                        const avg_duration = parseFloat(String(metric.value));
+
+                        if (avg_duration > 0.5) {
+                            const alarm_text = `Average query duration is high: ${avg_duration.toFixed(3)}s (${metric.labels[0]})`;
+
+                            if (!has_alarm(alarm_text)) {
+                                add_alarm(alarm_text);
+                            }
+                        } else {
+                            const alarm_text = `Average query duration is high: ${avg_duration.toFixed(3)}s (${metric.labels[0]})`;
+
+                            if (has_alarm(alarm_text)) {
+                                remove_alarm_by_text(alarm_text);
+                            }
+                        }
+                    }
                 }
 
                 // TODO: memory usage alarms

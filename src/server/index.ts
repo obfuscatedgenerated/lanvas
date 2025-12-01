@@ -11,7 +11,7 @@ import {parse as parse_cookies} from "cookie";
 
 import {Pool} from "pg";
 
-import register from "@/server/prometheus";
+import register, {intercept_pool} from "@/server/prometheus";
 import {monitorPgPool} from "@christiangalsterer/node-postgres-prometheus-exporter";
 
 import {
@@ -54,6 +54,8 @@ const pool = new Pool({
 
 // monitor pg pool
 monitorPgPool(pool, register);
+intercept_pool(pool);
+
 console.log("Prometheus PostgreSQL pool monitoring enabled.");
 
 // TODO: add our own socketio metrics to prometheus register, although may be a bit redundant as we already list active connections in our own stats

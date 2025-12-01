@@ -14,6 +14,7 @@ import {DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH, DEFAULT_PIXEL_TIMEOUT_MS} from 
 
 import {is_user_banned} from "@/server/banlist";
 import {get_cell, set_cell} from "@/server/grid";
+import {intercept_client} from "@/server/prometheus";
 
 // handle pixel updates from clients
 
@@ -85,9 +86,8 @@ export const handler: SocketHandlerFunction = async ({socket, payload, timeouts,
         // try to update the database
         let transaction_open = false;
 
-        console.log("wait for client");
         client = await pool.connect();
-        console.log("got client");
+        intercept_client(client);
 
         try {
             // first upsert the user details in case they have changed
