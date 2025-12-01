@@ -3,8 +3,12 @@
 import {useEffect, useState, useCallback} from "react";
 import {socket} from "@/socket";
 
+import parse_prometheus from "parse-prometheus-text-format";
+
 import FancyButton from "@/components/FancyButton";
 import PrometheusTable from "@/components/PrometheusTable";
+
+import {X} from "lucide-react";
 
 import {DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH, DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
 import {
@@ -350,19 +354,137 @@ const PrometheusMetrics = () => {
 
     const [raw_mode, setRawMode] = useState<boolean>(false);
 
-    const update_metrics = () => {
-        socket.emit("admin_telemetry");
-    };
+    const [alarm_list, setAlarmList] = useState<string[]>([]);
+    const [severe_alarm_list, setSevereAlarmList] = useState<string[]>([]);
+
+    const add_alarm = useCallback(
+        (alarm: string) => {
+            setAlarmList((prev) => [...prev, alarm]);
+        },
+        []
+    );
+    
+    const has_alarm = useCallback(
+        (alarm: string) => {
+            return alarm_list.includes(alarm);
+        },
+        [alarm_list]
+    );
+    
+    const add_severe_alarm = useCallback(
+        (alarm: string) => {
+            setSevereAlarmList((prev) => [...prev, alarm]);
+        },
+        []
+    );
+    
+    const has_severe_alarm = useCallback(
+        (alarm: string) => {
+            return severe_alarm_list.includes(alarm);
+        },
+        [severe_alarm_list]
+    );
+
+    const remove_alarm = useCallback(
+        (index: number) => {
+            setAlarmList((prev) => prev.filter((_, i) => i !== index));
+        },
+        []
+    );
+    
+    const remove_severe_alarm = useCallback(
+        (index: number) => {
+            setSevereAlarmList((prev) => prev.filter((_, i) => i !== index));
+        },
+        []
+    );
+    
+    const remove_alarm_by_text = useCallback(
+        (alarm_text: string) => {
+            setAlarmList((prev) => prev.filter((alarm) => alarm !== alarm_text));
+        },
+        []
+    );
+    
+    const remove_severe_alarm_by_text = useCallback(
+        (alarm_text: string) => {
+            setSevereAlarmList((prev) => prev.filter((alarm) => alarm !== alarm_text));
+        },
+        []
+    );
+
+    const update_metrics = useCallback(
+        () => {
+            socket.emit("admin_telemetry");
+        },
+        []
+    );
+
+    const evaluate_alarm_conditions = useCallback(
+        (metrics_data: string) => {
+            const parsed = parse_prometheus(metrics_data);
+
+            for (const family of parsed) {
+                if (family.name === "pg_pool_waiting_connections") {
+                    for (const metric of family.metrics) {
+                        const waiting_connections = parseInt(String(metric.value), 10);
+
+                        if (waiting_connections === 1) {
+                            const alarm_text = `A connection in the pool is waiting! (${metric.labels[0]})`;
+                            
+                            if (!has_alarm(alarm_text)) {
+                                add_alarm(alarm_text);
+                            }
+                        } else if (waiting_connections > 1) {
+                            const alarm_text = `Multiple connections (${waiting_connections}) in the pool are waiting! (${metric.labels[0]})`;
+                            
+                            if (!has_severe_alarm(alarm_text)) {
+                                remove_alarm_by_text(`A connection in the pool is waiting! (${metric.labels[0]})`);
+                                add_severe_alarm(alarm_text);
+                            }
+                        }
+                    }
+                } else if (family.name === "pg_pool_errors_total") {
+                    for (const metric of family.metrics) {
+                        const error_count = parseInt(String(metric.value), 10);
+
+                        // counter, so can only go up
+                        if (error_count > 0) {
+                            const alarm_text = `There have been ${error_count} errors reported by the Postgres pool! (${metric.labels[0]})`;
+
+                            if (!has_severe_alarm(alarm_text)) {
+                                const previous_alarm_text = `There have been ${error_count - 1} errors reported by the Postgres pool! (${metric.labels[0]})`;
+                                remove_alarm_by_text(previous_alarm_text);
+                                add_severe_alarm(alarm_text);
+                            }
+                        }
+                    }
+                }
+
+                // TODO: memory usage alarms
+            }
+        },
+        [has_alarm, add_alarm, has_severe_alarm, remove_alarm_by_text, add_severe_alarm]
+    );
 
     // register socket listener
     useEffect(() => {
         socket.on("metrics", (data: string) => {
             setMetrics(data);
             setLastUpdated(new Date());
+
+            evaluate_alarm_conditions(data);
         });
 
+        return () => {
+            socket.off("metrics");
+        }
+    }, [evaluate_alarm_conditions]);
+    
+    // update once at mount
+    useEffect(() => {
         update_metrics();
-    }, []);
+    }, [update_metrics]);
 
     useEffect(() => {
         const interval = setInterval(update_metrics, poll_interval_ms);
@@ -370,7 +492,7 @@ const PrometheusMetrics = () => {
         return () => {
             clearInterval(interval);
         }
-    }, [poll_interval_ms]);
+    }, [poll_interval_ms, update_metrics]);
 
     return (
         <div className="mt-4 w-full">
@@ -413,6 +535,36 @@ const PrometheusMetrics = () => {
                     onChange={(e) => setRawMode(e.target.checked)}
                 />
             </label>
+
+            <div>
+                <h3 className="text-lg font-medium mt-4 mb-2">Alarms</h3>
+
+                {alarm_list.length === 0 && (
+                    <span>No active alarms</span>
+                )}
+
+                <ul className="list-disc list-inside">
+                    {severe_alarm_list.map((alarm, index) => (
+                        <li key={index} className="text-red-500 flex items-center gap-2">
+                            {alarm}
+
+                            <button title="Dismiss severe alarm" className="cursor-pointer" onClick={() => remove_severe_alarm(index)}>
+                                <X />
+                            </button>
+                        </li>
+                    ))}
+
+                    {alarm_list.map((alarm, index) => (
+                        <li key={index} className="text-yellow-400 flex items-center gap-2">
+                            {alarm}
+
+                            <button title="Dismiss alarm" className="cursor-pointer" onClick={() => remove_alarm(index)}>
+                                <X />
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            </div>
         </div>
     );
 }

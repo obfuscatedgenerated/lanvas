@@ -55,6 +55,8 @@ const pool = new Pool({
 monitorPgPool(pool, register);
 console.log("Prometheus PostgreSQL pool monitoring enabled.");
 
+// TODO: add our own socketio metrics to prometheus register, although may be a bit redundant as we already list active connections in our own stats
+
 const hostname = process.argv[2] || "localhost";
 const port = parseInt(process.argv[3], 10) || 3000;
 

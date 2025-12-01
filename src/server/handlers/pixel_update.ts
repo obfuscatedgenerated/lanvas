@@ -93,7 +93,9 @@ export const handler: SocketHandlerFunction = async ({socket, payload, timeouts,
             );
 
             // create a transaction to ensure both pixel and stats are updated together
+            console.log("wait for client");
             client = await pool.connect();
+            console.log("got client");
             await client.query("BEGIN");
             transaction_open = true;
 
