@@ -12,7 +12,7 @@ const ConditionalStatsLink = () => {
 
     return (
         <a href="/stats" title="View statistics" target="_blank">
-            <ChartNoAxesCombined />
+            <ChartNoAxesCombined className="h-6 w-6" />
         </a>
     );
 }

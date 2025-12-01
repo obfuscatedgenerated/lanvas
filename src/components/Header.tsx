@@ -2,7 +2,7 @@ import {Suspense} from "react";
 
 import LoginStatus from "@/components/LoginStatus";
 import ConditionalStatsLink from "@/components/ConditionalStatsLink";
-import Image from "next/image";
+import GithubLogo from "@/components/GithubLogo";
 
 const Header = () => {
     const lan_number = process.env.NEXT_PUBLIC_LAN_NUMBER || "";
@@ -21,7 +21,7 @@ const Header = () => {
                 </Suspense>
 
                 <a href="https://github.com/obfuscatedgenerated/lanvas" rel="noreferrer noopener" target="_blank" title="View source on GitHub">
-                    <Image src="/github.svg" alt="" height={24} width={24} />
+                    <GithubLogo className="h-6 w-6" />
                 </a>
             </div>
 
