@@ -79,6 +79,7 @@ export const handler: SocketHandlerFunction = async ({socket, payload, timeouts,
         io.emit("pixel_update", {x, y, color, author});
 
         // try to update the database
+        let transaction_open = false;
         try {
             // first upsert the user details in case they have changed
             await pool.query(
@@ -90,6 +91,7 @@ export const handler: SocketHandlerFunction = async ({socket, payload, timeouts,
 
             // create a transaction to ensure both pixel and stats are updated together
             await pool.query("BEGIN");
+            transaction_open = true;
 
             // then upsert the pixel
             await pool.query(
@@ -108,6 +110,7 @@ export const handler: SocketHandlerFunction = async ({socket, payload, timeouts,
             );
 
             await pool.query("COMMIT");
+            transaction_open = false;
 
             // update in-memory stats cache
             const new_total = parseInt(stats_res.rows[0].value, 10);
@@ -134,10 +137,12 @@ export const handler: SocketHandlerFunction = async ({socket, payload, timeouts,
             socket.emit("pixel_update_rejected", {reason: "database_error"});
 
             // rollback the transaction
-            try {
-                await pool.query("ROLLBACK");
-            } catch (rollback_error) {
-                console.error("Error rolling back transaction:", rollback_error);
+            if (transaction_open) {
+                try {
+                    await pool.query("ROLLBACK");
+                } catch (rollback_error) {
+                    console.error("Error rolling back transaction:", rollback_error);
+                }
             }
         }
     } catch (error) {
