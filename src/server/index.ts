@@ -4,6 +4,7 @@ import {createServer} from "node:http";
 import next from "next";
 
 import {Server} from "socket.io";
+import {instrument} from "@socket.io/admin-ui";
 
 import {getToken} from "next-auth/jwt";
 import {parse as parse_cookies} from "cookie";
@@ -139,11 +140,41 @@ const main = async () => {
 
     const http_server = createServer(req_handler);
 
-    const io = new Server(http_server);
+    // ensure admin ui can access the socket in dev mode
+    const io_opts = dev ? {
+        cors: {
+            origin: ["https://admin.socket.io"],
+            credentials: true,
+        },
+    } : {};
+
+    const io = new Server(http_server, io_opts);
+
+    // use admin ui only in dev mode
+    if (dev) {
+        instrument(io, {
+            auth: false,
+            mode: "development",
+        });
+
+        console.log("Socket.io admin UI enabled - https://admin.socket.io/");
+        console.error("WARNING: Admin UI has no authentication. Ensure you use production mode for deployment!");
+    }
 
     // jwt validation middleware
     io.use(async (socket, next_handler) => {
         const handshake = socket.handshake;
+
+        // allow admin ui to connect without auth in dev mode
+        if (dev && handshake.headers.origin === "https://admin.socket.io") {
+            (socket as SocketWithJWT).user = {
+                sub: process.env.DISCORD_ADMIN_USER_ID || "admin",
+                name: "Admin UI",
+            };
+
+            console.error("Admin UI connected!!!");
+            return next_handler();
+        }
 
         if (!handshake.headers.cookie) {
             return next_handler(new Error("Authentication error: No cookies provided."));
@@ -165,7 +196,7 @@ const main = async () => {
             return next_handler(new Error("Authentication error: Invalid token."));
         }
 
-        (socket as SocketWithJWT).user = token
+        (socket as SocketWithJWT).user = token;
         next_handler();
     });
 
