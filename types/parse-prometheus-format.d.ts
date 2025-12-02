@@ -19,3 +19,5 @@ declare module "parse-prometheus-text-format" {
         sum?: string;
     }
 }
+
+// TODO: expand this definition to cover the whole library, then contribute to the library or DefinitelyTyped
