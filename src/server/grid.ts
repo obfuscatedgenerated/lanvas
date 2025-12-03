@@ -23,7 +23,7 @@ export const load_pixels = async (pool: Pool): Promise<number> => {
     grid_data = initialise_grid_data(grid_height, grid_width);
     author_data = initialise_author_data(grid_height, grid_width);
 
-    const pixels = await pool.query("SELECT x, y, color, author_id, author.username, author.avatar_url FROM pixels JOIN user_details AS author ON pixels.author_id = author.user_id");
+    const pixels = await pool.query("SELECT x, y, color, author_id, author.username, author.avatar_url FROM pixels LEFT JOIN user_details AS author ON pixels.author_id = author.user_id");
 
     let loaded_pixel_count = 0;
     for (const row of pixels.rows) {
@@ -32,7 +32,7 @@ export const load_pixels = async (pool: Pool): Promise<number> => {
         // load each pixel into the in-memory grids
         if (x >= 0 && x < grid_width && y >= 0 && y < grid_height) {
             grid_data[y][x] = color;
-            author_data[y][x] = {
+            author_data[y][x] = author_id === null ? null : {
                 user_id: author_id,
                 name: username,
                 avatar_url,

@@ -5,7 +5,7 @@
 -- Dumped from database version 14.4
 -- Dumped by pg_dump version 14.4
 
--- Started on 2025-11-30 01:57:08
+-- Started on 2025-12-03 01:19:34
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -58,7 +58,7 @@ CREATE TABLE public.pixels (
     x integer NOT NULL,
     y integer NOT NULL,
     color character(7) DEFAULT '#ffffff'::bpchar NOT NULL,
-    author_id bigint NOT NULL
+    author_id bigint
 );
 
 
@@ -199,7 +199,7 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_details TO lanvas;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES  TO lanvas;
 
 
--- Completed on 2025-11-30 01:57:08
+-- Completed on 2025-12-03 01:19:34
 
 --
 -- PostgreSQL database dump complete
