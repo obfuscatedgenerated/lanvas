@@ -23,7 +23,18 @@ export const load_pixels = async (pool: Pool): Promise<number> => {
     grid_data = initialise_grid_data(grid_height, grid_width);
     author_data = initialise_author_data(grid_height, grid_width);
 
-    const pixels = await pool.query("SELECT x, y, color, author_id, author.username, author.avatar_url FROM pixels LEFT JOIN user_details AS author ON pixels.author_id = author.user_id");
+    const pixels = await pool.query(`
+        SELECT DISTINCT ON (x, y)
+            x,
+            y,
+            color,
+            author_id,
+            author.username,
+            author.avatar_url
+        FROM pixels
+            LEFT JOIN user_details AS author ON pixels.author_id = author.user_id
+        ORDER BY x, y, snowflake DESC
+    `);
 
     let loaded_pixel_count = 0;
     for (const row of pixels.rows) {

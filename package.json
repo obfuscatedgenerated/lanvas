@@ -13,6 +13,7 @@
   "dependencies": {
     "@christiangalsterer/node-postgres-prometheus-exporter": "^1.4.0",
     "@number-flow/react": "^0.5.10",
+    "@sapphire/snowflake": "^3.5.5",
     "@socket.io/admin-ui": "^0.5.1",
     "canvas": "^3.2.0",
     "cookie": "^1.0.2",

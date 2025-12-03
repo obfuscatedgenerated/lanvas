@@ -41,7 +41,14 @@ const draw_pixels = async () => {
 
     const grid_data = Array.from({length: grid_height}, () => Array(grid_width).fill("#FFFFFF"));
 
-    const pixels = await client.query("SELECT x, y, color FROM pixels");
+    const pixels = await client.query(`
+        SELECT DISTINCT ON (x, y)
+            x,
+            y,
+            color
+        FROM pixels
+        ORDER BY x, y, snowflake DESC
+    `);
     for (const row of pixels.rows) {
         const {x, y, color} = row;
 

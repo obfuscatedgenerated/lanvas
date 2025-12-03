@@ -18,6 +18,7 @@ import {get_cell, set_cell} from "@/server/grid";
 import {intercept_client} from "@/server/prometheus";
 
 import {get_calculated_timeout, is_user_in_timeout, remove_timeout, timeout_user} from "@/server/timeouts";
+import snowflake from "@/snowflake";
 
 // handle pixel updates from clients
 
@@ -109,15 +110,18 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool,
             await client.query("BEGIN");
             transaction_open = true;
 
+            const snowflake_id = snowflake.generate();
+
             // then upsert the pixel
             await client.query(
-                `INSERT INTO pixels (x, y, color, author_id)
-                         VALUES ($1, $2, $3, $4)
-                         ON CONFLICT (x, y) DO UPDATE SET color = EXCLUDED.color, author_id = EXCLUDED.author_id`,
-                [x, y, color, anonymous ? null : user_id]
+                "INSERT INTO pixels (x, y, color, author_id, snowflake) VALUES ($1, $2, $3, $4, $5)",
+                [x, y, color, anonymous ? null : user_id, snowflake_id],
             );
 
+            // TODO: ensure the latest cached pixel is the one with the latest snowflake to avoid reload inconsistencies? kinda over the top for the likelihood rn tho
+
             // and increment the total_pixels_placed stat, as well as returning the new total
+            // TODO: since now storing history, can make this a virtual stat and use count instead
             const stats_res = await client.query(
                 `INSERT INTO stats (key, value)
                          VALUES ('total_pixels_placed', 1)

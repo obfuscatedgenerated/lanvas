@@ -49,6 +49,17 @@ export default function SignInForm() {
                         </li>
                     </ul>
 
+                    <p>When you place a pixel, the following data is stored:</p>
+
+                    <ul className="list-disc">
+                        <li><strong>Your Discord User ID, username, and avatar URL</strong> to attribute pixel placements to you.</li>
+                        <li><strong>The coordinates (x, y) of the pixel</strong> you placed.</li>
+                        <li><strong>The color value</strong> of the pixel you placed.</li>
+                        <li><strong>A time based identifier</strong> to determine the order of pixel placements.</li>
+                    </ul>
+
+                    <p>Historical pixel data is also stored, including the same data as above, in order to facilitate rollbacks and time lapses.</p>
+
                     <p>At the end of the event, all pixels will be anonymised and all user details on record will be erased.</p>
 
                     <p>For service integrity, prevent abuse, and facilitate moderation, site administrators have access to real-time session data. This includes your <strong>Socket ID, Discord User ID, username, and the specific page you are currently viewing</strong>.</p>

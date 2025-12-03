@@ -5,7 +5,7 @@
 -- Dumped from database version 14.4
 -- Dumped by pg_dump version 14.4
 
--- Started on 2025-12-03 01:19:34
+-- Started on 2025-12-03 16:39:42
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -58,7 +58,8 @@ CREATE TABLE public.pixels (
     x integer NOT NULL,
     y integer NOT NULL,
     color character(7) DEFAULT '#ffffff'::bpchar NOT NULL,
-    author_id bigint
+    author_id bigint,
+    snowflake bigint NOT NULL
 );
 
 
@@ -93,7 +94,7 @@ CREATE TABLE public.user_details (
 ALTER TABLE public.user_details OWNER TO postgres;
 
 --
--- TOC entry 3189 (class 2606 OID 25382)
+-- TOC entry 3190 (class 2606 OID 25382)
 -- Name: user_details author_details_cache_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -120,16 +121,16 @@ ALTER TABLE ONLY public.config
 
 
 --
--- TOC entry 3187 (class 2606 OID 25388)
+-- TOC entry 3188 (class 2606 OID 25413)
 -- Name: pixels pixels_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.pixels
-    ADD CONSTRAINT pixels_pkey PRIMARY KEY (x, y);
+    ADD CONSTRAINT pixels_pkey PRIMARY KEY (snowflake);
 
 
 --
--- TOC entry 3191 (class 2606 OID 25405)
+-- TOC entry 3192 (class 2606 OID 25405)
 -- Name: stats stats_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -138,7 +139,15 @@ ALTER TABLE ONLY public.stats
 
 
 --
--- TOC entry 3192 (class 2606 OID 25389)
+-- TOC entry 3186 (class 1259 OID 25414)
+-- Name: idx_pixel_history; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_pixel_history ON public.pixels USING btree (x, y, snowflake DESC);
+
+
+--
+-- TOC entry 3193 (class 2606 OID 25389)
 -- Name: pixels fk_author_id_user_details; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -147,7 +156,7 @@ ALTER TABLE ONLY public.pixels
 
 
 --
--- TOC entry 3337 (class 0 OID 0)
+-- TOC entry 3338 (class 0 OID 0)
 -- Dependencies: 209
 -- Name: TABLE banned_user_ids; Type: ACL; Schema: public; Owner: postgres
 --
@@ -156,7 +165,7 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.banned_user_ids TO lanvas;
 
 
 --
--- TOC entry 3338 (class 0 OID 0)
+-- TOC entry 3339 (class 0 OID 0)
 -- Dependencies: 210
 -- Name: TABLE config; Type: ACL; Schema: public; Owner: postgres
 --
@@ -165,7 +174,7 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.config TO lanvas;
 
 
 --
--- TOC entry 3339 (class 0 OID 0)
+-- TOC entry 3340 (class 0 OID 0)
 -- Dependencies: 211
 -- Name: TABLE pixels; Type: ACL; Schema: public; Owner: postgres
 --
@@ -174,7 +183,7 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pixels TO lanvas;
 
 
 --
--- TOC entry 3340 (class 0 OID 0)
+-- TOC entry 3341 (class 0 OID 0)
 -- Dependencies: 213
 -- Name: TABLE stats; Type: ACL; Schema: public; Owner: postgres
 --
@@ -183,7 +192,7 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.stats TO lanvas;
 
 
 --
--- TOC entry 3341 (class 0 OID 0)
+-- TOC entry 3342 (class 0 OID 0)
 -- Dependencies: 212
 -- Name: TABLE user_details; Type: ACL; Schema: public; Owner: postgres
 --
@@ -199,7 +208,7 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_details TO lanvas;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES  TO lanvas;
 
 
--- Completed on 2025-12-03 01:19:34
+-- Completed on 2025-12-03 16:39:42
 
 --
 -- PostgreSQL database dump complete
