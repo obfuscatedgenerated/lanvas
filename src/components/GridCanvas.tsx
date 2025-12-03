@@ -17,11 +17,12 @@ interface GridCanvasProps {
     ref?: RefObject<GridCanvasRef | null>;
 
     on_click?: (e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => void;
+    on_right_click?: (e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => void;
     on_mouse_move?: (e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => void;
     on_mouse_leave?: (e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => void;
 }
 
-const GridCanvas = ({ grid_data, pixel_size, grid_height, grid_width, ref, on_click, on_mouse_move, on_mouse_leave }: GridCanvasProps) => {
+const GridCanvas = ({ grid_data, pixel_size, grid_height, grid_width, ref, on_click, on_mouse_move, on_mouse_leave, on_right_click }: GridCanvasProps) => {
     const canvas_ref = useRef<HTMLCanvasElement>(null);
     const old_grid_data = useRef<string[][]>([]);
 
@@ -76,6 +77,18 @@ const GridCanvas = ({ grid_data, pixel_size, grid_height, grid_width, ref, on_cl
         }
     }, [grid_data, update_draw]);
 
+    const right_clicked = useCallback(
+        (e: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
+            e.preventDefault();
+
+            if (on_right_click) {
+                console.log(e.clientX, e.clientY, "right clicked");
+                on_right_click(e);
+            }
+        },
+        [on_right_click]
+    );
+
     return (
         <canvas
             ref={canvas_ref}
@@ -83,7 +96,7 @@ const GridCanvas = ({ grid_data, pixel_size, grid_height, grid_width, ref, on_cl
             onClick={on_click}
             onMouseMove={on_mouse_move}
             onMouseLeave={on_mouse_leave}
-            onContextMenu={(e) => e.preventDefault()}
+            onContextMenu={right_clicked}
         />
     );
 };

@@ -22,11 +22,15 @@ interface PixelGridProps {
 
     on_pixel_submitted?: (x: number, y: number, color: string) => void;
     on_pixel_update_rejected?: (reason: string) => void;
+    
+    on_right_click?: (resolved_pixel: {pixel_x: number, pixel_y: number, true_x: number, true_y: number} | null, event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => void;
+
+    tooltip?: boolean;
 }
 
 type AuthorData = (Author | null)[][];
 
-const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pixel_update_rejected }: PixelGridProps) => {
+const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pixel_update_rejected, on_right_click, tooltip =  true }: PixelGridProps) => {
     const [grid_width, setGridWidth] = useState(0);
     const [grid_height, setGridHeight] = useState(0);
 
@@ -131,13 +135,15 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
         const adjusted_y = click_y * rect_scale_y;
 
         // get closest pixel
-        const pixel_x = Math.floor(adjusted_x / PIXEL_SIZE);
-        const pixel_y = Math.floor(adjusted_y / PIXEL_SIZE);
+        const true_x = adjusted_x / PIXEL_SIZE;
+        const true_y = adjusted_y / PIXEL_SIZE;
+        const pixel_x = Math.floor(true_x);
+        const pixel_y = Math.floor(true_y);
 
         // validate
         if (pixel_x < 0 || pixel_x >= grid_width || pixel_y < 0 || pixel_y >= grid_height) return null;
         
-        return { pixel_x, pixel_y };
+        return { pixel_x, pixel_y, true_x, true_y };
     }, [grid_width, grid_height]);
 
     // click handler
@@ -166,7 +172,20 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
                 on_pixel_submitted(pixel_x, pixel_y, current_color);
             }
         },
-        [can_submit, resolve_pixel, current_color, on_pixel_submitted, grid_width, grid_height]
+        [can_submit, resolve_pixel, current_color, grid_width, grid_height, on_pixel_submitted]
+    );
+
+    const handle_right_click = useCallback(
+        (event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
+            if (!grid_canvas_ref.current) return;
+
+            const resolved_pixel = resolve_pixel(event);
+
+            if (on_right_click) {
+                on_right_click(resolved_pixel, event);
+            }
+        },
+        [on_right_click, resolve_pixel]
     );
 
     const [hovered_pixel, setHoveredPixel] = useState<{author: Author, x: number, y: number} | null>(null);
@@ -202,7 +221,7 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
     return (
         <CursorTooltipWrapper
             content={hovered_pixel && <PixelTooltipContent {...hovered_pixel} />}
-            visible={can_hover && hovered_pixel !== null}
+            visible={tooltip && can_hover && hovered_pixel !== null}
         >
             <TransformWrapper
                 ref={transform_wrapper_ref}
@@ -212,7 +231,7 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
                 limitToBounds={false}
                 panning={{
                     allowLeftClickPan: false,
-                    allowRightClickPan: true,
+                    allowRightClickPan: false,
                     allowMiddleClickPan: true,
                 }}
             >
@@ -227,6 +246,7 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
                         on_click={handle_pixel_click}
                         on_mouse_move={handle_mouse_move}
                         on_mouse_leave={handle_mouse_leave}
+                        on_right_click={handle_right_click}
 
                         pixel_size={PIXEL_SIZE}
                         grid_height={grid_height}

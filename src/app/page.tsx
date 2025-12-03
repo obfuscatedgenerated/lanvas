@@ -23,6 +23,8 @@ export default function Home() {
     const [is_readonly, setIsReadonly] = useState(false);
     const [pixel_timeout_ms, setPixelTimeoutMs] = useState(DEFAULT_PIXEL_TIMEOUT_MS);
 
+    const [comment_popup_coords, setCommentPopupCoords] = useState<{true_x: number, true_y: number} | null>(null);
+
     // when pixel is submitted, switch to show timeout mode for the widget
     const handle_pixel_submitted = useCallback(
         () => {
@@ -105,6 +107,17 @@ export default function Home() {
         }
     }, []);
 
+    const prepare_live_comment = useCallback(
+        (pixel: {true_x: number, true_y: number} | null) => {
+            if (!pixel) {
+                return;
+            }
+
+            setCommentPopupCoords(pixel);
+        },
+        []
+    );
+
     return (
         <>
             <FloatingAdminMessage />
@@ -113,10 +126,17 @@ export default function Home() {
             <div className="flex-1">
                 <PixelGrid
                     current_color={current_color}
-                    can_submit={!is_readonly && timeout_start_time === null}
+
+                    // don't allow submitting if readonly, in timeout, or commenting on a pixel
+                    can_submit={!is_readonly && timeout_start_time === null && comment_popup_coords === null}
 
                     on_pixel_submitted={handle_pixel_submitted}
                     on_pixel_update_rejected={handle_pixel_update_rejected}
+
+                    on_right_click={prepare_live_comment}
+
+                    // don't show tooltip when commenting is open
+                    tooltip={comment_popup_coords === null}
                 />
 
                 {!is_readonly &&
