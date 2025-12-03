@@ -132,4 +132,11 @@ export const overwrite_author_data = (new_author_data: (Author | null)[][]): voi
     author_data = new_author_data;
 }
 
+export const get_grid_size = (): {height: number; width: number} => {
+    return {
+        height: grid_data.length,
+        width: grid_data[0]?.length || 0,
+    }
+}
+
 // TODO: move pixel persistence logic to here instead of in pixel_update handler

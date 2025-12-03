@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import TooltipDiv from "@/components/TooltipDiv";
 
 interface CursorTooltipProps {
     children: React.ReactElement;
@@ -26,15 +27,12 @@ const CursorTooltipWrapper = ({ children, content, visible }: CursorTooltipProps
         <>
             {children}
             {visible && (
-                <div
-                    className="fixed z-50 px-3 py-2 text-sm text-white bg-neutral-800 rounded-md shadow-lg whitespace-nowrap pointer-events-none"
-                    style={{
-                        top: `${position.y + 15}px`,
-                        left: `${position.x + 15}px`,
-                    }}
-                >
+                <TooltipDiv className="pointer-events-none" position={{
+                    x: position.x + 15,
+                    y: position.y + 15,
+                }}>
                     {content}
-                </div>
+                </TooltipDiv>
             )}
         </>
     );

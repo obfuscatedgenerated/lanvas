@@ -82,7 +82,6 @@ const GridCanvas = ({ grid_data, pixel_size, grid_height, grid_width, ref, on_cl
             e.preventDefault();
 
             if (on_right_click) {
-                console.log(e.clientX, e.clientY, "right clicked");
                 on_right_click(e);
             }
         },

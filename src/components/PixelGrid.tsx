@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import {TransformWrapper, TransformComponent, ReactZoomPanPinchContentRef} from "react-zoom-pan-pinch";
+import {
+    TransformWrapper,
+    TransformComponent,
+    type ReactZoomPanPinchContentRef,
+    type ReactZoomPanPinchRef
+} from "react-zoom-pan-pinch";
 
 import { socket } from "@/socket";
 import GridCanvas, {type GridCanvasRef} from "@/components/GridCanvas";
@@ -16,6 +21,16 @@ const PIXEL_SIZE = 10; // use slight oversampling. could also instead use pixela
 
 const create_empty_grid = (height: number, width: number) => Array.from({ length: height }, () => Array(width).fill(DEFAULT_GRID_COLOR));
 
+export interface ResolvedPixel {
+    pixel_x: number; // x of the rounded pixel
+    pixel_y: number; // y of the rounded pixel
+    true_x: number; // exact x in pixel coordinates
+    true_y: number; // exact y in pixel coordinates
+    rect_x: number; // x relative to the canvas bounding rect
+    rect_y: number; // y relative to the canvas bounding rect
+    source_rect: DOMRect; // the canvas bounding rect that rect_x and rect_y are relative to
+}
+
 interface PixelGridProps {
     current_color: string;
     can_submit?: boolean;
@@ -23,14 +38,25 @@ interface PixelGridProps {
     on_pixel_submitted?: (x: number, y: number, color: string) => void;
     on_pixel_update_rejected?: (reason: string) => void;
     
-    on_right_click?: (resolved_pixel: {pixel_x: number, pixel_y: number, true_x: number, true_y: number} | null, event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => void;
+    on_right_click?: (resolved_pixel: ResolvedPixel | null, event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => void;
+
+    on_transformed?: ({ transform_ref, transform_wrapper_ref, transform_state, canvas_ref }: {
+        transform_ref: ReactZoomPanPinchRef | null;
+        transform_wrapper_ref: ReactZoomPanPinchContentRef | null;
+        transform_state: {
+            scale: number;
+            positionX: number;
+            positionY: number;
+        };
+        canvas_ref: GridCanvasRef | null;
+    }) => void;
 
     tooltip?: boolean;
 }
 
 type AuthorData = (Author | null)[][];
 
-const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pixel_update_rejected, on_right_click, tooltip =  true }: PixelGridProps) => {
+const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pixel_update_rejected, on_right_click, tooltip =  true, on_transformed }: PixelGridProps) => {
     const [grid_width, setGridWidth] = useState(0);
     const [grid_height, setGridHeight] = useState(0);
 
@@ -115,8 +141,8 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
             socket.disconnect();
         }
     }, [on_pixel_update_rejected]);
-    
-    const resolve_pixel = useCallback(({clientX, clientY}: {clientX: number, clientY: number}) => {
+
+    const resolve_pixel = useCallback(({clientX, clientY}: {clientX: number, clientY: number}): ResolvedPixel | null => {
         if (!grid_canvas_ref.current) return null;
         
         const canvas = grid_canvas_ref.current.get_canvas();
@@ -142,8 +168,8 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
 
         // validate
         if (pixel_x < 0 || pixel_x >= grid_width || pixel_y < 0 || pixel_y >= grid_height) return null;
-        
-        return { pixel_x, pixel_y, true_x, true_y };
+
+        return { pixel_x, pixel_y, true_x, true_y, rect_x: click_x, rect_y: click_y, source_rect: rect };
     }, [grid_width, grid_height]);
 
     // click handler
@@ -216,6 +242,24 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
         []
     );
 
+    const handle_transform = useCallback(
+        (ref: ReactZoomPanPinchRef | null, state: { scale: number; positionX: number; positionY: number; }) => {
+            if (on_transformed) {
+                on_transformed({
+                    transform_ref: ref,
+                    transform_wrapper_ref: transform_wrapper_ref.current,
+                    transform_state: {
+                        scale: state.scale,
+                        positionX: state.positionX,
+                        positionY: state.positionY,
+                    },
+                    canvas_ref: grid_canvas_ref.current,
+                });
+            }
+        },
+        [on_transformed]
+    );
+
     const can_hover = useMediaQuery("(hover: hover)");
 
     return (
@@ -234,6 +278,7 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
                     allowRightClickPan: false,
                     allowMiddleClickPan: true,
                 }}
+                onTransformed={handle_transform}
             >
                 <TransformComponent
                     wrapperStyle={{ width: "100%", height: "100%", imageRendering: "crisp-edges", cursor: can_submit ? "crosshair" : "default" }}
