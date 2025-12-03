@@ -102,20 +102,35 @@ const resize_final_canvas = (canvas: Canvas, size: {width: number; height: numbe
 }
 
 export default async function Image() {
-    const {canvas, size} = await draw_pixels();
-    console.log("OpenGraph image redrawn.");
+    try {
+        const {canvas, size} = await draw_pixels();
+        console.log("OpenGraph image redrawn.");
 
-    // use a separate final canvas to resize down to half size for better quality
-    // it means we can supersample the pixels for sharpness, but then only have to serve half the size without losing detail
-    const new_size = {width: size.width / 2, height: size.height / 2};
-    const final_canvas = resize_final_canvas(canvas, size, new_size);
-    console.log("OpenGraph image resized.");
+        // use a separate final canvas to resize down to half size for better quality
+        // it means we can supersample the pixels for sharpness, but then only have to serve half the size without losing detail
+        const new_size = {width: size.width / 2, height: size.height / 2};
+        const final_canvas = resize_final_canvas(canvas, size, new_size);
+        console.log("OpenGraph image resized.");
 
-    const buffer = final_canvas.toBuffer("image/png");
-    return new Response(buffer as unknown as BodyInit, {
-        status: 200,
-        headers: {
-            "Content-Type": "image/png",
-        },
-    });
+        const buffer = final_canvas.toBuffer("image/png");
+        return new Response(buffer as unknown as BodyInit, {
+            status: 200,
+            headers: {
+                "Content-Type": "image/png",
+            },
+        });
+    } catch (error) {
+        // gives the best of both worlds, meaning db isn't required during build, but it won't fall back to force-dynamic, so is actually cached
+        if (process.env.BUILD_STEP === "true") {
+            console.error("Error generating OpenGraph image:", error);
+            console.log("Skipping OpenGraph image generation during build step.");
+
+            // unfortunately that does mean it takes the revalidate time to show the actual image if the db is down during build
+            // TODO: maybe the old approach of using unstable_cache was better after all? but it was a touch slower
+            return new Response("Image generation not ready", { status: 200 });
+        }
+
+        console.error("Error generating OpenGraph image:", error);
+        return new Response("Error generating image", { status: 500 });
+    }
 }

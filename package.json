@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/server/index.ts",
-    "build": "next build --turbopack",
+    "build": "cross-env BUILD_STEP=true next build --turbopack",
     "start": "cross-env NODE_ENV=production tsx src/server/index.ts",
     "lint": "eslint"
   },
