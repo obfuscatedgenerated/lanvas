@@ -7,20 +7,16 @@ import {Client} from "pg";
 
 import {createCanvas} from "canvas";
 
-// Image metadata
+import {CONFIG_KEY_GRID_HEIGHT, CONFIG_KEY_GRID_WIDTH} from "@/consts";
+import {DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH} from "@/defaults";
+
 export const alt = "LANvas canvas"
 export const contentType = "image/png"
 
+
 const PIXEL_SIZE = 10; // use slight oversampling. could also instead use pixelated on parent, but that leads to weird subpixel artifacts
-const GRID_WIDTH = process.env.NEXT_PUBLIC_GRID_WIDTH ? parseInt(process.env.NEXT_PUBLIC_GRID_WIDTH) : 100;
-const GRID_HEIGHT = process.env.NEXT_PUBLIC_GRID_HEIGHT ? parseInt(process.env.NEXT_PUBLIC_GRID_HEIGHT) : 100;
 
-export const size = {
-    width: GRID_WIDTH * PIXEL_SIZE / 2,
-    height: GRID_HEIGHT * PIXEL_SIZE / 2,
-}
-
-const draw_pixels_to_data_url = async () => {
+const draw_pixels = async () => {
     console.log("OpenGraph image redrawing...");
 
     // get grid data from database
@@ -33,24 +29,40 @@ const draw_pixels_to_data_url = async () => {
     });
     await client.connect();
 
-    const grid_data = Array.from({length: GRID_HEIGHT}, () => Array(GRID_WIDTH).fill("#FFFFFF"));
+    // get width and size from config
+    const res_config = await client.query("SELECT key, value FROM config WHERE key IN ($1, $2)", [CONFIG_KEY_GRID_WIDTH, CONFIG_KEY_GRID_HEIGHT]);
+
+    let grid_width = DEFAULT_GRID_WIDTH;
+    let grid_height = DEFAULT_GRID_HEIGHT;
+    for (const row of res_config.rows) {
+        const {key, value} = row;
+        if (key === CONFIG_KEY_GRID_WIDTH) {
+            grid_width = parseInt(value, 10);
+        } else if (key === CONFIG_KEY_GRID_HEIGHT) {
+            grid_height = parseInt(value, 10);
+        }
+    }
+
+    const grid_data = Array.from({length: grid_height}, () => Array(grid_width).fill("#FFFFFF"));
 
     const pixels = await client.query("SELECT x, y, color FROM pixels");
     for (const row of pixels.rows) {
         const {x, y, color} = row;
 
         // load each pixel into the in-memory grids
-        if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT) {
+        if (x >= 0 && x < grid_width && y >= 0 && y < grid_height) {
             grid_data[y][x] = color;
         }
     }
     client.end();
 
     // use a node canvas to render the grid! so cool!
-    const canvas = createCanvas(GRID_WIDTH * PIXEL_SIZE, GRID_WIDTH * PIXEL_SIZE);
+    const canvas = createCanvas(grid_width * PIXEL_SIZE, grid_height * PIXEL_SIZE);
 
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) {
+        throw new Error("Failed to get canvas context");
+    }
 
     // ensure image smoothing is disabled for pixelated look
     ctx.imageSmoothingEnabled = false;
@@ -58,8 +70,8 @@ const draw_pixels_to_data_url = async () => {
     ctx.save();
 
     // redraw only changed pixels
-    for (let y = 0; y < GRID_HEIGHT; y++) {
-        for (let x = 0; x < GRID_WIDTH; x++) {
+    for (let y = 0; y < grid_height; y++) {
+        for (let x = 0; x < grid_width; x++) {
             ctx.fillStyle = grid_data[y][x];
 
             const draw_x = x * PIXEL_SIZE;
@@ -71,13 +83,13 @@ const draw_pixels_to_data_url = async () => {
 
     ctx.restore();
 
-    return canvas.toDataURL("image/png");
+    return {url: canvas.toDataURL("image/png"), size: {width: grid_width * PIXEL_SIZE, height: grid_height * PIXEL_SIZE}};
 }
 
 // Image generation
 export default async function Image() {
-    const get_data_url = unstable_cache(
-        draw_pixels_to_data_url,
+    const get_og_image = unstable_cache(
+        draw_pixels,
         ["canvas-data-url"],
         {
             revalidate: 60, // cache for a minute
@@ -85,10 +97,16 @@ export default async function Image() {
         }
     );
 
+    const {url, size} = await get_og_image();
+
+    // export at half size to not be huge
+    size.width /= 2;
+    size.height /= 2;
+
     return new ImageResponse(
         (
             // ImageResponse JSX element
-            <img src={await get_data_url()} />
+            <img src={url} width={size.width} height={size.height} alt="" />
         ),
         // ImageResponse options
         {
