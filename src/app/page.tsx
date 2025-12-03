@@ -11,7 +11,7 @@ import FloatingAdminMessage from "@/components/FloatingAdminMessage";
 
 import {socket} from "@/socket";
 import {DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
-import {CONFIG_KEY_PIXEL_TIMEOUT_MS} from "@/consts";
+import {CONFIG_KEY_PIXEL_TIMEOUT_MS, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@/consts";
 import FloatingPoll from "@/components/FloatingPoll";
 
 export default function Home() {
@@ -26,6 +26,10 @@ export default function Home() {
     // when pixel is submitted, switch to show timeout mode for the widget
     const handle_pixel_submitted = useCallback(
         () => {
+            if (localStorage.getItem(LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER) === "true") {
+                return;
+            }
+
             setTimeoutStartTime(Date.now());
             setTimeoutEndTime(Date.now() + pixel_timeout_ms);
 

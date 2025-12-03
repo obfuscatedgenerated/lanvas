@@ -24,7 +24,7 @@ import {
     CONFIG_KEY_GRID_HEIGHT,
     CONFIG_KEY_GRID_WIDTH,
     CONFIG_KEY_PIXEL_TIMEOUT_MS,
-    CONFIG_KEY_READONLY
+    CONFIG_KEY_READONLY, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER
 } from "@/consts";
 
 interface UserListProps {
@@ -658,6 +658,7 @@ const AdminPageInteractivity = () => {
                     break;
                 case CONFIG_KEY_ADMIN_GOD:
                     setGodCheckbox(!!value);
+                    localStorage.setItem(LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER, value ? "true" : "false");
                     break;
                 case CONFIG_KEY_ADMIN_ANONYMOUS:
                     setAnonymousCheckbox(!!value);
@@ -889,6 +890,8 @@ const AdminPageInteractivity = () => {
 
                             // submit change
                             socket.emit("admin_set_config_value", {key: CONFIG_KEY_ADMIN_GOD, value: new_value, is_public: false});
+
+                            // localstorage is handled by the parrot back from the server for consistency
                         }}
                         className="ml-2"
                     />
