@@ -1,23 +1,14 @@
 import type { SocketHandlerFunction } from "@/server/types";
+import {get_calculated_timeout} from "@/server/timeouts";
 
-export const handler: SocketHandlerFunction = ({socket, timeouts}) => {
+export const handler: SocketHandlerFunction = ({socket}) => {
     const user = socket.user;
     if (!user || !user.sub) {
         return;
     }
 
-    const timeout = timeouts[user.sub];
-    const current_time = Date.now();
-    if (timeout && timeout.ends > current_time) {
-        const remaining = timeout.ends - current_time;
-        const elapsed = current_time - timeout.started;
-
-        socket.emit("timeout_info", {
-            started: timeout.started,
-            remaining,
-            elapsed,
-            ends: timeout.ends,
-            checked_at: current_time
-        });
+    const timeout = get_calculated_timeout(user.sub);
+    if (timeout) {
+        socket.emit("timeout_info", timeout);
     }
 }

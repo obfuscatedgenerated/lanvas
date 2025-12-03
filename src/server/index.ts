@@ -32,6 +32,16 @@ import {
 
 import {load_pixels} from "@/server/grid";
 import {load_banned_users} from "@/server/banlist";
+import {cleanup_timeouts} from "@/server/timeouts";
+
+// clean up timeouts periodically
+setInterval(() => {
+    const cleaned_count = cleanup_timeouts();
+
+    if (cleaned_count > 0) {
+        console.log(`Cleaned up ${cleaned_count} expired timeouts.`);
+    }
+}, 60 * 1000); // every minute
 
 import * as handlers from "@/server/handlers/@ALL";
 
@@ -67,29 +77,6 @@ const port = parseInt(process.argv[3], 10) || 3000;
 // when using middleware `hostname` and `port` must be provided below
 const app = next({dev, hostname, port});
 const req_handler = app.getRequestHandler();
-
-// TODO: could reduce redundancy further by storing user ids only in author_data and having a separate user map
-
-const timeouts: {[user_id: string]: {
-    started: number;
-    ends: number;
-}} = {};
-
-// clean up timeouts periodically
-setInterval(() => {
-    const current_time = Date.now();
-    let cleaned_count = 0;
-    for (const [user_id, timeout] of Object.entries(timeouts)) {
-        if (timeout.ends <= current_time) {
-            delete timeouts[user_id];
-            cleaned_count++;
-        }
-    }
-
-    if (cleaned_count > 0) {
-        console.log(`Cleaned up ${cleaned_count} expired timeouts.`);
-    }
-}, 60 * 1000);
 
 const connected_users = new Set<ConnectedUserDetails>();
 const unique_connected_user_ids = new Set<string>();
@@ -322,7 +309,7 @@ const main = async () => {
                     socket,
                     pool,
                     payload,
-                    timeouts,
+
                     connected_users,
                     unique_connected_user_ids,
                     stats,

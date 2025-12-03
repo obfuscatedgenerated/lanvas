@@ -22,10 +22,6 @@ export interface SocketHandlerContext {
     payload: any;
 
     // TODO: move these to singletons. for now will send all relevant data references as context
-    timeouts: {[user_id: string]: {
-            started: number;
-            ends: number;
-        }};
     connected_users: Set<ConnectedUserDetails>;
     unique_connected_user_ids: Set<string>;
     stats: Map<string, number>;

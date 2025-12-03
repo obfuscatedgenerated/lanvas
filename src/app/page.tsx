@@ -56,11 +56,15 @@ export default function Home() {
             setTimeoutStartTime(info.started);
             setTimeoutEndTime(info.ends);
 
+            // adjust remaining for clock sync (could also subtract the checked_at time, but this is simpler)
+            const current_time = Date.now();
+            const true_remaining = info.ends - current_time;
+
             // after timeout, switch back to color picker mode
             setTimeout(() => {
                 setTimeoutStartTime(null);
                 setTimeoutEndTime(null);
-            }, info.remaining);
+            }, true_remaining);
         });
 
         socket.on("readonly", (readonly) => {

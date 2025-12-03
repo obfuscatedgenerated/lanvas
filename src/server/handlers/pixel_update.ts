@@ -7,18 +7,19 @@ import {get_config} from "@/server/config";
 import {
     CONFIG_KEY_GRID_HEIGHT,
     CONFIG_KEY_GRID_WIDTH,
-    CONFIG_KEY_PIXEL_TIMEOUT_MS,
     CONFIG_KEY_READONLY
 } from "@/consts";
-import {DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH, DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
+import {DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH} from "@/defaults";
 
 import {is_user_banned} from "@/server/banlist";
 import {get_cell, set_cell} from "@/server/grid";
 import {intercept_client} from "@/server/prometheus";
 
+import {get_calculated_timeout, is_user_in_timeout, remove_timeout, timeout_user} from "@/server/timeouts";
+
 // handle pixel updates from clients
 
-export const handler: SocketHandlerFunction = async ({socket, payload, timeouts, io, pool, stats}) => {
+export const handler: SocketHandlerFunction = async ({socket, payload, io, pool, stats}) => {
     let client: PoolClient | null = null;
 
     try {
@@ -54,11 +55,10 @@ export const handler: SocketHandlerFunction = async ({socket, payload, timeouts,
         }
 
         // check user isn't in timeout period
-        const current_time = Date.now();
-        if (timeouts[user_id] && timeouts[user_id].ends > current_time) {
+        if (is_user_in_timeout(user_id)) {
             // user is still in timeout period
-            const wait_time = Math.ceil((timeouts[user_id].ends - current_time) / 1000);
-            socket.emit("pixel_update_rejected", {reason: "timeout", wait_time});
+            const timeout = get_calculated_timeout(user_id)!;
+            socket.emit("pixel_update_rejected", {reason: "timeout", wait_time: timeout.remaining});
             return;
         }
 
@@ -74,11 +74,8 @@ export const handler: SocketHandlerFunction = async ({socket, payload, timeouts,
         set_cell(x, y, color, author);
         console.log(`Pixel updated at (${x}, ${y}) to ${color} by user ${socket.user.name} (id: ${user_id})`);
 
-        // set new timeout for user
-        timeouts[user_id] = {
-            started: current_time,
-            ends: current_time + get_config(CONFIG_KEY_PIXEL_TIMEOUT_MS, DEFAULT_PIXEL_TIMEOUT_MS)
-        };
+        // set new timeout for user with default duration (from config)
+        timeout_user(user_id);
 
         // broadcast the pixel update to all connected clients
         io.emit("pixel_update", {x, y, color, author});
@@ -140,7 +137,7 @@ export const handler: SocketHandlerFunction = async ({socket, payload, timeouts,
             io.emit("pixel_update", {x, y, color: old_color, author: old_author});
 
             // remove the timeout since the update failed
-            delete timeouts[user_id];
+            remove_timeout(user_id);
 
             // notify the user that their update failed to reset their client timer
             socket.emit("pixel_update_rejected", {reason: "database_error"});

@@ -14,6 +14,8 @@ let grid_data: string[][] = [];
 
 let author_data: (Author | null)[][] = [];
 
+// TODO: could reduce redundancy further by storing user ids only in author_data and having a separate user map
+
 export const load_pixels = async (pool: Pool): Promise<number> => {
     const grid_height = get_config(CONFIG_KEY_GRID_HEIGHT, DEFAULT_GRID_HEIGHT);
     const grid_width = get_config(CONFIG_KEY_GRID_WIDTH, DEFAULT_GRID_WIDTH);
