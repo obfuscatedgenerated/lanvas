@@ -1,7 +1,7 @@
 import type {SocketHandlerFunction} from "@/server/types";
 import {get_grid_size} from "@/server/grid";
 
-import type {Author} from "@/types";
+import type {Author, Comment} from "@/types";
 import {is_user_banned} from "@/server/banlist";
 
 export const handler: SocketHandlerFunction = ({io, payload, socket}) => {
@@ -33,25 +33,27 @@ export const handler: SocketHandlerFunction = ({io, payload, socket}) => {
         return;
     }
 
-    // trim the x and y to 3 decimal places to minimise packet size
-    const trimmed_x = Math.round((x + Number.EPSILON) * 1000) / 1000;
-    const trimmed_y = Math.round((y + Number.EPSILON) * 1000) / 1000;
-
-    // TODO: comment rate limiting
-    // TODO: check text appropriateness with tensorflow toxicity model or basic dictionary filter
-    // TODO: persist to memory within timespan
-    // TODO: should it support admin anonymous comments?
-
     const author: Author = {
         user_id: user.sub!,
         name: user.name || "Unknown",
         avatar_url: user.picture || null,
     };
 
+    // trim the x and y to 3 decimal places to minimise packet size
+    const trimmed_x = Math.round((x + Number.EPSILON) * 1000) / 1000;
+    const trimmed_y = Math.round((y + Number.EPSILON) * 1000) / 1000;
+
+    console.log(`[${author.name} (${author.user_id})] (${trimmed_x}, ${trimmed_y}): ${comment}`);
+
+    // TODO: comment rate limiting
+    // TODO: check text appropriateness with tensorflow toxicity model or basic dictionary filter
+    // TODO: persist to memory within timespan
+    // TODO: should it support admin anonymous comments?
+
     io.emit("comment", {
         comment,
         x: trimmed_x,
         y: trimmed_y,
         author,
-    });
+    } as Comment);
 }

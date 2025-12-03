@@ -1,8 +1,8 @@
 "use client";
 
 import {useState, useCallback} from "react";
-import TooltipDiv from "@/components/TooltipDiv";
-import {ArrowUpLeft, Send, X} from "lucide-react";
+import {Send, X} from "lucide-react";
+import CommentBaseTooltip from "@/components/CommentBaseTooltip";
 
 interface CommentComposerTooltipProps {
     position?: { x: number; y: number };
@@ -49,36 +49,32 @@ const CommentComposerTooltip = ({position, on_submit, on_cancel, className = ""}
     }
 
     return (
-        <div className={`absolute z-99 ${className}`} style={{ left: position.x, top: position.y }} onBlur={handle_blur}>
-            <ArrowUpLeft className="stroke-neutral-800" />
+        <CommentBaseTooltip position={position} className={className} on_blur={handle_blur}>
+            <input
+                type="text"
+                value={input_value}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                        handle_submit();
+                    } else if (e.key === "Escape") {
+                        handle_cancel();
+                    }
+                }}
+                placeholder="Enter your comment"
+                className="w-48 px-2 py-1 text-sm text-white focus:outline-none"
+                autoFocus={true}
+                maxLength={100}
+            />
 
-            <TooltipDiv position={{ x: position.x + 15, y: position.y + 15 }} className="flex items-center gap-2">
-                <input
-                    type="text"
-                    value={input_value}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                            handle_submit();
-                        } else if (e.key === "Escape") {
-                            handle_cancel();
-                        }
-                    }}
-                    placeholder="Enter your comment"
-                    className="w-48 px-2 py-1 text-sm text-white focus:outline-none"
-                    autoFocus={true}
-                    maxLength={100}
-                />
+            <button title="Send comment" className="cursor-pointer" onClick={handle_submit}>
+                <Send className="w-4 h-4" />
+            </button>
 
-                <button title="Send comment" className="cursor-pointer" onClick={handle_submit}>
-                    <Send className="w-4 h-4" />
-                </button>
-
-                <button title="Cancel" className="cursor-pointer" onClick={handle_cancel}>
-                    <X className="w-4 h-4" />
-                </button>
-            </TooltipDiv>
-        </div>
+            <button title="Cancel" className="cursor-pointer" onClick={handle_cancel}>
+                <X className="w-4 h-4" />
+            </button>
+        </CommentBaseTooltip>
     )
 }
 

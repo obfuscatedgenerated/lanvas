@@ -1,4 +1,4 @@
-import Image from "next/image";
+import AuthorInfo from "@/components/AuthorInfo";
 import type { Author } from "@/types";
 
 const PixelTooltipContent = ({ author, x, y }: { author: Author, x: number, y: number }) => {
@@ -6,8 +6,7 @@ const PixelTooltipContent = ({ author, x, y }: { author: Author, x: number, y: n
         <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1.5">
                 <span className="font-semibold">Last edited by:</span>
-                {author.avatar_url && <Image src={author.avatar_url} alt="" draggable={false} width={20} height={20} className="rounded-full" />}
-                <span>{author.name}</span>
+                <AuthorInfo author={author} />
             </div>
 
             <span><span className="font-semibold">Cell:</span> ({x}, {y})</span>

@@ -15,6 +15,7 @@ import {CONFIG_KEY_PIXEL_TIMEOUT_MS, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@
 import FloatingPoll from "@/components/FloatingPoll";
 import CommentComposerTooltip from "@/components/CommentComposerTooltip";
 import type {GridCanvasRef} from "@/components/GridCanvas";
+import CommentTooltip from "@/components/CommentTooltip";
 
 interface CommentComposePosition {
     x: number;
@@ -204,10 +205,14 @@ export default function Home() {
                 return;
             }
 
-            console.log("Submitting comment:", comment, comment_compose_coords.canvas_x, comment_compose_coords.canvas_y);
+            // trim the x and y to 3 decimal places to minimise packet size
+            const x = Math.round((comment_compose_coords.canvas_x + Number.EPSILON) * 1000) / 1000;
+            const y = Math.round((comment_compose_coords.canvas_y + Number.EPSILON) * 1000) / 1000;
+
+            console.log("Submitting comment:", comment, "x:", x, "y:", y);
             socket.emit("submit_comment", {
-                x: comment_compose_coords.canvas_x,
-                y: comment_compose_coords.canvas_y,
+                x,
+                y,
                 comment,
             });
 
