@@ -1,6 +1,3 @@
-export const dynamic = "force-dynamic";
-
-import { unstable_cache } from "next/cache";
 import {ImageResponse} from "next/og";
 
 import {Client} from "pg";
@@ -10,9 +7,9 @@ import {createCanvas} from "canvas";
 import {CONFIG_KEY_GRID_HEIGHT, CONFIG_KEY_GRID_WIDTH} from "@/consts";
 import {DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH} from "@/defaults";
 
+export const revalidate = 60; // cache the image for 60 seconds
 export const alt = "LANvas canvas"
 export const contentType = "image/png"
-
 
 const PIXEL_SIZE = 10; // use slight oversampling. could also instead use pixelated on parent, but that leads to weird subpixel artifacts
 
@@ -86,18 +83,8 @@ const draw_pixels = async () => {
     return {url: canvas.toDataURL("image/png"), size: {width: grid_width * PIXEL_SIZE, height: grid_height * PIXEL_SIZE}};
 }
 
-// Image generation
 export default async function Image() {
-    const get_og_image = unstable_cache(
-        draw_pixels,
-        ["canvas-data-url"],
-        {
-            revalidate: 60, // cache for a minute
-            tags: ["og-image"]
-        }
-    );
-
-    const {url, size} = await get_og_image();
+    const {url, size} = await draw_pixels();
 
     // export at half size to not be huge
     size.width /= 2;

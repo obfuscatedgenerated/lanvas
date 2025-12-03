@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { unauthorized } from "next/navigation";
 import {getToken} from "next-auth/jwt";
 import {Suspense} from "react";
-import {revalidateTag} from "next/cache";
+import {revalidatePath} from "next/cache";
 
 import AdminPageInteractivity from "@/components/AdminPageInteractivity";
 import FancyButton, {fancy_button_class} from "@/components/FancyButton";
@@ -23,7 +23,7 @@ const revalidate_og = async () => {
     }
 
     console.log("Will revalidate OG image");
-    revalidateTag("og-image");
+    revalidatePath("/opengraph-image");
 }
 
 export default async function AdminPage() {
