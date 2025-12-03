@@ -10,8 +10,17 @@ import PrometheusTable from "@/components/PrometheusTable";
 
 import {X} from "lucide-react";
 
-import {DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH, DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
 import {
+    DEFAULT_ADMIN_ANONYMOUS,
+    DEFAULT_ADMIN_GOD,
+    DEFAULT_GRID_HEIGHT,
+    DEFAULT_GRID_WIDTH,
+    DEFAULT_PIXEL_TIMEOUT_MS,
+    DEFAULT_READONLY
+} from "@/defaults";
+import {
+    CONFIG_KEY_ADMIN_ANONYMOUS,
+    CONFIG_KEY_ADMIN_GOD,
     CONFIG_KEY_GRID_HEIGHT,
     CONFIG_KEY_GRID_WIDTH,
     CONFIG_KEY_PIXEL_TIMEOUT_MS,
@@ -605,8 +614,11 @@ const AdminPageInteractivity = () => {
 
     const [manual_stats, setManualStats] = useState<{[key: string]: number}>({});
 
-    const [is_readonly, setIsReadonly] = useState(false);
+    const [is_readonly, setIsReadonly] = useState(DEFAULT_READONLY);
     const [readonly_checkbox, setReadonlyCheckbox] = useState(is_readonly);
+
+    const [god_checkbox, setGodCheckbox] = useState(DEFAULT_ADMIN_GOD);
+    const [anonymous_checkbox, setAnonymousCheckbox] = useState(DEFAULT_ADMIN_ANONYMOUS);
 
     // keep checkbox in sync with actual readonly state
     useEffect(() => {
@@ -644,6 +656,12 @@ const AdminPageInteractivity = () => {
                 case CONFIG_KEY_PIXEL_TIMEOUT_MS:
                     setPixelTimeoutInput(value || DEFAULT_PIXEL_TIMEOUT_MS);
                     break;
+                case CONFIG_KEY_ADMIN_GOD:
+                    setGodCheckbox(!!value);
+                    break;
+                case CONFIG_KEY_ADMIN_ANONYMOUS:
+                    setAnonymousCheckbox(!!value);
+                    break;
             }
         });
 
@@ -655,6 +673,8 @@ const AdminPageInteractivity = () => {
         socket.emit("admin_get_config_value", CONFIG_KEY_GRID_WIDTH);
         socket.emit("admin_get_config_value", CONFIG_KEY_GRID_HEIGHT);
         socket.emit("admin_get_config_value", CONFIG_KEY_PIXEL_TIMEOUT_MS);
+        socket.emit("admin_get_config_value", CONFIG_KEY_ADMIN_GOD);
+        socket.emit("admin_get_config_value", CONFIG_KEY_ADMIN_ANONYMOUS);
 
         return () => {
             socket.disconnect();
@@ -847,6 +867,57 @@ const AdminPageInteractivity = () => {
                     <span className="text-yellow-400 ml-2">(pending change)</span>
                 )}
             </label>
+
+            <h2 className="text-xl font-medium mb-2">Admin tools & cheats</h2>
+            <div className="flex gap-8">
+                <label>
+                    <span className="underline underline-offset-2 decoration-dotted cursor-help" title="No timeouts for the admin!">God mode:</span>
+
+                    <input
+                        type="checkbox"
+                        checked={god_checkbox}
+                        onChange={(e) => {
+                            const new_value = e.target.checked;
+                            setGodCheckbox(new_value);
+
+                            const confirmed = confirm(`Are you sure want to turn ${new_value ? "on" : "off"} god mode?`);
+                            if (!confirmed) {
+                                // revert checkbox
+                                setGodCheckbox(!new_value);
+                                return;
+                            }
+
+                            // submit change
+                            socket.emit("admin_set_config_value", {key: CONFIG_KEY_ADMIN_GOD, value: new_value, is_public: false});
+                        }}
+                        className="ml-2"
+                    />
+                </label>
+
+                <label>
+                    <span className="underline underline-offset-2 decoration-dotted cursor-help" title="Hide admin identity when placing pixels.">Anonymous mode:</span>
+
+                    <input
+                        type="checkbox"
+                        checked={anonymous_checkbox}
+                        onChange={(e) => {
+                            const new_value = e.target.checked;
+                            setAnonymousCheckbox(new_value);
+
+                            const confirmed = confirm(`Are you sure want to turn ${new_value ? "on" : "off"} anonymous mode?`);
+                            if (!confirmed) {
+                                // revert checkbox
+                                setAnonymousCheckbox(!new_value);
+                                return;
+                            }
+
+                            // submit change
+                            socket.emit("admin_set_config_value", {key: CONFIG_KEY_ADMIN_ANONYMOUS, value: new_value, is_public: false});
+                        }}
+                        className="ml-2"
+                    />
+                </label>
+            </div>
 
             <h2 className="text-xl font-medium mb-2">Connected users</h2>
 

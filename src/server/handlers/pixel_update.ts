@@ -5,11 +5,13 @@ import type {PoolClient} from "pg";
 import {get_config} from "@/server/config";
 
 import {
+    CONFIG_KEY_ADMIN_ANONYMOUS,
+    CONFIG_KEY_ADMIN_GOD,
     CONFIG_KEY_GRID_HEIGHT,
     CONFIG_KEY_GRID_WIDTH,
     CONFIG_KEY_READONLY
 } from "@/consts";
-import {DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH} from "@/defaults";
+import {DEFAULT_ADMIN_ANONYMOUS, DEFAULT_ADMIN_GOD, DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH} from "@/defaults";
 
 import {is_user_banned} from "@/server/banlist";
 import {get_cell, set_cell} from "@/server/grid";
@@ -54,15 +56,19 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool,
             return;
         }
 
+        const is_admin = socket.user.sub === process.env.DISCORD_ADMIN_USER_ID;
+        const god = is_admin && get_config(CONFIG_KEY_ADMIN_GOD, DEFAULT_ADMIN_GOD);
+        const anonymous = is_admin && get_config(CONFIG_KEY_ADMIN_ANONYMOUS, DEFAULT_ADMIN_ANONYMOUS);
+
         // check user isn't in timeout period
-        if (is_user_in_timeout(user_id)) {
+        if (!god && is_user_in_timeout(user_id)) {
             // user is still in timeout period
             const timeout = get_calculated_timeout(user_id)!;
             socket.emit("pixel_update_rejected", {reason: "timeout", wait_time: timeout.remaining});
             return;
         }
 
-        const author = {
+        const author = anonymous ? null :{
             user_id,
             name: socket.user.name,
             avatar_url: socket.user.picture || null,
@@ -72,10 +78,14 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool,
         const {color: old_color, author: old_author} = get_cell(x, y)!;
 
         set_cell(x, y, color, author);
-        console.log(`Pixel updated at (${x}, ${y}) to ${color} by user ${socket.user.name} (id: ${user_id})`);
+        console.log(`Pixel updated at (${x}, ${y}) to ${color} by user ${socket.user.name} (id: ${user_id}) ${god ? "[GOD MODE]" : ""} ${anonymous ? "[ANONYMOUS]" : ""}`);
 
         // set new timeout for user with default duration (from config)
-        timeout_user(user_id);
+        if (!god) {
+            timeout_user(user_id);
+            // TODO: could emit here to the client rather than having the client calculate it themselves,
+            //  although that makes rollback a little annoying without adding a new event or sending a 0 timeout
+        }
 
         // broadcast the pixel update to all connected clients
         io.emit("pixel_update", {x, y, color, author});
@@ -104,7 +114,7 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool,
                 `INSERT INTO pixels (x, y, color, author_id)
                          VALUES ($1, $2, $3, $4)
                          ON CONFLICT (x, y) DO UPDATE SET color = EXCLUDED.color, author_id = EXCLUDED.author_id`,
-                [x, y, color, user_id]
+                [x, y, color, anonymous ? null : user_id]
             );
 
             // and increment the total_pixels_placed stat, as well as returning the new total

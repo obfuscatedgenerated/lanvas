@@ -95,5 +95,3 @@ export const get_all_timeouts = (clone = false): Map<string, TimeoutSpan> => {
 
     return timeouts;
 }
-
-// TODO: god mode users
