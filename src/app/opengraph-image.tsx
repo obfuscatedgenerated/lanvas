@@ -1,13 +1,12 @@
-import {ImageResponse} from "next/og";
-
 import {Client} from "pg";
 
-import {createCanvas} from "canvas";
+import {createCanvas, type Canvas} from "canvas";
 
 import {CONFIG_KEY_GRID_HEIGHT, CONFIG_KEY_GRID_WIDTH} from "@/consts";
 import {DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH} from "@/defaults";
 
 export const revalidate = 60; // cache the image for 60 seconds
+export const runtime = "nodejs"; // ensure we use the nodejs runtime so that we can use the 'canvas' package
 export const alt = "LANvas canvas"
 export const contentType = "image/png"
 
@@ -80,24 +79,43 @@ const draw_pixels = async () => {
 
     ctx.restore();
 
-    return {url: canvas.toDataURL("image/png"), size: {width: grid_width * PIXEL_SIZE, height: grid_height * PIXEL_SIZE}};
+    return {canvas, size: {width: grid_width * PIXEL_SIZE, height: grid_height * PIXEL_SIZE}};
+}
+
+const resize_final_canvas = (canvas: Canvas, size: {width: number; height: number}, final_size: {width: number; height: number}) => {
+    const final_canvas = createCanvas(final_size.width, final_size.height);
+    const ctx = final_canvas.getContext("2d");
+    if (!ctx) {
+        throw new Error("Failed to get final canvas context");
+    }
+
+    // ensure image smoothing is disabled for pixelated look
+    ctx.imageSmoothingEnabled = false;
+
+    ctx.save();
+
+    ctx.drawImage(canvas, 0, 0, size.width, size.height, 0, 0, final_size.width, final_size.height);
+
+    ctx.restore();
+
+    return final_canvas;
 }
 
 export default async function Image() {
-    const {url, size} = await draw_pixels();
+    const {canvas, size} = await draw_pixels();
+    console.log("OpenGraph image redrawn.");
 
-    // export at half size to not be huge
-    size.width /= 2;
-    size.height /= 2;
+    // use a separate final canvas to resize down to half size for better quality
+    // it means we can supersample the pixels for sharpness, but then only have to serve half the size without losing detail
+    const new_size = {width: size.width / 2, height: size.height / 2};
+    const final_canvas = resize_final_canvas(canvas, size, new_size);
+    console.log("OpenGraph image resized.");
 
-    return new ImageResponse(
-        (
-            // ImageResponse JSX element
-            <img src={url} width={size.width} height={size.height} alt="" />
-        ),
-        // ImageResponse options
-        {
-            ...size,
-        }
-    )
+    const buffer = final_canvas.toBuffer("image/png");
+    return new Response(buffer as unknown as BodyInit, {
+        status: 200,
+        headers: {
+            "Content-Type": "image/png",
+        },
+    });
 }
