@@ -5,11 +5,17 @@ import { useState, useEffect } from "react";
 import CommentTooltip from "@/components/CommentTooltip";
 import type { Comment } from "@/types";
 
-import { socket } from "@/socket";
 import type {PixelGridRef} from "@/components/PixelGrid";
+
+import { socket } from "@/socket";
+import snowflake from "@/snowflake";
 
 export interface CommentWithExpiry extends Comment {
     expiry: Date;
+}
+
+interface CommentWithExpiryAndRenderKey extends CommentWithExpiry {
+    render_key: bigint;
 }
 
 const EXPIRY_TIME_MS = 45000; // comments expire after 45 seconds
@@ -49,14 +55,15 @@ const ExpiryTransparencyCommentTooltip = ({comment}: {comment: CommentWithExpiry
 // TODO: separate out author data for space efficiency, maybe even combine with pixel author data
 
 const CommentsOverlay = ({pixel_grid_ref_api, visible = true}: {pixel_grid_ref_api: PixelGridRef; visible?: boolean}) => {
-    const [comments, setComments] = useState<CommentWithExpiry[]>([]);
+    const [comments, setComments] = useState<CommentWithExpiryAndRenderKey[]>([]);
 
     // register socket listener
     useEffect(() => {
         const handle_new_comment = (comment: Comment) => {
-            const comment_with_expiry: CommentWithExpiry = {
+            const comment_with_expiry: CommentWithExpiryAndRenderKey = {
                 ...comment,
                 expiry: new Date(Date.now() + EXPIRY_TIME_MS),
+                render_key: snowflake.generate(),
             };
 
             // transform grid coords to canvas coords
@@ -75,7 +82,6 @@ const CommentsOverlay = ({pixel_grid_ref_api, visible = true}: {pixel_grid_ref_a
         const interval = setInterval(() => {
             const now = new Date();
 
-            // TODO: is this culling early somehow?
             setComments((prev_comments) =>
                 prev_comments.filter((comment) => comment.expiry > now)
             );
@@ -89,8 +95,8 @@ const CommentsOverlay = ({pixel_grid_ref_api, visible = true}: {pixel_grid_ref_a
 
     return (
         <div className={`absolute transition-opacity ${visible ? "opacity-100" : "opacity-0"}`}>
-            {comments.map((comment, index) => (
-                <ExpiryTransparencyCommentTooltip key={index} comment={comment} />
+            {comments.map((comment) => (
+                <ExpiryTransparencyCommentTooltip key={comment.render_key} comment={comment} />
             ))}
         </div>
     );
