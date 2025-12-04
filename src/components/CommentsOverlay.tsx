@@ -46,6 +46,8 @@ const ExpiryTransparencyCommentTooltip = ({comment}: {comment: CommentWithExpiry
     return <CommentTooltip positioning="absolute" comment={comment} className={`transition-opacity duration-15000 ${opacity_class}`} />;
 }
 
+// TODO: separate out author data for space efficiency, maybe even combine with pixel author data
+
 const CommentsOverlay = ({pixel_grid_ref_api}: {pixel_grid_ref_api: PixelGridRef}) => {
     const [comments, setComments] = useState<CommentWithExpiry[]>([]);
 

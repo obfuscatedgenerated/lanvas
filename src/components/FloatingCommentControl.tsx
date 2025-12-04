@@ -7,7 +7,7 @@ import type {Comment} from "@/types";
 
 import {socket} from "@/socket";
 
-const MAX_RECENT_COMMENTS = 15;
+const MAX_RECENT_COMMENTS = 50;
 
 const CommentLine = ({comment}: {comment: Comment}) => (
     <div className="flex gap-2 items-start max-w-full">
@@ -21,7 +21,9 @@ const CommentLine = ({comment}: {comment: Comment}) => (
 
         <p className="text-neutral-300 text-sm max-w-full break-all mt-[calc(var(--spacing)*0.633)]">{comment.comment}</p>
     </div>
-)
+);
+
+// TODO: separate out author data for space efficiency, maybe even combine with pixel author data
 
 const FloatingCommentControl = () => {
     const [recent_comments, setRecentComments] = useState<Comment[]>([]);
