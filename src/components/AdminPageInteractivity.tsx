@@ -624,8 +624,8 @@ const AdminPageInteractivity = () => {
     const [automod_checkbox, setAutomodCheckbox] = useState(DEFAULT_AUTOMOD_ENABLED);
     const [automod_supported, setAutomodSupported] = useState(false);
 
-    const [chat_timeout_ms_input, setChatTimeoutMsInput] = useState(DEFAULT_COMMENT_TIMEOUT_MS);
-    const [last_chat_timeout_ms_saved, setLastChatTimeoutMsSaved] = useState(DEFAULT_COMMENT_TIMEOUT_MS);
+    const [chat_timeout_ms_input, setChatTimeoutMsInput] = useState(DEFAULT_COMMENT_TIMEOUT_MS.toString());
+    const [last_chat_timeout_ms_saved, setLastChatTimeoutMsSaved] = useState(DEFAULT_COMMENT_TIMEOUT_MS.toString());
 
     // keep checkbox in sync with actual readonly state
     useEffect(() => {
@@ -993,7 +993,7 @@ const AdminPageInteractivity = () => {
                                 return;
                             }
 
-                            setLastChatTimeoutMsSaved(timeout);
+                            setLastChatTimeoutMsSaved(timeout.toString());
 
                             // submit change
                             socket.emit("admin_set_config_value", {key: CONFIG_KEY_COMMENT_TIMEOUT_MS, value: timeout, is_public: true});

@@ -1,7 +1,7 @@
 import { get_config } from "@/server/config";
 
-import { CONFIG_KEY_PIXEL_TIMEOUT_MS } from "@/consts";
-import { DEFAULT_PIXEL_TIMEOUT_MS } from "@/defaults";
+import { CONFIG_KEY_PIXEL_TIMEOUT_MS, CONFIG_KEY_COMMENT_TIMEOUT_MS } from "@/consts";
+import { DEFAULT_PIXEL_TIMEOUT_MS, DEFAULT_COMMENT_TIMEOUT_MS } from "@/defaults";
 
 interface TimeoutSpan {
     started: number;
@@ -14,40 +14,29 @@ interface CalculatedTimeoutData extends TimeoutSpan {
     checked_at: number;
 }
 
-const timeouts = new Map<string, TimeoutSpan>(); // user id to timeout span
+// user id to timeout span
+const pixel_timeouts = new Map<string, TimeoutSpan>();
+const comment_timeouts = new Map<string, TimeoutSpan>();
 
 export const cleanup_timeouts = (): number => {
     const current_time = Date.now();
     let cleaned_count = 0;
-    for (const [user_id, timeout] of timeouts.entries()) {
+
+    for (const [user_id, timeout] of pixel_timeouts.entries()) {
         if (timeout.ends <= current_time) {
-            timeouts.delete(user_id);
+            pixel_timeouts.delete(user_id);
+            cleaned_count++;
+        }
+    }
+
+    for (const [user_id, timeout] of comment_timeouts.entries()) {
+        if (timeout.ends <= current_time) {
+            comment_timeouts.delete(user_id);
             cleaned_count++;
         }
     }
 
     return cleaned_count;
-}
-
-export const get_timeout = (user_id: string): TimeoutSpan | null => {
-    const timeout = timeouts.get(user_id);
-
-    if (timeout) {
-        const current_time = Date.now();
-        if (timeout.ends > current_time) {
-            return timeout;
-        } else {
-            // timeout expired, remove it
-            timeouts.delete(user_id);
-            return null;
-        }
-    }
-
-    return null;
-}
-
-export const is_user_in_timeout = (user_id: string): boolean => {
-    return get_timeout(user_id) !== null;
 }
 
 export const calculate_timeout_data = (timeout_data: TimeoutSpan): CalculatedTimeoutData => {
@@ -63,8 +52,53 @@ export const calculate_timeout_data = (timeout_data: TimeoutSpan): CalculatedTim
     };
 }
 
-export const get_calculated_timeout = (user_id: string): CalculatedTimeoutData | null => {
-    const timeout = get_timeout(user_id);
+
+export const get_pixel_timeout = (user_id: string): TimeoutSpan | null => {
+    const timeout = pixel_timeouts.get(user_id);
+
+    if (timeout) {
+        const current_time = Date.now();
+        if (timeout.ends > current_time) {
+            return timeout;
+        } else {
+            // timeout expired, remove it
+            pixel_timeouts.delete(user_id);
+            return null;
+        }
+    }
+
+    return null;
+}
+
+export const get_comment_timeout = (user_id: string): TimeoutSpan | null => {
+    const timeout = comment_timeouts.get(user_id);
+
+    if (timeout) {
+        const current_time = Date.now();
+        if (timeout.ends > current_time) {
+            return timeout;
+        } else {
+            // timeout expired, remove it
+            comment_timeouts.delete(user_id);
+            return null;
+        }
+    }
+
+    return null;
+}
+
+
+export const is_user_in_pixel_timeout = (user_id: string): boolean => {
+    return get_pixel_timeout(user_id) !== null;
+}
+
+export const is_user_in_comment_timeout = (user_id: string): boolean => {
+    return get_comment_timeout(user_id) !== null;
+}
+
+
+export const get_calculated_pixel_timeout = (user_id: string): CalculatedTimeoutData | null => {
+    const timeout = get_pixel_timeout(user_id);
     if (timeout) {
         return calculate_timeout_data(timeout);
     }
@@ -72,7 +106,17 @@ export const get_calculated_timeout = (user_id: string): CalculatedTimeoutData |
     return null;
 }
 
-export const timeout_user = (user_id: string, duration_ms: number = get_config(CONFIG_KEY_PIXEL_TIMEOUT_MS, DEFAULT_PIXEL_TIMEOUT_MS)): TimeoutSpan => {
+export const get_calculated_comment_timeout = (user_id: string): CalculatedTimeoutData | null => {
+    const timeout = get_comment_timeout(user_id);
+    if (timeout) {
+        return calculate_timeout_data(timeout);
+    }
+
+    return null;
+}
+
+
+export const pixel_timeout_user = (user_id: string, duration_ms: number = get_config(CONFIG_KEY_PIXEL_TIMEOUT_MS, DEFAULT_PIXEL_TIMEOUT_MS)): TimeoutSpan => {
     const current_time = Date.now();
 
     const timeout: TimeoutSpan = {
@@ -80,18 +124,44 @@ export const timeout_user = (user_id: string, duration_ms: number = get_config(C
         ends: current_time + duration_ms,
     };
 
-    timeouts.set(user_id, timeout);
+    pixel_timeouts.set(user_id, timeout);
     return timeout;
 }
 
-export const remove_timeout = (user_id: string): boolean => {
-    return timeouts.delete(user_id);
+export const comment_timeout_user = (user_id: string, duration_ms: number = get_config(CONFIG_KEY_COMMENT_TIMEOUT_MS, DEFAULT_COMMENT_TIMEOUT_MS)): TimeoutSpan => {
+    const current_time = Date.now();
+
+    const timeout: TimeoutSpan = {
+        started: current_time,
+        ends: current_time + duration_ms,
+    };
+
+    comment_timeouts.set(user_id, timeout);
+    return timeout;
 }
 
-export const get_all_timeouts = (clone = false): Map<string, TimeoutSpan> => {
+
+export const remove_pixel_timeout = (user_id: string): boolean => {
+    return pixel_timeouts.delete(user_id);
+}
+
+export const remove_comment_timeout = (user_id: string): boolean => {
+    return comment_timeouts.delete(user_id);
+}
+
+
+export const get_all_pixel_timeouts = (clone = false): Map<string, TimeoutSpan> => {
     if (clone) {
-        return new Map(timeouts);
+        return new Map(pixel_timeouts);
     }
 
-    return timeouts;
+    return pixel_timeouts;
+}
+
+export const get_all_comment_timeouts = (clone = false): Map<string, TimeoutSpan> => {
+    if (clone) {
+        return new Map(comment_timeouts);
+    }
+
+    return comment_timeouts;
 }

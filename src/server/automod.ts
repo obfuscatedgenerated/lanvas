@@ -1,5 +1,30 @@
+import { LRUCache } from "lru-cache";
+
 const BANNED_LABELS = ["severe_toxic", "obscene", "threat", "identity_hate"];
 const FLAG_THRESHOLD = 0.7;
+
+const CACHE_MAX = 10000;
+const CACHE_TTL_MS = 1000 * 60 * 60 * 6; // 6 hours
+
+// stores (message, true) for known good messages
+const known_good_cache = new LRUCache<string, boolean>({
+    max: CACHE_MAX,
+    ttl: CACHE_TTL_MS,
+
+    // set max size for safety. maximum message length is 100 chars
+    maxSize: 100 * CACHE_MAX,
+    sizeCalculation: (_value, key) => key.length,
+});
+
+// stores (message, [violating_labels]) for known bad messages
+const known_bad_cache = new LRUCache<string, string[]>({
+    max: CACHE_MAX,
+    ttl: CACHE_TTL_MS,
+
+    // set max size for safety. maximum message length is 100 chars
+    maxSize: 100 * CACHE_MAX,
+    sizeCalculation: (_value, key) => key.length,
+});
 
 export enum AutoModStatus {
     CLEAN, // the text is clean
@@ -8,18 +33,27 @@ export enum AutoModStatus {
     ERROR // there was an error checking the text
 }
 
-type AutoModStatusNotFlagged = Exclude<AutoModStatus, AutoModStatus.FLAGGED>;
+type AutoModStatusNotCleanOrFlagged = Exclude<AutoModStatus, AutoModStatus.CLEAN | AutoModStatus.FLAGGED>;
 
-interface AutoModResultNotFlagged {
-    status: AutoModStatusNotFlagged;
+interface AutomodResultCleanOrFlaggedBase {
+    status: AutoModStatus.CLEAN | AutoModStatus.FLAGGED;
+    cache_hit: boolean;
 }
 
-interface AutoModResultFlagged {
+interface AutoModResultClean extends AutomodResultCleanOrFlaggedBase {
+    status: AutoModStatus.CLEAN;
+}
+
+interface AutoModResultFlagged extends AutomodResultCleanOrFlaggedBase {
     status: AutoModStatus.FLAGGED;
     violating_labels: string[];
 }
 
-type AutoModResult = AutoModResultNotFlagged | AutoModResultFlagged;
+interface AutoModResultNotCleanOrFlagged {
+    status: AutoModStatusNotCleanOrFlagged;
+}
+
+export type AutoModResult = AutoModResultClean | AutoModResultFlagged | AutoModResultNotCleanOrFlagged;
 
 // can't guarantee having hugging face types at build, so make our own minimal types here
 type ClassifierFunc = (text: string, options?: {top_k?: number | null}) => Promise<Array<{label: string; score: number}>>;
@@ -60,6 +94,17 @@ export const preload_model = async (): Promise<boolean> => {
 };
 
 export const check_text = async (text: string): Promise<AutoModResult> => {
+    // check known good cache
+    if (known_good_cache.has(text)) {
+        return {status: AutoModStatus.CLEAN, cache_hit: true};
+    }
+
+    // check known bad cache
+    const cached_bad = known_bad_cache.get(text);
+    if (cached_bad) {
+        return {status: AutoModStatus.FLAGGED, violating_labels: cached_bad, cache_hit: true};
+    }
+
     let pipeline: PipelineFunc;
 
     try {
@@ -88,10 +133,16 @@ export const check_text = async (text: string): Promise<AutoModResult> => {
             .map(result => result.label);
 
         if (violating_labels.length > 0) {
-            return {status: AutoModStatus.FLAGGED, violating_labels};
+            // add to known bad cache
+            known_bad_cache.set(text, violating_labels);
+
+            return {status: AutoModStatus.FLAGGED, violating_labels, cache_hit: false};
         }
 
-        return {status: AutoModStatus.CLEAN};
+        // add to known good cache
+        known_good_cache.set(text, true);
+
+        return {status: AutoModStatus.CLEAN, cache_hit: false};
     } catch (e) {
         console.error("Automod error", e);
         return {status: AutoModStatus.ERROR};
@@ -99,3 +150,4 @@ export const check_text = async (text: string): Promise<AutoModResult> => {
 };
 
 // TODO: fall back to dictionary based filtering
+// TODO: let admin configure labels and threshold

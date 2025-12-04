@@ -8,19 +8,12 @@ import PixelGrid, {type PixelGridRef, type ResolvedPixel} from "@/components/Pix
 import FloatingWidget from "@/components/FloatingWidget";
 import FloatingAdminMessage from "@/components/FloatingAdminMessage";
 import FloatingPoll from "@/components/FloatingPoll";
-import CommentComposerTooltip from "@/components/CommentComposerTooltip";
+import CommentComposer, {type CommentComposerPosition} from "@/components/CommentComposer";
 import FloatingCommentControl from "@/components/FloatingCommentControl";
 
 import {socket} from "@/socket";
 import {DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
 import {CONFIG_KEY_PIXEL_TIMEOUT_MS, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@/consts";
-
-interface CommentComposePosition {
-    x: number;
-    y: number;
-    grid_x: number;
-    grid_y: number;
-}
 
 export default function Home() {
     const [current_color, setCurrentColor] = useState("#000000");
@@ -33,8 +26,8 @@ export default function Home() {
 
     const pixel_grid_ref = useRef<PixelGridRef | null>(null);
 
-    const [comment_compose_coords, setCommentComposeCoords] = useState<CommentComposePosition | null>(null);
-    const [comment_compose_visible, setCommentComposeVisible] = useState(false);
+    const [comment_composer_coords, setCommentComposerCoords] = useState<CommentComposerPosition | null>(null);
+    const [comment_composer_visible, setCommentComposerVisible] = useState(false);
 
     const [comments_on_canvas, setCommentsOnCanvas] = useState<boolean>(true);
 
@@ -106,10 +99,6 @@ export default function Home() {
             window.location.reload();
         });
 
-        socket.on("comment_rejected", ({reason}) => {
-            alert(`Your comment was rejected! Reason: ${reason}`);
-        });
-
         // check for any timeouts on page load
         socket.emit("check_timeout");
 
@@ -130,7 +119,7 @@ export default function Home() {
                 return;
             }
 
-            setCommentComposeCoords({
+            setCommentComposerCoords({
                 // absolute screen x and y
                 x: event.clientX,
                 y: event.clientY,
@@ -139,7 +128,7 @@ export default function Home() {
                 grid_x: pixel.true_x,
                 grid_y: pixel.true_y,
             });
-            setCommentComposeVisible(true);
+            setCommentComposerVisible(true);
         },
         []
     );
@@ -147,60 +136,38 @@ export default function Home() {
     // update tooltip position on canvas transform
     const on_transform = useCallback(
         () => {
-            if (!pixel_grid_ref.current || !comment_compose_coords) {
+            if (!pixel_grid_ref.current || !comment_composer_coords) {
                 return;
             }
 
-            const {grid_x, grid_y} = comment_compose_coords;
+            const {grid_x, grid_y} = comment_composer_coords;
 
             // recalculate screen position of stored coords
             const {canvas_x, canvas_y} = pixel_grid_ref.current.grid_to_canvas_space(grid_x, grid_y);
             const {rect_x, rect_y} = pixel_grid_ref.current.canvas_to_rect_space(canvas_x, canvas_y);
             const {screen_x, screen_y} = pixel_grid_ref.current.rect_to_screen_space(rect_x, rect_y);
 
-            setCommentComposeCoords({
+            setCommentComposerCoords({
                 x: screen_x,
                 y: screen_y,
                 grid_x,
                 grid_y,
             });
         },
-        [comment_compose_coords]
+        [comment_composer_coords]
     );
     // TODO: just move the overlay handling to be inside the transformwrapper instead of doing all this. only consideration is getting the state there but ig can use context or prop drill
     // TODO: do we also need to update pos on screen resize?
 
     const fade_out_comment_compose = useCallback(
         () => {
-            setCommentComposeVisible(false);
+            setCommentComposerVisible(false);
 
             setTimeout(() => {
-                setCommentComposeCoords(null);
+                setCommentComposerCoords(null);
             }, 300);
         },
         []
-    );
-
-    const handle_comment_submit = useCallback(
-        (comment: string) => {
-            if (!comment_compose_coords) {
-                return;
-            }
-
-            // trim the x and y to 3 decimal places to minimise packet size
-            const x = Math.round((comment_compose_coords.grid_x + Number.EPSILON) * 1000) / 1000;
-            const y = Math.round((comment_compose_coords.grid_y + Number.EPSILON) * 1000) / 1000;
-
-            console.log("Submitting comment:", comment, "x:", x, "y:", y);
-            socket.emit("submit_comment", {
-                x,
-                y,
-                comment,
-            });
-
-            fade_out_comment_compose();
-        },
-        [comment_compose_coords, fade_out_comment_compose]
     );
 
     return (
@@ -208,11 +175,11 @@ export default function Home() {
             <FloatingAdminMessage />
             <FloatingPoll />
 
-            <div className={`z-99 transition-opacity duration-300 ${comment_compose_visible ? "opacity-100" : "opacity-0"}`}>
-                <CommentComposerTooltip
-                    position={comment_compose_coords || undefined}
+            <div className={`z-99 transition-opacity duration-300 ${comment_composer_visible ? "opacity-100" : "opacity-0"}`}>
+                <CommentComposer
+                    position={comment_composer_coords || undefined}
 
-                    on_submit={handle_comment_submit}
+                    on_submitted={fade_out_comment_compose}
                     on_cancel={fade_out_comment_compose}
                 />
             </div>

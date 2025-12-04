@@ -17,7 +17,7 @@ import {is_user_banned} from "@/server/banlist";
 import {get_cell, set_cell} from "@/server/grid";
 import {intercept_client} from "@/server/prometheus";
 
-import {get_calculated_timeout, is_user_in_timeout, remove_timeout, timeout_user} from "@/server/timeouts";
+import {get_calculated_pixel_timeout, is_user_in_pixel_timeout, remove_pixel_timeout, pixel_timeout_user} from "@/server/timeouts";
 import snowflake from "@/snowflake";
 
 // handle pixel updates from clients
@@ -62,9 +62,9 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool,
         const anonymous = is_admin && get_config(CONFIG_KEY_ADMIN_ANONYMOUS, DEFAULT_ADMIN_ANONYMOUS);
 
         // check user isn't in timeout period
-        if (!god && is_user_in_timeout(user_id)) {
+        if (!god && is_user_in_pixel_timeout(user_id)) {
             // user is still in timeout period
-            const timeout = get_calculated_timeout(user_id)!;
+            const timeout = get_calculated_pixel_timeout(user_id)!;
             socket.emit("pixel_update_rejected", {reason: "timeout", wait_time: timeout.remaining});
             return;
         }
@@ -83,7 +83,7 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool,
 
         // set new timeout for user with default duration (from config)
         if (!god) {
-            timeout_user(user_id);
+            pixel_timeout_user(user_id);
             // TODO: could emit here to the client rather than having the client calculate it themselves,
             //  although that makes rollback a little annoying without adding a new event or sending a 0 timeout
         }
@@ -151,7 +151,7 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool,
             io.emit("pixel_update", {x, y, color: old_color, author: old_author});
 
             // remove the timeout since the update failed
-            remove_timeout(user_id);
+            remove_pixel_timeout(user_id);
 
             // notify the user that their update failed to reset their client timer
             socket.emit("pixel_update_rejected", {reason: "database_error"});

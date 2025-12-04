@@ -3,12 +3,11 @@ import {get_grid_size} from "@/server/grid";
 
 import type {Author, Comment} from "@/types";
 import {is_user_banned} from "@/server/banlist";
-import {get_config} from "@/server/config";
-import {CONFIG_KEY_AUTOMOD_ENABLED, CONFIG_KEY_COMMENT_TIMEOUT_MS} from "@/consts";
-import {DEFAULT_AUTOMOD_ENABLED, DEFAULT_COMMENT_TIMEOUT_MS} from "@/defaults";
 import {AutoModStatus, check_text} from "@/server/automod";
-
-const comment_ratelimits = new Map<string, number>();
+import {comment_timeout_user, get_calculated_comment_timeout, remove_comment_timeout} from "@/server/timeouts";
+import {get_config} from "@/server/config";
+import {CONFIG_KEY_AUTOMOD_ENABLED} from "@/consts";
+import {DEFAULT_AUTOMOD_ENABLED} from "@/defaults";
 
 export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
     const user = socket.user!;
@@ -40,32 +39,30 @@ export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
     }
 
     // check if rate limited
-    // TODO: add comment rate limit duration to admin page
     // TODO: let admin bypass rate limit
-    const now = Date.now();
-    const last_comment_time = comment_ratelimits.get(user.sub!) || 0;
-    const rate_limit = get_config(CONFIG_KEY_COMMENT_TIMEOUT_MS, DEFAULT_COMMENT_TIMEOUT_MS);
-
-    if (now - last_comment_time < rate_limit) {
-        socket.emit("comment_rejected", {reason: "rate_limited", retry_after_ms: rate_limit - (now - last_comment_time)});
+    const timeout = get_calculated_comment_timeout(user.sub!);
+    if (timeout) {
+        socket.emit("comment_rejected", {reason: "timeout", wait_time: timeout.remaining});
         return;
     }
 
-    comment_ratelimits.set(user.sub!, now);
+    comment_timeout_user(user.sub!);
 
     const automod_enabled = get_config(CONFIG_KEY_AUTOMOD_ENABLED, DEFAULT_AUTOMOD_ENABLED);
     if (automod_enabled) {
         const text_check = await check_text(comment);
         if (text_check.status === AutoModStatus.FLAGGED) {
-            console.warn(`Automod flagged (${text_check.violating_labels.join(", ")}): ${comment}`);
-            socket.emit("comment_rejected", {reason: "automod"});
+            socket.emit("comment_rejected", {reason: "automod", labels: text_check.violating_labels, cache_hit: text_check.cache_hit});
+
+            // cancel the timeout
+            remove_comment_timeout(user.sub!);
 
             return;
         } else if (text_check.status === AutoModStatus.ERROR) {
             socket.emit("comment_rejected", {reason: "automod_error"});
 
-            // delete the rate limit entry so they can try again immediately
-            comment_ratelimits.delete(user.sub!);
+            // cancel the timeout
+            remove_comment_timeout(user.sub!);
 
             return;
         }
@@ -80,8 +77,6 @@ export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
     // trim the x and y to 3 decimal places to minimise packet size
     const trimmed_x = Math.round((x + Number.EPSILON) * 1000) / 1000;
     const trimmed_y = Math.round((y + Number.EPSILON) * 1000) / 1000;
-
-    console.log(`[${author.name} (${author.user_id})] (${trimmed_x}, ${trimmed_y}): ${comment}`);
 
     // TODO: separate chat banning
     // TODO: persist to memory within timespan
