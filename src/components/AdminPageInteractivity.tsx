@@ -12,7 +12,7 @@ import {X} from "lucide-react";
 
 import {
     DEFAULT_ADMIN_ANONYMOUS,
-    DEFAULT_ADMIN_GOD,
+    DEFAULT_ADMIN_GOD, DEFAULT_AUTOMOD_ENABLED, DEFAULT_COMMENT_TIMEOUT_MS,
     DEFAULT_GRID_HEIGHT,
     DEFAULT_GRID_WIDTH,
     DEFAULT_PIXEL_TIMEOUT_MS,
@@ -20,10 +20,11 @@ import {
 } from "@/defaults";
 import {
     CONFIG_KEY_ADMIN_ANONYMOUS,
-    CONFIG_KEY_ADMIN_GOD,
+    CONFIG_KEY_ADMIN_GOD, CONFIG_KEY_AUTOMOD_ENABLED,
     CONFIG_KEY_GRID_HEIGHT,
     CONFIG_KEY_GRID_WIDTH,
     CONFIG_KEY_PIXEL_TIMEOUT_MS,
+    CONFIG_KEY_COMMENT_TIMEOUT_MS,
     CONFIG_KEY_READONLY, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER
 } from "@/consts";
 
@@ -620,6 +621,12 @@ const AdminPageInteractivity = () => {
     const [god_checkbox, setGodCheckbox] = useState(DEFAULT_ADMIN_GOD);
     const [anonymous_checkbox, setAnonymousCheckbox] = useState(DEFAULT_ADMIN_ANONYMOUS);
 
+    const [automod_checkbox, setAutomodCheckbox] = useState(DEFAULT_AUTOMOD_ENABLED);
+    const [automod_supported, setAutomodSupported] = useState(false);
+
+    const [chat_timeout_ms_input, setChatTimeoutMsInput] = useState(DEFAULT_COMMENT_TIMEOUT_MS);
+    const [last_chat_timeout_ms_saved, setLastChatTimeoutMsSaved] = useState(DEFAULT_COMMENT_TIMEOUT_MS);
+
     // keep checkbox in sync with actual readonly state
     useEffect(() => {
         setReadonlyCheckbox(is_readonly);
@@ -645,7 +652,7 @@ const AdminPageInteractivity = () => {
         socket.on("config_value", ({key, value}) => {
             switch (key) {
                 case CONFIG_KEY_READONLY:
-                    setIsReadonly(!!value);
+                    setIsReadonly(value !== undefined ? !!value : DEFAULT_READONLY);
                     break;
                 case CONFIG_KEY_GRID_WIDTH:
                     setWidthInput(value || DEFAULT_GRID_WIDTH);
@@ -655,27 +662,40 @@ const AdminPageInteractivity = () => {
                     break;
                 case CONFIG_KEY_PIXEL_TIMEOUT_MS:
                     setPixelTimeoutInput(value || DEFAULT_PIXEL_TIMEOUT_MS);
+                    setLastPixelTimeoutInputSaved(value || DEFAULT_PIXEL_TIMEOUT_MS);
                     break;
                 case CONFIG_KEY_ADMIN_GOD:
-                    setGodCheckbox(!!value);
+                    setGodCheckbox(value !== undefined ? !!value : DEFAULT_ADMIN_GOD);
                     localStorage.setItem(LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER, value ? "true" : "false");
                     break;
                 case CONFIG_KEY_ADMIN_ANONYMOUS:
-                    setAnonymousCheckbox(!!value);
+                    setAnonymousCheckbox(value !== undefined ? !!value : DEFAULT_ADMIN_ANONYMOUS);
+                    break;
+                case CONFIG_KEY_AUTOMOD_ENABLED:
+                    setAutomodCheckbox(value !== undefined ? !!value : DEFAULT_AUTOMOD_ENABLED);
+                    break;
+                case CONFIG_KEY_COMMENT_TIMEOUT_MS:
+                    setChatTimeoutMsInput(value || DEFAULT_COMMENT_TIMEOUT_MS);
+                    setLastChatTimeoutMsSaved(value || DEFAULT_COMMENT_TIMEOUT_MS);
                     break;
             }
         });
+
+        socket.on("automod_support", setAutomodSupported);
 
         socket.emit("check_readonly");
         socket.emit("admin_request_banned_users");
         socket.emit("admin_request_connected_users");
         socket.emit("admin_request_manual_stats");
+        socket.emit("admin_is_automod_supported");
 
         socket.emit("admin_get_config_value", CONFIG_KEY_GRID_WIDTH);
         socket.emit("admin_get_config_value", CONFIG_KEY_GRID_HEIGHT);
         socket.emit("admin_get_config_value", CONFIG_KEY_PIXEL_TIMEOUT_MS);
         socket.emit("admin_get_config_value", CONFIG_KEY_ADMIN_GOD);
         socket.emit("admin_get_config_value", CONFIG_KEY_ADMIN_ANONYMOUS);
+        socket.emit("admin_get_config_value", CONFIG_KEY_AUTOMOD_ENABLED);
+        socket.emit("admin_get_config_value", CONFIG_KEY_COMMENT_TIMEOUT_MS);
 
         return () => {
             socket.disconnect();
@@ -775,27 +795,8 @@ const AdminPageInteractivity = () => {
         [width_input, height_input]
     );
 
-    const [pixel_timeout_input, setPixelTimeoutInput] = useState("");
-
-    const on_save_pixel_timeout_click = useCallback(
-        () => {
-            const timeout = parseInt(String(pixel_timeout_input), 10);
-
-            if (isNaN(timeout) || timeout < 0) {
-                alert(`Invalid timeout: ${pixel_timeout_input}`);
-                return;
-            }
-
-            const confirmed = confirm(`Are you sure want to change pixel timeout to ${timeout}ms? This will not affect existing timeouts.`);
-            if (!confirmed) {
-                return;
-            }
-
-            // submit change
-            socket.emit("admin_set_config_value", {key: CONFIG_KEY_PIXEL_TIMEOUT_MS, value: timeout, is_public: true});
-        },
-        [pixel_timeout_input]
-    );
+    const [pixel_timeout_input, setPixelTimeoutInput] = useState(DEFAULT_PIXEL_TIMEOUT_MS.toString());
+    const [last_pixel_timeout_input_saved, setLastPixelTimeoutInputSaved] = useState(DEFAULT_PIXEL_TIMEOUT_MS.toString());
 
     // TODO: refreshing ban list, refreshing global grid, clearing global grid
     return (
@@ -834,11 +835,31 @@ const AdminPageInteractivity = () => {
                     className="bg-gray-700 border border-gray-500 text-gray-100 text-md rounded-lg py-1 px-2 mx-2 w-32"
                     value={pixel_timeout_input}
                     onChange={(e) => setPixelTimeoutInput(e.target.value)}
-                />
+                    onBlur={() => {
+                        const timeout = parseInt(String(pixel_timeout_input), 10);
 
-                <FancyButton onClick={on_save_pixel_timeout_click}>
-                    Save pixel timeout
-                </FancyButton>
+                        if (isNaN(timeout) || timeout < 0) {
+                            alert(`Invalid timeout: ${pixel_timeout_input}`);
+                            return;
+                        }
+
+                        const confirmed = confirm(`Are you sure want to change pixel timeout to ${timeout}ms? This will not affect existing timeouts.`);
+                        if (!confirmed) {
+                            // revert input
+                            setPixelTimeoutInput(last_pixel_timeout_input_saved);
+                            return;
+                        }
+
+                        setLastPixelTimeoutInputSaved(timeout.toString());
+
+                        // submit change
+                        socket.emit("admin_set_config_value", {
+                            key: CONFIG_KEY_PIXEL_TIMEOUT_MS,
+                            value: timeout,
+                            is_public: true
+                        });
+                    }}
+                />
             </label>
 
             <label>
@@ -918,6 +939,65 @@ const AdminPageInteractivity = () => {
                             socket.emit("admin_set_config_value", {key: CONFIG_KEY_ADMIN_ANONYMOUS, value: new_value, is_public: false});
                         }}
                         className="ml-2"
+                    />
+                </label>
+            </div>
+
+            <h2 className="text-xl font-medium mb-2 mt-4">Chat settings</h2>
+            <div className="flex gap-8">
+                <label>
+                    <span className="underline underline-offset-2 decoration-dotted cursor-help" title="Uses a local AI model on the server to filter extreme and toxic messages.">Automod:</span>
+
+                    <input
+                        type="checkbox"
+                        disabled={!automod_supported}
+                        checked={automod_supported && automod_checkbox}
+                        onChange={(e) => {
+                            const new_value = e.target.checked;
+                            setAutomodCheckbox(new_value);
+
+                            const confirmed = confirm(`Are you sure want to turn ${new_value ? "on" : "off"} automod?`);
+                            if (!confirmed) {
+                                // revert checkbox
+                                setAutomodCheckbox(!new_value);
+                                return;
+                            }
+
+                            // submit change
+                            socket.emit("admin_set_config_value", {key: CONFIG_KEY_AUTOMOD_ENABLED, value: new_value, is_public: false});
+                        }}
+                        className="ml-2"
+                    />
+                </label>
+
+                <label>
+                    Timeout per message (ms):
+
+                    <input
+                        type="number"
+                        className="bg-gray-700 border border-gray-500 text-gray-100 text-md rounded-lg py-1 px-2 mx-2 w-32"
+                        value={chat_timeout_ms_input}
+                        onChange={(e) => setChatTimeoutMsInput(e.target.value)}
+                        onBlur={() => {
+                            const timeout = parseInt(String(chat_timeout_ms_input), 10);
+
+                            if (isNaN(timeout) || timeout < 0) {
+                                alert(`Invalid timeout: ${chat_timeout_ms_input}`);
+                                return;
+                            }
+
+                            const confirmed = confirm(`Are you sure want to change chat timeout to ${timeout}ms? This will not affect existing timeouts.`);
+                            if (!confirmed) {
+                                // revert input
+                                setChatTimeoutMsInput(last_chat_timeout_ms_saved.toString());
+                                return;
+                            }
+
+                            setLastChatTimeoutMsSaved(timeout);
+
+                            // submit change
+                            socket.emit("admin_set_config_value", {key: CONFIG_KEY_COMMENT_TIMEOUT_MS, value: timeout, is_public: true});
+                        }}
                     />
                 </label>
             </div>
@@ -1005,3 +1085,4 @@ export default AdminPageInteractivity;
 // TODO: time lapse from either og image for time sample, or per pixel history
 // TODO: rollback to previous pixel option
 // TODO: give admin ability to purge old pixels from history to reduce db size, but warn them that this means no rollbacks and no per pixel timelapse
+// TODO: some consistency in how these inputs work! perhaps best to make some ui components for each input type to compose together

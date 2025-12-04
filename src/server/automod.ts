@@ -97,3 +97,5 @@ export const check_text = async (text: string): Promise<AutoModResult> => {
         return {status: AutoModStatus.ERROR};
     }
 };
+
+// TODO: fall back to dictionary based filtering

@@ -16,6 +16,7 @@ export * as admin_start_poll from "./admin/start_poll";
 export * as admin_end_poll from "./admin/end_poll";
 export * as admin_trigger_reload from "./admin/trigger_reload";
 export * as admin_telemetry from "./admin/telemetry";
+export * as admin_is_automod_supported from "./admin/is_automod_supported";
 
 export * as check_readonly from "./check_readonly";
 export * as check_timeout from "./check_timeout";

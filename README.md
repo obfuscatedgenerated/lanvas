@@ -10,6 +10,12 @@ Firstly, get Postgres running, create the `lanvas` user and import `lanvas.sql` 
 
 Next, copy `.env.template` to `.env` and fill out the values as described in the file.
 
+Now install the dependencies:
+
+```bash
+npm install
+```
+
 Then you can run the development server:
 
 ```bash
@@ -27,6 +33,16 @@ npm run build
 ```bash
 npm start
 ```
+
+## About automod
+
+The automod system for comments uses a local AI model, [toxic-bert](https://huggingface.co/Xenova/toxic-bert) for classification of extreme and toxic messages. This model is only ever ran on the server.
+
+This feature can be configured from the admin page to turn it on or off on the fly.
+
+Regardless of this config setting, LANvas will attempt to download the model on server startup to ensure it is available when needed.
+
+If you wish to completely disable this, which will not allow you to toggle it during runtime, the `@huggingface/transformers` dependency is optional, so you can use `npm install --no-optional` to skip installing it in the first place.
 
 ## Wishlist
 

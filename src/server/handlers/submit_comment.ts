@@ -51,15 +51,22 @@ export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
         return;
     }
 
+    comment_ratelimits.set(user.sub!, now);
+
     const automod_enabled = get_config(CONFIG_KEY_AUTOMOD_ENABLED, DEFAULT_AUTOMOD_ENABLED);
     if (automod_enabled) {
         const text_check = await check_text(comment);
         if (text_check.status === AutoModStatus.FLAGGED) {
             console.warn(`Automod flagged (${text_check.violating_labels.join(", ")}): ${comment}`);
             socket.emit("comment_rejected", {reason: "automod"});
+
             return;
         } else if (text_check.status === AutoModStatus.ERROR) {
             socket.emit("comment_rejected", {reason: "automod_error"});
+
+            // delete the rate limit entry so they can try again immediately
+            comment_ratelimits.delete(user.sub!);
+
             return;
         }
     }
