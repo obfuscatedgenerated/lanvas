@@ -1,7 +1,9 @@
 import {Suspense} from "react";
 
 import LoginStatus from "@/components/LoginStatus";
-import StatsButtonAndPopup from "@/components/StatsButtonAndPopup";
+import HelpButtonAndPopup, {HelpButtonFallback} from "@/components/HelpButtonAndPopup";
+import StatsButtonAndPopup, {StatsButtonFallback} from "@/components/StatsButtonAndPopup";
+
 import GithubLogo from "@/components/GithubLogo";
 
 const Header = () => {
@@ -16,13 +18,19 @@ const Header = () => {
                     <h1 className="text-xl sm:text-2xl font-bold font-doodle">LANvas {lan_number}</h1>
                 </a>
 
-                <Suspense>
-                    <StatsButtonAndPopup />
-                </Suspense>
+                <div className="flex items-center gap-4">
+                    <Suspense fallback={<HelpButtonFallback />}>
+                        <HelpButtonAndPopup />
+                    </Suspense>
 
-                <a href="https://github.com/obfuscatedgenerated/lanvas" rel="noreferrer noopener" target="_blank" title="View source on GitHub">
-                    <GithubLogo className="h-6 w-6" />
-                </a>
+                    <Suspense fallback={<StatsButtonFallback />}>
+                        <StatsButtonAndPopup />
+                    </Suspense>
+
+                    <a href="https://github.com/obfuscatedgenerated/lanvas" rel="noreferrer noopener" target="_blank" title="View source on GitHub">
+                        <GithubLogo className="h-6 w-6" />
+                    </a>
+                </div>
             </div>
 
             <Suspense fallback="Loading...">
