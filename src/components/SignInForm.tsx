@@ -62,6 +62,17 @@ export default function SignInForm() {
 
                     <p>At the end of the event, all pixels will be anonymised and all user details on record will be erased.</p>
 
+                    <p>Users have the ability to place live comments on the canvas. <strong>Comments are ephemeral and are not stored.</strong> They are only transmitted to other connected users in real-time. The data included in a comment is:</p>
+                    <ul className="list-disc">
+                        <li><strong>Your Discord User ID, username, and avatar URL</strong> to attribute comments to you.</li>
+                        <li><strong>The coordinates (x, y) of the pixel</strong> the comment is attached to (including decimal offsets).</li>
+                        <li><strong>The content of the comment</strong> you wrote.</li>
+                    </ul>
+
+                    <p>Comments may be filtered by automatic moderation systems. These systems are local to the service and do not transmit data to third parties.</p>
+
+                    <p>Known &quot;good&quot; and &quot;bad&quot; comment content may be temporarily cached to improve moderation performance. This cache is ephemeral and is discarded when the service is restarted. The contents of the cache cannot be viewed, it simply exists to speed up the automatic moderation process.</p>
+
                     <p>For service integrity, prevent abuse, and facilitate moderation, site administrators have access to real-time session data. This includes your <strong>Socket ID, Discord User ID, username, and the specific page you are currently viewing</strong>.</p>
 
                     <p><strong>This session data is ephemeral.</strong> It is retained only for the duration of your active WebSocket connection and is immediately discarded when you disconnect or close the page.</p>
