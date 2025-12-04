@@ -6,6 +6,7 @@ import CommentBaseTooltip from "@/components/CommentBaseTooltip";
 
 import {socket} from "@/socket";
 import {DEFAULT_COMMENT_TIMEOUT_MS} from "@/defaults";
+import {LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@/consts";
 
 export interface CommentComposerPosition {
     x: number;
@@ -75,6 +76,10 @@ const CommentComposer = ({position, on_submitted, on_cancel, className = ""}: Co
         });
 
         socket.on("comment_timeout_info", ({started, ends}: {started: number; ends: number}) => {
+            if (localStorage.getItem(LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER) === "true") {
+                return;
+            }
+
             const now = Date.now();
 
             // set timeout data
@@ -116,22 +121,24 @@ const CommentComposer = ({position, on_submitted, on_cancel, className = ""}: Co
                 y,
                 comment: input_value.trim(),
             });
-            
-            // set timeout data
-            const now = Date.now();
-            setTimeoutStarted(now);
-            setTimedOutUntil(now + comment_timeout_ms);
 
-            // and set a js timeout to clear it after the timeout period
-            if (timeout_ref.current) {
-                clearTimeout(timeout_ref.current);
+            if (localStorage.getItem(LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER) !== "true") {
+                // set timeout data
+                const now = Date.now();
+                setTimeoutStarted(now);
+                setTimedOutUntil(now + comment_timeout_ms);
+
+                // and set a js timeout to clear it after the timeout period
+                if (timeout_ref.current) {
+                    clearTimeout(timeout_ref.current);
+                }
+
+                timeout_ref.current = setTimeout(() => {
+                    setTimeoutStarted(null);
+                    setTimedOutUntil(null);
+                    timeout_ref.current = null;
+                }, comment_timeout_ms);
             }
-
-            timeout_ref.current = setTimeout(() => {
-                setTimeoutStarted(null);
-                setTimedOutUntil(null);
-                timeout_ref.current = null;
-            }, comment_timeout_ms);
             
             // fire any post submit callback
             if (on_submitted) {

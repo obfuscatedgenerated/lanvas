@@ -64,6 +64,10 @@ export default function Home() {
         socket.on("connect", () => console.log("Connected!", socket.id));
 
         socket.on("timeout_info", (info) => {
+            if (localStorage.getItem(LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER) === "true") {
+                return;
+            }
+
             // update timeout so far
             setTimeoutStartTime(info.started);
             setTimeoutEndTime(info.ends);

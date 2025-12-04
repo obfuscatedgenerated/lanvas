@@ -5,9 +5,10 @@ import type {Author, Comment} from "@/types";
 import {is_user_banned} from "@/server/banlist";
 import {AutoModStatus, check_text} from "@/server/automod";
 import {comment_timeout_user, get_calculated_comment_timeout, remove_comment_timeout} from "@/server/timeouts";
+
 import {get_config} from "@/server/config";
-import {CONFIG_KEY_AUTOMOD_ENABLED} from "@/consts";
-import {DEFAULT_AUTOMOD_ENABLED} from "@/defaults";
+import {CONFIG_KEY_ADMIN_GOD, CONFIG_KEY_AUTOMOD_ENABLED} from "@/consts";
+import {DEFAULT_ADMIN_GOD, DEFAULT_AUTOMOD_ENABLED} from "@/defaults";
 
 export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
     const user = socket.user!;
@@ -38,12 +39,16 @@ export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
         return;
     }
 
+    const is_admin = user.sub === process.env.DISCORD_ADMIN_USER_ID;
+    const god = is_admin && get_config(CONFIG_KEY_ADMIN_GOD, DEFAULT_ADMIN_GOD);
+
     // check if rate limited
-    // TODO: let admin bypass rate limit
-    const timeout = get_calculated_comment_timeout(user.sub!);
-    if (timeout) {
-        socket.emit("comment_rejected", {reason: "timeout", wait_time: timeout.remaining});
-        return;
+    if (!god) {
+        const timeout = get_calculated_comment_timeout(user.sub!);
+        if (timeout) {
+            socket.emit("comment_rejected", {reason: "timeout", wait_time: timeout.remaining});
+            return;
+        }
     }
 
     comment_timeout_user(user.sub!);
