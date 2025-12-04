@@ -3,7 +3,8 @@
 import {SessionProvider, signOut, useSession} from "next-auth/react"
 import Image from "next/image";
 import {UserWithAdminFlag} from "@/auth";
-import FancyButton, {fancy_button_class} from "@/components/FancyButton";
+import {fancy_button_class} from "@/components/FancyButton";
+import {LogOut} from "lucide-react";
 
 const LoginStatusInternal = () => {
     const { data: session, status } = useSession();
@@ -15,7 +16,7 @@ const LoginStatusInternal = () => {
 
     if (status === "authenticated") {
         return (
-            <div className="flex items-center gap-1 sm:gap-3">
+            <div className="flex items-center gap-3">
                 <Image src={user.image || ''} alt="" draggable="false" width={32} height={32} className="rounded-full" />
 
                 <div className="hidden sm:text-lg sm:flex sm:flex-row sm:items-center sm:gap-1">
@@ -29,9 +30,9 @@ const LoginStatusInternal = () => {
                     </a>
                 }
 
-                <FancyButton onClick={() => signOut()}>
-                    Sign out
-                </FancyButton>
+                <button onClick={() => signOut()} className="cursor-pointer pr-1" title="Sign out">
+                    <LogOut />
+                </button>
             </div>
         )
     }
