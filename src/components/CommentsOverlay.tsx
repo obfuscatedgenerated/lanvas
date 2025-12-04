@@ -17,6 +17,7 @@ const FADE_DURATION_MS = 15000; // comments fade out over the last 15 seconds
 
 const ExpiryTransparencyCommentTooltip = ({comment}: {comment: CommentWithExpiry}) => {
     const [opacity_class, setOpacityClass] = useState("opacity-65");
+    const [stop_rendering, setStopRendering] = useState(false);
 
     useEffect(() => {
         // start fading out FADE_DURATION_MS before expiry
@@ -28,10 +29,19 @@ const ExpiryTransparencyCommentTooltip = ({comment}: {comment: CommentWithExpiry
             setOpacityClass("opacity-0");
         }, time_until_fade_start > 0 ? time_until_fade_start : 0);
 
+        const stop_rendering_timeout = setTimeout(() => {
+            setStopRendering(true);
+        }, comment.expiry.getTime() - now);
+
         return () => {
             clearTimeout(fade_timeout);
+            clearTimeout(stop_rendering_timeout);
         };
     }, [comment]);
+
+    if (stop_rendering) {
+        return null;
+    }
 
     return <CommentTooltip positioning="absolute" comment={comment} className={`transition-opacity duration-15000 ${opacity_class}`} />;
 }
