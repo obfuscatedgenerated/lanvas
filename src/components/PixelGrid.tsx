@@ -142,11 +142,13 @@ interface PixelGridProps {
     on_transformed?: (transform_ref: ReactZoomPanPinchRef, transform_state: { scale: number; positionX: number; positionY: number; }) => void;
 
     tooltip?: boolean;
+
+    comments_on_canvas?: boolean;
 }
 
 type AuthorData = (Author | null)[][];
 
-const PixelGrid = ({ ref, current_color, can_submit = true, on_pixel_submitted, on_pixel_update_rejected, on_right_click, tooltip =  true, on_transformed }: PixelGridProps) => {
+const PixelGrid = ({ ref, current_color, can_submit = true, on_pixel_submitted, on_pixel_update_rejected, on_right_click, tooltip =  true, on_transformed, comments_on_canvas = true }: PixelGridProps) => {
     const [grid_width, setGridWidth] = useState(0);
     const [grid_height, setGridHeight] = useState(0);
 
@@ -450,7 +452,7 @@ const PixelGrid = ({ ref, current_color, can_submit = true, on_pixel_submitted, 
                         grid_width={grid_width}
                     />
 
-                    <CommentsOverlay pixel_grid_ref_api={ref_api} />
+                    <CommentsOverlay visible={comments_on_canvas} pixel_grid_ref_api={ref_api} />
                 </TransformComponent>
             </TransformWrapper>
         </CursorTooltipWrapper>

@@ -48,7 +48,7 @@ const ExpiryTransparencyCommentTooltip = ({comment}: {comment: CommentWithExpiry
 
 // TODO: separate out author data for space efficiency, maybe even combine with pixel author data
 
-const CommentsOverlay = ({pixel_grid_ref_api}: {pixel_grid_ref_api: PixelGridRef}) => {
+const CommentsOverlay = ({pixel_grid_ref_api, visible = true}: {pixel_grid_ref_api: PixelGridRef; visible?: boolean}) => {
     const [comments, setComments] = useState<CommentWithExpiry[]>([]);
 
     // register socket listener
@@ -88,7 +88,7 @@ const CommentsOverlay = ({pixel_grid_ref_api}: {pixel_grid_ref_api: PixelGridRef
     }, [pixel_grid_ref_api]);
 
     return (
-        <div className="absolute">
+        <div className={`absolute transition-opacity ${visible ? "opacity-100" : "opacity-0"}`}>
             {comments.map((comment, index) => (
                 <ExpiryTransparencyCommentTooltip key={index} comment={comment} />
             ))}

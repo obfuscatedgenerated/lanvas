@@ -37,6 +37,8 @@ export default function Home() {
     const [comment_compose_coords, setCommentComposeCoords] = useState<CommentComposePosition | null>(null);
     const [comment_compose_visible, setCommentComposeVisible] = useState(false);
 
+    const [comments_on_canvas, setCommentsOnCanvas] = useState<boolean>(true);
+
     // when pixel is submitted, switch to show timeout mode for the widget
     const handle_pixel_submitted = useCallback(
         () => {
@@ -233,10 +235,12 @@ export default function Home() {
                     //tooltip={comment_compose_coords === null}
 
                     on_transformed={on_transform}
+
+                    comments_on_canvas={comments_on_canvas}
                 />
             </div>
 
-            <FloatingCommentControl />
+            <FloatingCommentControl comments_on_canvas={comments_on_canvas} setCommentsOnCanvas={setCommentsOnCanvas} />
 
             {!is_readonly &&
                 <FloatingWidget

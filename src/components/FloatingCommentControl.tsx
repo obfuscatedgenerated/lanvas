@@ -25,7 +25,12 @@ const CommentLine = ({comment}: {comment: Comment}) => (
 
 // TODO: separate out author data for space efficiency, maybe even combine with pixel author data
 
-const FloatingCommentControl = () => {
+interface FloatingCommentControlProps {
+    comments_on_canvas: boolean;
+    setCommentsOnCanvas: (enabled: boolean) => void;
+}
+
+const FloatingCommentControl = ({comments_on_canvas, setCommentsOnCanvas}: FloatingCommentControlProps) => {
     const [recent_comments, setRecentComments] = useState<Comment[]>([]);
 
     // register socket listener
@@ -42,8 +47,6 @@ const FloatingCommentControl = () => {
         });
     }, []);
 
-    // TODO: implement the comments on canvas toggle functionality
-
     return (
         <details className="group font-sans fixed bottom-4 left-4 bg-neutral-900/70 backdrop-blur-sm rounded-lg p-4 max-w-md w-full space-y-2">
             <summary title="Click to expand" className="cursor-pointer">
@@ -51,7 +54,13 @@ const FloatingCommentControl = () => {
                     <span className="text-white font-semibold">Recent comments</span>
 
                     <label title="" className="cursor-pointer">
-                        <input type="checkbox" className="mr-2" />
+                        <input
+                            type="checkbox"
+                            className="mr-2"
+
+                            checked={comments_on_canvas}
+                            onChange={(e) => setCommentsOnCanvas(e.target.checked)}
+                        />
 
                         Comments on canvas
                     </label>
