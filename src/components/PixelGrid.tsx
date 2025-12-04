@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useRef, useState, useEffect, useCallback, useImperativeHandle} from "react";
+import {useRef, useState, useEffect, useCallback, useImperativeHandle, useMemo} from "react";
 import {
     TransformWrapper,
     TransformComponent,
@@ -342,7 +342,7 @@ const PixelGrid = ({ ref, current_color, can_submit = true, on_pixel_submitted, 
     );
 
     // expose refs and convenience funcs via imperative handle
-    useImperativeHandle(ref, () => ({
+    const ref_api = useMemo(() => ({
         get_transform_wrapper: () => transform_wrapper_ref.current,
         get_grid_canvas: () => grid_canvas_ref.current,
 
@@ -410,6 +410,8 @@ const PixelGrid = ({ ref, current_color, can_submit = true, on_pixel_submitted, 
         grid_to_canvas_space: (pixel_or_true_x: number, pixel_or_true_y: number) => grid_to_canvas_space(pixel_or_true_x, pixel_or_true_y, PIXEL_SIZE),
     }), [resolve_pixel]);
 
+    useImperativeHandle(ref, () => ref_api, [ref_api]);
+
     const can_hover = useMediaQuery("(hover: hover)");
 
     return (
@@ -448,7 +450,7 @@ const PixelGrid = ({ ref, current_color, can_submit = true, on_pixel_submitted, 
                         grid_width={grid_width}
                     />
 
-                    <CommentsOverlay />
+                    <CommentsOverlay pixel_grid_ref_api={ref_api} />
                 </TransformComponent>
             </TransformWrapper>
         </CursorTooltipWrapper>

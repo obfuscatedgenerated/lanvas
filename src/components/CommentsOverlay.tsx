@@ -6,6 +6,7 @@ import CommentTooltip from "@/components/CommentTooltip";
 import type { Comment } from "@/types";
 
 import { socket } from "@/socket";
+import type {PixelGridRef} from "@/components/PixelGrid";
 
 export interface CommentWithExpiry extends Comment {
     expiry: Date;
@@ -32,11 +33,10 @@ const ExpiryTransparencyCommentTooltip = ({comment}: {comment: CommentWithExpiry
         };
     }, [comment]);
 
-    // TODO: need to translate position from grid coords to rect or maybe canvas coords
     return <CommentTooltip positioning="absolute" comment={comment} className={`transition-opacity duration-15000 ${opacity_class}`} />;
 }
 
-const CommentsOverlay = () => {
+const CommentsOverlay = ({pixel_grid_ref_api}: {pixel_grid_ref_api: PixelGridRef}) => {
     const [comments, setComments] = useState<CommentWithExpiry[]>([]);
 
     // register socket listener
@@ -47,17 +47,29 @@ const CommentsOverlay = () => {
                 expiry: new Date(Date.now() + EXPIRY_TIME_MS),
             };
 
+            // transform grid coords to canvas coords
+            const {x: grid_x, y: grid_y} = comment;
+            const {canvas_x, canvas_y} = pixel_grid_ref_api.grid_to_canvas_space(grid_x, grid_y);
+
+            comment_with_expiry.x = canvas_x;
+            comment_with_expiry.y = canvas_y;
+
             setComments((prev_comments) => [...prev_comments, comment_with_expiry]);
         });
 
         // periodically clean up expired comments
-        setInterval(() => {
+        const interval = setInterval(() => {
             const now = new Date();
             setComments((prev_comments) =>
                 prev_comments.filter((comment) => comment.expiry > now)
             );
         }, 5000);
-    }, []);
+
+        return () => {
+            socket.off("comment");
+            clearInterval(interval);
+        };
+    }, [pixel_grid_ref_api]);
 
     return (
         <div className="absolute">
