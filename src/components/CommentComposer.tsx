@@ -74,8 +74,30 @@ const CommentComposer = ({position, on_submitted, on_cancel, className = ""}: Co
             }
         });
 
+        socket.on("comment_timeout_info", ({started, ends}: {started: number; ends: number}) => {
+            const now = Date.now();
+
+            // set timeout data
+            setTimeoutStarted(started);
+            setTimedOutUntil(ends);
+
+            // and set a js timeout to clear it after the timeout period
+            if (timeout_ref.current) {
+                clearTimeout(timeout_ref.current);
+            }
+
+            timeout_ref.current = setTimeout(() => {
+                setTimeoutStarted(null);
+                setTimedOutUntil(null);
+                timeout_ref.current = null;
+            }, ends - now);
+        });
+
         // request initial config value
         socket.emit("get_public_config_value", "comment_timeout_ms");
+
+        // check for existing timeout
+        socket.emit("check_comment_timeout");
     }, []);
 
     const handle_submit = useCallback(

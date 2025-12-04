@@ -28,3 +28,4 @@ export * as request_full_grid from "./request_full_grid";
 export * as poll_vote from "./poll_vote";
 export * as check_poll from "./check_poll";
 export * as submit_comment from "./submit_comment";
+export * as check_comment_timeout from "./check_comment_timeout";

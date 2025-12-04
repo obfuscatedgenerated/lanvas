@@ -1,5 +1,5 @@
 import type { SocketHandlerFunction } from "@/server/types";
-import {get_calculated_pixel_timeout} from "@/server/timeouts";
+import {get_calculated_comment_timeout} from "@/server/timeouts";
 import {get_config} from "@/server/config";
 
 import {CONFIG_KEY_ADMIN_GOD} from "@/consts";
@@ -19,8 +19,8 @@ export const handler: SocketHandlerFunction = ({socket}) => {
         return;
     }
 
-    const timeout = get_calculated_pixel_timeout(user.sub);
+    const timeout = get_calculated_comment_timeout(user.sub);
     if (timeout) {
-        socket.emit("timeout_info", timeout);
+        socket.emit("comment_timeout_info", timeout);
     }
 }
