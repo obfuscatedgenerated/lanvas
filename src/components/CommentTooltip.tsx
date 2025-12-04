@@ -27,7 +27,7 @@ const CommentTooltip = ({comment, className = "", style, positioning = "fixed"}:
                 :
             </span>
 
-            <span className="break-all">{comment.comment}</span>
+            <span className="break-all mt-[calc(var(--spacing)*0.633)]">{comment.comment}</span>
         </CommentBaseTooltip>
     );
 }

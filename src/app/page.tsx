@@ -14,6 +14,7 @@ import {DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
 import {CONFIG_KEY_PIXEL_TIMEOUT_MS, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@/consts";
 import FloatingPoll from "@/components/FloatingPoll";
 import CommentComposerTooltip from "@/components/CommentComposerTooltip";
+import FloatingCommentControl from "@/components/FloatingCommentControl";
 
 interface CommentComposePosition {
     x: number;
@@ -233,19 +234,21 @@ export default function Home() {
 
                     on_transformed={on_transform}
                 />
-
-                {!is_readonly &&
-                    <FloatingWidget
-                        mode={timeout_start_time ? "timeout" : "color"}
-
-                        current_color={current_color}
-                        on_color_change={setCurrentColor}
-
-                        start_time={timeout_start_time ?? -1}
-                        duration={(timeout_end_time && timeout_start_time) ? (timeout_end_time - timeout_start_time) : -1}
-                    />
-                }
             </div>
+
+            <FloatingCommentControl />
+
+            {!is_readonly &&
+                <FloatingWidget
+                    mode={timeout_start_time ? "timeout" : "color"}
+
+                    current_color={current_color}
+                    on_color_change={setCurrentColor}
+
+                    start_time={timeout_start_time ?? -1}
+                    duration={(timeout_end_time && timeout_start_time) ? (timeout_end_time - timeout_start_time) : -1}
+                />
+            }
 
             <FloatingHelp />
         </>

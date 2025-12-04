@@ -25,7 +25,7 @@ const CommentBaseTooltip = ({position, className = "", tooltip_className = "", s
         <div className={`${positioning} z-99 ${className}`} style={merged_style} onBlur={on_blur}>
             <ArrowUpLeft className="relative stroke-neutral-800 h-6 w-6" />
 
-            <TooltipStyleDiv className={`relative left-4 -top-2 flex items-center gap-2 ${tooltip_className}`}>
+            <TooltipStyleDiv className={`font-sans relative left-4 -top-2 flex items-center gap-2 ${tooltip_className}`}>
                 {children}
             </TooltipStyleDiv>
         </div>

@@ -51,7 +51,7 @@ const CommentsOverlay = ({pixel_grid_ref_api}: {pixel_grid_ref_api: PixelGridRef
 
     // register socket listener
     useEffect(() => {
-        socket.on("comment", (comment: Comment) => {
+        const handle_new_comment = (comment: Comment) => {
             const comment_with_expiry: CommentWithExpiry = {
                 ...comment,
                 expiry: new Date(Date.now() + EXPIRY_TIME_MS),
@@ -65,7 +65,9 @@ const CommentsOverlay = ({pixel_grid_ref_api}: {pixel_grid_ref_api: PixelGridRef
             comment_with_expiry.y = canvas_y;
 
             setComments((prev_comments) => [...prev_comments, comment_with_expiry]);
-        });
+        }
+
+        socket.on("comment", handle_new_comment);
 
         // periodically clean up expired comments
         const interval = setInterval(() => {
@@ -78,7 +80,7 @@ const CommentsOverlay = ({pixel_grid_ref_api}: {pixel_grid_ref_api: PixelGridRef
         }, 5000);
 
         return () => {
-            socket.off("comment");
+            socket.off("comment", handle_new_comment);
             clearInterval(interval);
         };
     }, [pixel_grid_ref_api]);
