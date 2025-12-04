@@ -3,6 +3,11 @@ import {get_grid_size} from "@/server/grid";
 
 import type {Author, Comment} from "@/types";
 import {is_user_banned} from "@/server/banlist";
+import {get_config} from "@/server/config";
+import {CONFIG_KEY_COMMENT_TIMEOUT_MS} from "@/consts";
+import {DEFAULT_COMMENT_TIMEOUT_MS} from "@/defaults";
+
+const comment_ratelimits = new Map<string, number>();
 
 export const handler: SocketHandlerFunction = ({io, payload, socket}) => {
     const user = socket.user!;
@@ -33,6 +38,18 @@ export const handler: SocketHandlerFunction = ({io, payload, socket}) => {
         return;
     }
 
+    // check if rate limited
+    // TODO: add comment rate limit duration to admin page
+    // TODO: let admin bypass rate limit
+    const now = Date.now();
+    const last_comment_time = comment_ratelimits.get(user.sub!) || 0;
+    const rate_limit = get_config(CONFIG_KEY_COMMENT_TIMEOUT_MS, DEFAULT_COMMENT_TIMEOUT_MS);
+
+    if (now - last_comment_time < rate_limit) {
+        socket.emit("comment_rejected", {reason: "rate_limited", retry_after_ms: rate_limit - (now - last_comment_time)});
+        return;
+    }
+
     const author: Author = {
         user_id: user.sub!,
         name: user.name || "Unknown",
@@ -46,7 +63,6 @@ export const handler: SocketHandlerFunction = ({io, payload, socket}) => {
     console.log(`[${author.name} (${author.user_id})] (${trimmed_x}, ${trimmed_y}): ${comment}`);
 
     // TODO: separate chat banning
-    // TODO: comment rate limiting
     // TODO: check text appropriateness with tensorflow toxicity model or basic dictionary filter
     // TODO: persist to memory within timespan
     // TODO: should it support admin anonymous comments?

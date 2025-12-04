@@ -6,5 +6,6 @@ export const CONFIG_KEY_READONLY = "readonly";
 export const CONFIG_KEY_PIXEL_TIMEOUT_MS = "pixel_timeout_ms";
 export const CONFIG_KEY_ADMIN_GOD = "admin_god";
 export const CONFIG_KEY_ADMIN_ANONYMOUS = "admin_anonymous";
+export const CONFIG_KEY_COMMENT_TIMEOUT_MS = "comment_timeout_ms";
 
 export const LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER = "skip_client_timer";
