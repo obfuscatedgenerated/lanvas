@@ -27,7 +27,7 @@ const CommentTooltip = ({comment, className = "", style, positioning = "fixed"}:
                 :
             </span>
 
-            <span className="break-all">{comment.comment}</span>
+            <span className="break-words min-w-0">{comment.comment}</span>
         </CommentBaseTooltip>
     );
 }
