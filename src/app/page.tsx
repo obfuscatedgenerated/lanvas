@@ -2,9 +2,9 @@
 
 // it's all interactivity anyway, may as well be a client component and we just inline the state here
 
-import {useState, useCallback, useEffect} from "react";
+import {useState, useCallback, useEffect, useRef} from "react";
 
-import PixelGrid, {ResolvedPixel} from "@/components/PixelGrid";
+import PixelGrid, {type PixelGridRef, type ResolvedPixel} from "@/components/PixelGrid";
 import FloatingWidget from "@/components/FloatingWidget";
 import FloatingHelp from "@/components/FloatingHelp";
 import FloatingAdminMessage from "@/components/FloatingAdminMessage";
@@ -20,11 +20,8 @@ import CommentTooltip from "@/components/CommentTooltip";
 interface CommentComposePosition {
     x: number;
     y: number;
-    canvas_x: number;
-    canvas_y: number;
-    rect_x: number;
-    rect_y: number;
-    source_rect: DOMRect;
+    grid_x: number;
+    grid_y: number;
 }
 
 export default function Home() {
@@ -35,6 +32,8 @@ export default function Home() {
 
     const [is_readonly, setIsReadonly] = useState(false);
     const [pixel_timeout_ms, setPixelTimeoutMs] = useState(DEFAULT_PIXEL_TIMEOUT_MS);
+
+    const pixel_grid_ref = useRef<PixelGridRef | null>(null);
 
     const [comment_compose_coords, setCommentComposeCoords] = useState<CommentComposePosition | null>(null);
     const [comment_compose_visible, setCommentComposeVisible] = useState(false);
@@ -136,14 +135,9 @@ export default function Home() {
                 x: event.clientX,
                 y: event.clientY,
 
-                // x and y in terms of canvas scale
-                canvas_x: pixel.true_x,
-                canvas_y: pixel.true_y,
-
-                // x and y in terms of canvas rect (for positioning)
-                rect_x: pixel.rect_x,
-                rect_y: pixel.rect_y,
-                source_rect: pixel.source_rect,
+                // x and y in terms of grid coords
+                grid_x: pixel.true_x,
+                grid_y: pixel.true_y,
             });
             setCommentComposeVisible(true);
         },
@@ -152,36 +146,23 @@ export default function Home() {
 
     // update tooltip position on canvas transform
     const on_transform = useCallback(
-        ({canvas_ref}: {canvas_ref: GridCanvasRef | null}) => {
-            if (!canvas_ref || !comment_compose_coords) {
+        () => {
+            if (!pixel_grid_ref.current || !comment_compose_coords) {
                 return;
             }
 
-            const canvas = canvas_ref.get_canvas();
-            if (!canvas) {
-                return;
-            }
+            const {grid_x, grid_y} = comment_compose_coords;
 
-            const old_rect = comment_compose_coords.source_rect;
-            const new_rect = canvas.getBoundingClientRect();
-
-            // determine the original ratios of rect_x and rect_y to the source rect
-            const ratio_x = comment_compose_coords.rect_x / old_rect.width;
-            const ratio_y = comment_compose_coords.rect_y / old_rect.height;
-
-            // apply ratio to calculate new rect_x and rect_y based on new rect size
-            const new_rect_x = ratio_x * new_rect.width;
-            const new_rect_y = ratio_y * new_rect.height;
-
-            // TODO: could we expose info in the ref of pixelgrid to simplify this significantly?
+            // recalculate screen position of stored coords
+            const {canvas_x, canvas_y} = pixel_grid_ref.current.grid_to_canvas_space(grid_x, grid_y);
+            const {rect_x, rect_y} = pixel_grid_ref.current.canvas_to_rect_space(canvas_x, canvas_y);
+            const {screen_x, screen_y} = pixel_grid_ref.current.rect_to_screen_space(rect_x, rect_y);
 
             setCommentComposeCoords({
-                ...comment_compose_coords,
-                rect_x: new_rect_x,
-                rect_y: new_rect_y,
-                x: new_rect_x + new_rect.left,
-                y: new_rect_y + new_rect.top,
-                source_rect: new_rect,
+                x: screen_x,
+                y: screen_y,
+                grid_x,
+                grid_y,
             });
         },
         [comment_compose_coords]
@@ -206,8 +187,8 @@ export default function Home() {
             }
 
             // trim the x and y to 3 decimal places to minimise packet size
-            const x = Math.round((comment_compose_coords.canvas_x + Number.EPSILON) * 1000) / 1000;
-            const y = Math.round((comment_compose_coords.canvas_y + Number.EPSILON) * 1000) / 1000;
+            const x = Math.round((comment_compose_coords.grid_x + Number.EPSILON) * 1000) / 1000;
+            const y = Math.round((comment_compose_coords.grid_y + Number.EPSILON) * 1000) / 1000;
 
             console.log("Submitting comment:", comment, "x:", x, "y:", y);
             socket.emit("submit_comment", {
@@ -237,6 +218,8 @@ export default function Home() {
 
             <div className="flex-1">
                 <PixelGrid
+                    ref={pixel_grid_ref}
+
                     current_color={current_color}
 
                     // don't allow submitting if readonly or in timeout

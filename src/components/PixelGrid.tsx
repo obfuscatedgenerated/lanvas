@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useEffect, useCallback } from "react";
+import React, {useRef, useState, useEffect, useCallback, useImperativeHandle} from "react";
 import {
     TransformWrapper,
     TransformComponent,
@@ -31,7 +31,105 @@ export interface ResolvedPixel {
     source_rect: DOMRect; // the canvas bounding rect that rect_x and rect_y are relative to
 }
 
+export interface PixelGridRef {
+    get_transform_wrapper: () => ReactZoomPanPinchContentRef | null;
+    get_grid_canvas: () => GridCanvasRef | null;
+    resolve_pixel: (screen_x: number, screen_y: number) => ResolvedPixel | null;
+
+    screen_to_rect_space: (screen_x: number, screen_y: number) => { rect_x: number, rect_y: number };
+    rect_to_screen_space: (rect_x: number, rect_y: number) => { screen_x: number, screen_y: number };
+
+    rect_to_canvas_space: (rect_x: number, rect_y: number) => { canvas_x: number, canvas_y: number };
+    canvas_to_rect_space: (canvas_x: number, canvas_y: number) => { rect_x: number, rect_y: number };
+
+    canvas_to_grid_space: (canvas_x: number, canvas_y: number) => { pixel_x: number, pixel_y: number, true_x: number, true_y: number };
+    grid_to_canvas_space: (pixel_or_true_x: number, pixel_or_true_y: number) => { canvas_x: number, canvas_y: number };
+}
+
+
+// absolute screen position to position relative to the canvas bounding rect (as it can be transformed via user zoom/pan)
+export const screen_to_rect_space = (
+    screen_x: number,
+    screen_y: number,
+    rect: DOMRect
+) => ({
+    rect_x: screen_x - rect.left,
+    rect_y: screen_y - rect.top,
+});
+
+// position relative to the canvas bounding rect to absolute screen position
+export const rect_to_screen_space = (
+    rect_x: number,
+    rect_y: number,
+    rect: DOMRect
+) => ({
+    screen_x: rect_x + rect.left,
+    screen_y: rect_y + rect.top,
+});
+
+// position relative to the canvas bounding rect to position relative to the actual canvas bitmap pixels (as they are supersampled from the actual grid data)
+export const rect_to_canvas_space = (
+    rect_x: number,
+    rect_y: number,
+    canvas: HTMLCanvasElement,
+    rect: DOMRect
+) => {
+    const scale_x = canvas.width / rect.width;
+    const scale_y = canvas.height / rect.height;
+
+    return {
+        canvas_x: rect_x * scale_x,
+        canvas_y: rect_y * scale_y
+    };
+};
+
+// canvas bitmap pixel position to position relative to the canvas bounding rect
+export const canvas_to_rect_space = (
+    canvas_x: number,
+    canvas_y: number,
+    canvas: HTMLCanvasElement,
+    rect: DOMRect
+) => {
+    const scale_x = rect.width / canvas.width;
+    const scale_y = rect.height / canvas.height;
+
+    return {
+        rect_x: canvas_x * scale_x,
+        rect_y: canvas_y * scale_y
+    };
+}
+
+// canvas bitmap pixel position to grid pixel position
+export const canvas_to_grid_space = (
+    canvas_x: number,
+    canvas_y: number,
+    pixel_size = PIXEL_SIZE
+) => {
+    const true_x = canvas_x / pixel_size;
+    const true_y = canvas_y / pixel_size;
+
+    return {
+        pixel_x: Math.floor(true_x),
+        pixel_y: Math.floor(true_y),
+        true_x,
+        true_y
+    };
+};
+
+export const grid_to_canvas_space = (
+    pixel_or_true_x: number,
+    pixel_or_true_y: number,
+    pixel_size = PIXEL_SIZE
+) => {
+    return {
+        canvas_x: pixel_or_true_x * pixel_size,
+        canvas_y: pixel_or_true_y * pixel_size
+    };
+}
+
 interface PixelGridProps {
+    ref?: React.RefObject<PixelGridRef | null>;
+
     current_color: string;
     can_submit?: boolean;
 
@@ -40,23 +138,14 @@ interface PixelGridProps {
     
     on_right_click?: (resolved_pixel: ResolvedPixel | null, event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => void;
 
-    on_transformed?: ({ transform_ref, transform_wrapper_ref, transform_state, canvas_ref }: {
-        transform_ref: ReactZoomPanPinchRef | null;
-        transform_wrapper_ref: ReactZoomPanPinchContentRef | null;
-        transform_state: {
-            scale: number;
-            positionX: number;
-            positionY: number;
-        };
-        canvas_ref: GridCanvasRef | null;
-    }) => void;
+    on_transformed?: (transform_ref: ReactZoomPanPinchRef, transform_state: { scale: number; positionX: number; positionY: number; }) => void;
 
     tooltip?: boolean;
 }
 
 type AuthorData = (Author | null)[][];
 
-const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pixel_update_rejected, on_right_click, tooltip =  true, on_transformed }: PixelGridProps) => {
+const PixelGrid = ({ ref, current_color, can_submit = true, on_pixel_submitted, on_pixel_update_rejected, on_right_click, tooltip =  true, on_transformed }: PixelGridProps) => {
     const [grid_width, setGridWidth] = useState(0);
     const [grid_height, setGridHeight] = useState(0);
 
@@ -64,7 +153,6 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
     const author_data = useRef<AuthorData>([]);
 
     const grid_canvas_ref = useRef<GridCanvasRef>(null);
-
     const transform_wrapper_ref = useRef<ReactZoomPanPinchContentRef>(null);
 
     // center transform on mount or size change
@@ -142,7 +230,7 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
         }
     }, [on_pixel_update_rejected]);
 
-    const resolve_pixel = useCallback(({clientX, clientY}: {clientX: number, clientY: number}): ResolvedPixel | null => {
+    const resolve_pixel = useCallback((screen_x: number, screen_y: number): ResolvedPixel | null => {
         if (!grid_canvas_ref.current) return null;
         
         const canvas = grid_canvas_ref.current.get_canvas();
@@ -151,25 +239,26 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
         const rect = canvas.getBoundingClientRect();
 
         // calculate click position relative to canvas (the bounding rect will move with panning/zooming)
-        const click_x = clientX - rect.left;
-        const click_y = clientY - rect.top;
+        const {rect_x, rect_y} = screen_to_rect_space(screen_x, screen_y, rect);
 
-        // adjust for bounding rect scale
-        const rect_scale_x = canvas.width / rect.width;
-        const rect_scale_y = canvas.height / rect.height;
-        const adjusted_x = click_x * rect_scale_x;
-        const adjusted_y = click_y * rect_scale_y;
+        // adjust for bounding rect scale (thus actual canvas bitmap pixels)
+        const {canvas_x, canvas_y} = rect_to_canvas_space(rect_x, rect_y, canvas, rect);
 
-        // get closest pixel
-        const true_x = adjusted_x / PIXEL_SIZE;
-        const true_y = adjusted_y / PIXEL_SIZE;
-        const pixel_x = Math.floor(true_x);
-        const pixel_y = Math.floor(true_y);
+        // get the grid references for the clicked pixel
+        const {pixel_x, pixel_y, true_x, true_y} = canvas_to_grid_space(canvas_x, canvas_y, PIXEL_SIZE);
 
         // validate
         if (pixel_x < 0 || pixel_x >= grid_width || pixel_y < 0 || pixel_y >= grid_height) return null;
 
-        return { pixel_x, pixel_y, true_x, true_y, rect_x: click_x, rect_y: click_y, source_rect: rect };
+        return {
+            pixel_x,
+            pixel_y,
+            true_x,
+            true_y,
+            rect_x,
+            rect_y,
+            source_rect: rect,
+        }
     }, [grid_width, grid_height]);
 
     // click handler
@@ -182,7 +271,7 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
 
             if (!grid_canvas_ref.current || !socket) return;
             
-            const resolved_pixel = resolve_pixel(event);
+            const resolved_pixel = resolve_pixel(event.clientX, event.clientY);
             if (!resolved_pixel) return;
             
             const { pixel_x, pixel_y } = resolved_pixel;
@@ -205,7 +294,7 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
         (event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
             if (!grid_canvas_ref.current) return;
 
-            const resolved_pixel = resolve_pixel(event);
+            const resolved_pixel = resolve_pixel(event.clientX, event.clientY);
 
             if (on_right_click) {
                 on_right_click(resolved_pixel, event);
@@ -219,7 +308,7 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
         (event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
             if (!grid_canvas_ref.current || !socket) return;
 
-            const resolved_pixel = resolve_pixel(event);
+            const resolved_pixel = resolve_pixel(event.clientX, event.clientY);
             if (!resolved_pixel) return;
 
             const { pixel_x, pixel_y } = resolved_pixel;
@@ -245,20 +334,80 @@ const PixelGrid = ({ current_color, can_submit = true, on_pixel_submitted, on_pi
     const handle_transform = useCallback(
         (ref: ReactZoomPanPinchRef | null, state: { scale: number; positionX: number; positionY: number; }) => {
             if (on_transformed) {
-                on_transformed({
-                    transform_ref: ref,
-                    transform_wrapper_ref: transform_wrapper_ref.current,
-                    transform_state: {
-                        scale: state.scale,
-                        positionX: state.positionX,
-                        positionY: state.positionY,
-                    },
-                    canvas_ref: grid_canvas_ref.current,
-                });
+                on_transformed(ref!, state);
             }
         },
         [on_transformed]
     );
+
+    // expose refs and convenience funcs via imperative handle
+    useImperativeHandle(ref, () => ({
+        get_transform_wrapper: () => transform_wrapper_ref.current,
+        get_grid_canvas: () => grid_canvas_ref.current,
+
+        resolve_pixel,
+
+        // wrap transform methods with current canvas rect for convenience
+
+        screen_to_rect_space: (screen_x: number, screen_y: number) => {
+            if (!grid_canvas_ref.current) {
+                throw new Error("Grid canvas ref not available");
+            }
+
+            const canvas = grid_canvas_ref.current.get_canvas();
+            if (!canvas) {
+                throw new Error("Canvas not available");
+            }
+
+            const rect = canvas.getBoundingClientRect();
+            return screen_to_rect_space(screen_x, screen_y, rect);
+        },
+
+        rect_to_screen_space: (rect_x: number, rect_y: number) => {
+            if (!grid_canvas_ref.current) {
+                throw new Error("Grid canvas ref not available");
+            }
+
+            const canvas = grid_canvas_ref.current.get_canvas();
+            if (!canvas) {
+                throw new Error("Canvas not available");
+            }
+
+            const rect = canvas.getBoundingClientRect();
+            return rect_to_screen_space(rect_x, rect_y, rect);
+        },
+
+        rect_to_canvas_space: (rect_x: number, rect_y: number) => {
+            if (!grid_canvas_ref.current) {
+                throw new Error("Grid canvas ref not available");
+            }
+
+            const canvas = grid_canvas_ref.current.get_canvas();
+            if (!canvas) {
+                throw new Error("Canvas not available");
+            }
+
+            const rect = canvas.getBoundingClientRect();
+            return rect_to_canvas_space(rect_x, rect_y, canvas, rect);
+        },
+
+        canvas_to_rect_space: (canvas_x: number, canvas_y: number) => {
+            if (!grid_canvas_ref.current) {
+                throw new Error("Grid canvas ref not available");
+            }
+
+            const canvas = grid_canvas_ref.current.get_canvas();
+            if (!canvas) {
+                throw new Error("Canvas not available");
+            }
+
+            const rect = canvas.getBoundingClientRect();
+            return canvas_to_rect_space(canvas_x, canvas_y, canvas, rect);
+        },
+
+        canvas_to_grid_space: (canvas_x: number, canvas_y: number) => canvas_to_grid_space(canvas_x, canvas_y, PIXEL_SIZE),
+        grid_to_canvas_space: (pixel_or_true_x: number, pixel_or_true_y: number) => grid_to_canvas_space(pixel_or_true_x, pixel_or_true_y, PIXEL_SIZE),
+    }), [resolve_pixel]);
 
     const can_hover = useMediaQuery("(hover: hover)");
 
