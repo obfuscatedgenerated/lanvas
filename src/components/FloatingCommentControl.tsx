@@ -19,7 +19,7 @@ const CommentLine = ({comment}: {comment: Comment}) => (
             :
         </span>
 
-        <p className="text-neutral-300 text-sm max-w-full break-all mt-[calc(var(--spacing)*0.633)]">{comment.comment}</p>
+        <p className="text-neutral-300 text-sm max-w-full break-all">{comment.comment}</p>
     </div>
 );
 
@@ -48,7 +48,7 @@ const FloatingCommentControl = ({comments_on_canvas, setCommentsOnCanvas}: Float
     }, []);
 
     return (
-        <details className="group font-sans fixed bottom-4 left-4 bg-neutral-900/70 backdrop-blur-sm rounded-lg p-4 max-w-md w-full space-y-2">
+        <details className="group font-sans text-sm fixed bottom-4 left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-4 bg-neutral-900/70 backdrop-blur-sm rounded-lg p-4 max-w-[95vw] sm:max-w-md w-full space-y-2">
             <summary title="Click to expand" className="cursor-pointer">
                 <div className="inline-flex justify-between w-[95%] items-center">
                     <span className="text-white font-semibold">Recent comments</span>

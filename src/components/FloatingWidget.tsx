@@ -65,7 +65,7 @@ const TimeoutContent = ({ start_time, duration }: TimeoutContentProps) => {
 
 const FloatingWidget = (props: FloatingWidgetProps) => {
     return (
-        <div className="absolute bottom-15 sm:bottom-7.5 right-10 w-15 h-15 rounded-full bg-neutral-700">
+        <div className="absolute bottom-35 sm:bottom-7.5 right-7.5 sm:right-10 w-15 h-15 rounded-full bg-neutral-700">
             {props.mode === "timeout" && <TimeoutContent start_time={props.start_time} duration={props.duration} />}
             {props.mode === "color" && <ColorPickerContent current_color={props.current_color} on_color_change={props.on_color_change} />}
         </div>
