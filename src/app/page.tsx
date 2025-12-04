@@ -167,6 +167,7 @@ export default function Home() {
         },
         [comment_compose_coords]
     );
+    // TODO: just move the overlay handling to be inside the transformwrapper instead of doing all this. only consideration is getting the state there but ig can use context or prop drill
     // TODO: do we also need to update pos on screen resize?
 
     const fade_out_comment_compose = useCallback(
