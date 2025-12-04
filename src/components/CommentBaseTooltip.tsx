@@ -1,5 +1,5 @@
 import {TooltipStyleDiv} from "@/components/TooltipDiv";
-import {ArrowUpLeft} from "lucide-react";
+import {ChevronLeft} from "lucide-react";
 
 interface CommentBaseTooltipProps {
     position?: { x: number; y: number };
@@ -22,10 +22,10 @@ const CommentBaseTooltip = ({position, className = "", tooltip_className = "", s
     merged_style.top = `${position.y}px`;
 
     return (
-        <div className={`${positioning} z-99 ${className}`} style={merged_style} onBlur={on_blur}>
-            <ArrowUpLeft className="relative stroke-neutral-800 h-6 w-6" />
+        <div className={`${positioning} -translate-x-2 -translate-y-2 z-99 ${className}`} style={merged_style} onBlur={on_blur}>
+            <ChevronLeft className="relative stroke-neutral-800 fill-neutral-800 h-5 w-5 rotate-45 pointer-events-none" />
 
-            <TooltipStyleDiv className={`font-sans relative left-4 -top-2 flex items-center gap-2 ${tooltip_className}`}>
+            <TooltipStyleDiv className={`font-sans relative left-4.25 -top-1.5 flex items-center gap-2 ${tooltip_className}`}>
                 {children}
             </TooltipStyleDiv>
         </div>
