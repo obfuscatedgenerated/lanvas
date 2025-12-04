@@ -63,7 +63,10 @@ const CommentComposer = ({position, on_submitted, on_cancel, className = ""}: Co
         });
 
         socket.on("comment_rejected", ({reason}) => {
-            alert(`Your comment was rejected! Reason: ${reason}`);
+            // don't show fallback alert for automod rejections, we have a fancy popup for that
+            if (reason !== "automod") {
+                alert(`Your comment was rejected! Reason: ${reason}`);
+            }
 
             // clear timeout on rejection
             setTimeoutStarted(null);

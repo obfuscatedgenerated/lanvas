@@ -14,6 +14,7 @@ import FloatingCommentControl from "@/components/FloatingCommentControl";
 import {socket} from "@/socket";
 import {DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
 import {CONFIG_KEY_PIXEL_TIMEOUT_MS, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@/consts";
+import AutomodPopup from "@/components/AutomodPopup";
 
 export default function Home() {
     const [current_color, setCurrentColor] = useState("#000000");
@@ -28,6 +29,7 @@ export default function Home() {
 
     const [comment_composer_coords, setCommentComposerCoords] = useState<CommentComposerPosition | null>(null);
     const [comment_composer_visible, setCommentComposerVisible] = useState(false);
+    const [automod_to_show, setAutomodToShow] = useState<{violating_labels: string[]; cache_hit: boolean} | null>(null);
 
     const [comments_on_canvas, setCommentsOnCanvas] = useState<boolean>(true);
 
@@ -101,6 +103,15 @@ export default function Home() {
         socket.on("reload", () => {
             console.log("Received reload command from server, reloading page...");
             window.location.reload();
+        });
+
+        socket.on("comment_rejected", ({reason, labels, cache_hit}) => {
+           // we only care about automod rejections here
+            if (!reason || reason !== "automod") {
+                return;
+            }
+
+            setAutomodToShow({violating_labels: labels, cache_hit});
         });
 
         // check for any timeouts on page load
@@ -178,6 +189,13 @@ export default function Home() {
         <>
             <FloatingAdminMessage />
             <FloatingPoll />
+
+            <AutomodPopup
+                open={automod_to_show !== null}
+                on_close={() => setAutomodToShow(null)}
+                violating_labels={automod_to_show?.violating_labels || []}
+                cache_hit={automod_to_show?.cache_hit || false}
+            />
 
             <div className={`z-99 transition-opacity duration-300 ${comment_composer_visible ? "opacity-100" : "opacity-0"}`}>
                 <CommentComposer

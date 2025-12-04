@@ -151,3 +151,4 @@ export const check_text = async (text: string): Promise<AutoModResult> => {
 
 // TODO: fall back to dictionary based filtering
 // TODO: let admin configure labels and threshold
+// TODO: way for admins to manually revoke messages in the ui. if we generate message snowflakes on the server then we can just broadcast "revoke this id"

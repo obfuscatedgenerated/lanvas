@@ -3,7 +3,7 @@ import {X} from "lucide-react";
 interface PopupProps {
     open: boolean;
     on_close: () => void;
-    title?: string;
+    title?: React.ReactNode;
     additional_buttons?: React.ReactNode;
     children?: React.ReactNode;
     close_tooltip?: string;
