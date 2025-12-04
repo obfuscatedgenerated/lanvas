@@ -20,7 +20,7 @@ const AutomodPopup = ({open, on_close, violating_labels, cache_hit}: AutomodPopu
 
             <ul className="list-disc list-inside text-red-400">
                 {violating_labels.map((label, index) => (
-                    <li key={index}>{label}</li>
+                    <li key={index}>{label.replaceAll("_", " ")}</li>
                 ))}
             </ul>
 
