@@ -14,8 +14,6 @@ import {DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
 import {CONFIG_KEY_PIXEL_TIMEOUT_MS, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@/consts";
 import FloatingPoll from "@/components/FloatingPoll";
 import CommentComposerTooltip from "@/components/CommentComposerTooltip";
-import type {GridCanvasRef} from "@/components/GridCanvas";
-import CommentTooltip from "@/components/CommentTooltip";
 
 interface CommentComposePosition {
     x: number;

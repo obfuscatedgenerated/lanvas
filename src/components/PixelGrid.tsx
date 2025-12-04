@@ -16,6 +16,7 @@ import type { Author } from "@/types";
 import PixelTooltipContent from "@/components/PixelTooltipContent";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import {DEFAULT_GRID_COLOR} from "@/defaults";
+import CommentsOverlay from "@/components/CommentsOverlay";
 
 const PIXEL_SIZE = 10; // use slight oversampling. could also instead use pixelated on parent, but that leads to weird subpixel artifacts
 
@@ -446,6 +447,8 @@ const PixelGrid = ({ ref, current_color, can_submit = true, on_pixel_submitted, 
                         grid_height={grid_height}
                         grid_width={grid_width}
                     />
+
+                    <CommentsOverlay />
                 </TransformComponent>
             </TransformWrapper>
         </CursorTooltipWrapper>

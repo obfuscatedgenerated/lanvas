@@ -5,25 +5,29 @@ import {Comment} from "@/types";
 interface CommentTooltipProps {
     comment?: Comment;
     className?: string;
+    style?: React.CSSProperties;
+    positioning?: "relative" | "absolute" | "fixed";
 }
 
-const CommentTooltip = ({comment, className = ""}: CommentTooltipProps) => {
+const CommentTooltip = ({comment, className = "", style, positioning = "fixed"}: CommentTooltipProps) => {
     if (!comment) {
         return null;
     }
 
-    const position = { x: comment.x, y: comment.y };
+    const position = {x: comment.x, y: comment.y};
+
+    // TODO: try hover detection without blocking pointer again
 
     return (
-        <CommentBaseTooltip position={position} className={className}>
-            <span className="font-semibold flex">
+        <CommentBaseTooltip positioning={positioning} position={position} className={`pointer-events-none ${className}`} tooltip_className="w-max max-w-xs" style={style}>
+            <span className="font-semibold flex shrink-0">
                 <div className="flex gap-1">
                     <AuthorInfo author={comment.author} />
                 </div>
                 :
             </span>
 
-            <span>{comment.comment}</span>
+            <span className="break-all">{comment.comment}</span>
         </CommentBaseTooltip>
     );
 }

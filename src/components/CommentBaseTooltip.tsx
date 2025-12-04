@@ -1,25 +1,33 @@
-import TooltipDiv from "@/components/TooltipDiv";
+import {TooltipStyleDiv} from "@/components/TooltipDiv";
 import {ArrowUpLeft} from "lucide-react";
 
 interface CommentBaseTooltipProps {
     position?: { x: number; y: number };
     className?: string;
+    tooltip_className?: string;
+    style?: React.CSSProperties;
     children?: React.ReactNode;
+    positioning?: "relative" | "absolute" | "fixed";
     on_blur?: (event: React.FocusEvent<HTMLDivElement>) => void;
 }
 
-const CommentBaseTooltip = ({position, className = "", children, on_blur = () => {}}: CommentBaseTooltipProps) => {
+const CommentBaseTooltip = ({position, className = "", tooltip_className = "", style, children, on_blur = () => {}, positioning = "fixed"}: CommentBaseTooltipProps) => {
     if (!position) {
         return null;
     }
 
-    return (
-        <div className={`absolute z-99 ${className}`} style={{ left: position.x, top: position.y }} onBlur={on_blur}>
-            <ArrowUpLeft className="stroke-neutral-800" />
+    // TODO memoise, although unlikely to matter
+    const merged_style = { ...style };
+    merged_style.left = `${position.x}px`;
+    merged_style.top = `${position.y}px`;
 
-            <TooltipDiv position={{ x: position.x + 15, y: position.y + 15 }} className="flex items-center gap-2">
+    return (
+        <div className={`${positioning} z-99 ${className}`} style={merged_style} onBlur={on_blur}>
+            <ArrowUpLeft className="relative stroke-neutral-800 h-6 w-6" />
+
+            <TooltipStyleDiv className={`relative left-4 -top-2 flex items-center gap-2 ${tooltip_className}`}>
                 {children}
-            </TooltipDiv>
+            </TooltipStyleDiv>
         </div>
     )
 }

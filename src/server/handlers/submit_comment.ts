@@ -45,6 +45,7 @@ export const handler: SocketHandlerFunction = ({io, payload, socket}) => {
 
     console.log(`[${author.name} (${author.user_id})] (${trimmed_x}, ${trimmed_y}): ${comment}`);
 
+    // TODO: separate chat banning
     // TODO: comment rate limiting
     // TODO: check text appropriateness with tensorflow toxicity model or basic dictionary filter
     // TODO: persist to memory within timespan
