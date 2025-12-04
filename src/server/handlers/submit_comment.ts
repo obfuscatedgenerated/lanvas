@@ -4,12 +4,13 @@ import {get_grid_size} from "@/server/grid";
 import type {Author, Comment} from "@/types";
 import {is_user_banned} from "@/server/banlist";
 import {get_config} from "@/server/config";
-import {CONFIG_KEY_COMMENT_TIMEOUT_MS} from "@/consts";
-import {DEFAULT_COMMENT_TIMEOUT_MS} from "@/defaults";
+import {CONFIG_KEY_AUTOMOD_ENABLED, CONFIG_KEY_COMMENT_TIMEOUT_MS} from "@/consts";
+import {DEFAULT_AUTOMOD_ENABLED, DEFAULT_COMMENT_TIMEOUT_MS} from "@/defaults";
+import {AutoModStatus, check_text} from "@/server/automod";
 
 const comment_ratelimits = new Map<string, number>();
 
-export const handler: SocketHandlerFunction = ({io, payload, socket}) => {
+export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
     const user = socket.user!;
 
     if (typeof payload !== "object") {
@@ -50,6 +51,19 @@ export const handler: SocketHandlerFunction = ({io, payload, socket}) => {
         return;
     }
 
+    const automod_enabled = get_config(CONFIG_KEY_AUTOMOD_ENABLED, DEFAULT_AUTOMOD_ENABLED);
+    if (automod_enabled) {
+        const text_check = await check_text(comment);
+        if (text_check.status === AutoModStatus.FLAGGED) {
+            console.warn(`Automod flagged (${text_check.violating_labels.join(", ")}): ${comment}`);
+            socket.emit("comment_rejected", {reason: "automod"});
+            return;
+        } else if (text_check.status === AutoModStatus.ERROR) {
+            socket.emit("comment_rejected", {reason: "automod_error"});
+            return;
+        }
+    }
+
     const author: Author = {
         user_id: user.sub!,
         name: user.name || "Unknown",
@@ -63,7 +77,6 @@ export const handler: SocketHandlerFunction = ({io, payload, socket}) => {
     console.log(`[${author.name} (${author.user_id})] (${trimmed_x}, ${trimmed_y}): ${comment}`);
 
     // TODO: separate chat banning
-    // TODO: check text appropriateness with tensorflow toxicity model or basic dictionary filter
     // TODO: persist to memory within timespan
     // TODO: should it support admin anonymous comments?
 

@@ -44,6 +44,7 @@ setInterval(() => {
 }, 60 * 1000); // every minute
 
 import * as handlers from "@/server/handlers/@ALL";
+import {is_automod_supported, preload_model} from "@/server/automod";
 
 const dev = process.env.NODE_ENV !== "production";
 
@@ -114,6 +115,18 @@ const main = async () => {
         console.error("Failed to connect to the database:", error);
         console.error("Database connection failed, exiting.");
         process.exit(1);
+    }
+
+    if (is_automod_supported()) {
+        console.log("Automod is supported, preloading model in background...");
+
+        preload_model().then((success) => {
+            if (success) {
+                console.log("Automod model preloaded successfully.");
+            } else {
+                console.error("Automod model preload failed.");
+            }
+        });
     }
 
     await app.prepare();
