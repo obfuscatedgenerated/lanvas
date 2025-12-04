@@ -60,6 +60,8 @@ const CommentsOverlay = ({pixel_grid_ref_api}: {pixel_grid_ref_api: PixelGridRef
         // periodically clean up expired comments
         const interval = setInterval(() => {
             const now = new Date();
+
+            // TODO: is this culling early somehow?
             setComments((prev_comments) =>
                 prev_comments.filter((comment) => comment.expiry > now)
             );
@@ -83,3 +85,4 @@ const CommentsOverlay = ({pixel_grid_ref_api}: {pixel_grid_ref_api: PixelGridRef
 export default CommentsOverlay;
 
 // TODO: should the compose tooltip be moved here as well for performance? would be nice to not have it scale down tho, will investigate
+// TODO: button to toggle comments visibility
