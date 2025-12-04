@@ -14,8 +14,13 @@ const font_doodle = Playpen_Sans({
     subsets: ["latin"],
 });
 
+const lanvas_title = `LANvas${process.env.NEXT_PUBLIC_LAN_NUMBER ? ` ${process.env.NEXT_PUBLIC_LAN_NUMBER}` : ""}`;
+
 export const metadata: Metadata = {
-    title: `LANvas${process.env.NEXT_PUBLIC_LAN_NUMBER ? ` ${process.env.NEXT_PUBLIC_LAN_NUMBER}` : ""}`,
+    title: {
+        template: `%s | ${lanvas_title}`,
+        default: lanvas_title,
+    },
     description: "",
     metadataBase: new URL("https://lanvas.ollieg.codes")
 };

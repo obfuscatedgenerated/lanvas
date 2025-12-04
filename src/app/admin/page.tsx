@@ -7,6 +7,7 @@ import {revalidatePath} from "next/cache";
 import AdminPageInteractivity from "@/components/AdminPageInteractivity";
 import FancyButton, {fancy_button_class} from "@/components/FancyButton";
 import Link from "next/link";
+import type {Metadata} from "next";
 
 const revalidate_og = async () => {
     "use server";
@@ -24,6 +25,10 @@ const revalidate_og = async () => {
 
     console.log("Will revalidate OG image");
     revalidatePath("/opengraph-image");
+}
+
+export const metadata: Metadata = {
+    title: "Admin Page",
 }
 
 export default async function AdminPage() {
