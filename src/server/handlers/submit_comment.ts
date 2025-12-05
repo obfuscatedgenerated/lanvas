@@ -22,8 +22,7 @@ export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
         return;
     }
 
-    const {x, y} = payload;
-    let {comment} = payload;
+    const {comment, x, y} = payload;
     if (typeof comment !== "string" || typeof x !== "number" || typeof y !== "number") {
         return;
     }
@@ -67,12 +66,14 @@ export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
     comment_timeout_user(user.sub!);
 
     const censor_enabled = get_config(CONFIG_KEY_CENSOR_ENABLED, DEFAULT_CENSOR_ENABLED);
+    let censored_comment = comment;
     if (censor_enabled) {
-        comment = apply_basic_censor(comment);
+        censored_comment = apply_basic_censor(comment);
     }
 
     const automod_enabled = get_config(CONFIG_KEY_AUTOMOD_ENABLED, DEFAULT_AUTOMOD_ENABLED);
     if (automod_enabled) {
+        // pass in the uncensored comment for automod checking to give the best chance of catching bad content
         const text_check = await check_text(comment);
         if (text_check.status === AutoModStatus.FLAGGED) {
             socket.emit("comment_rejected", {reason: "automod", labels: text_check.violating_labels, cache_hit: text_check.cache_hit});
@@ -106,7 +107,7 @@ export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
     // TODO: should it support admin anonymous comments?
 
     io.emit("comment", {
-        comment,
+        comment: censored_comment,
         x: trimmed_x,
         y: trimmed_y,
         author,
