@@ -97,7 +97,7 @@ const FloatingPoll = () => {
                     disabled={poll_state !== PollState.ACTIVE}
                     title={poll_state === PollState.ACTIVE ? "Click to vote for this option" : ""}
                 >
-                    <span className="break-all text-left flex-1">
+                    <span className="break-words min-w-0 text-left flex-1">
                         {option}
                     </span>
 
