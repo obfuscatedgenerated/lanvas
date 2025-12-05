@@ -74,9 +74,12 @@ export type AutoModResult = AutoModResultClean | AutoModResultFlagged | AutoModR
 type ClassifierFunc = (text: string, options?: {top_k?: number | null}) => Promise<Array<{label: string; score: number}>>;
 type PipelineFunc = (task: string, model: string) => Promise<ClassifierFunc>;
 
+// use a string variable to force dynamic import resolution
+const HF_MODULE_NAME = "@huggingface/transformers";
+
 export const is_automod_supported = (): boolean => {
     try {
-        import.meta.resolve("@huggingface/transformers");
+        import.meta.resolve(HF_MODULE_NAME);
         return true;
     } catch (_e) {
         return false;
@@ -87,9 +90,7 @@ export const preload_model = async (): Promise<boolean> => {
     let pipeline: PipelineFunc;
 
     try {
-        const hf = await import("@huggingface/transformers");
-
-        //@ts-expect-error assuming types unavailable, and overriding
+        const hf = await import(HF_MODULE_NAME);
         pipeline = hf.pipeline;
     } catch (_e) {
         return false;
@@ -130,9 +131,7 @@ export const check_text = async (text: string): Promise<AutoModResult> => {
     let pipeline: PipelineFunc;
 
     try {
-        const hf = await import("@huggingface/transformers");
-        
-        //@ts-expect-error assuming types unavailable, and overriding
+        const hf = await import(HF_MODULE_NAME);
         pipeline = hf.pipeline;
     } catch (_e) {
         return {status: AutoModStatus.UNSUPPORTED};
