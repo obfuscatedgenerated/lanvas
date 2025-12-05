@@ -5,8 +5,8 @@ import {Send, X} from "lucide-react";
 import CommentBaseTooltip from "@/components/CommentBaseTooltip";
 
 import {socket} from "@/socket";
-import {DEFAULT_COMMENT_TIMEOUT_MS} from "@/defaults";
-import {LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@/consts";
+import {DEFAULT_COMMENT_TIMEOUT_MS, DEFAULT_COMMENTS_ENABLED} from "@/defaults";
+import {CONFIG_KEY_COMMENT_TIMEOUT_MS, CONFIG_KEY_COMMENTS_ENABLED, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@/consts";
 
 export interface CommentComposerPosition {
     x: number;
@@ -47,7 +47,10 @@ const TimeoutStatus = ({start, until}: {start: number; until: number}) => {
 
 const CommentComposer = ({position, on_submitted, on_cancel, className = ""}: CommentComposerProps) => {
     const [input_value, setInputValue] = useState("");
-    
+
+    const [comments_enabled, setCommentsEnabled] = useState(DEFAULT_COMMENTS_ENABLED);
+    const self_hide_timeout_ref = useRef<NodeJS.Timeout | null>(null);
+
     const [comment_timeout_ms, setCommentTimeoutMs] = useState(DEFAULT_COMMENT_TIMEOUT_MS);
 
     const [timeout_started, setTimeoutStarted] = useState<number | null>(null);
@@ -57,8 +60,10 @@ const CommentComposer = ({position, on_submitted, on_cancel, className = ""}: Co
     // register socket listener
     useEffect(() => {
         socket.on("config_value", (data: {key: string; value: unknown}) => {
-            if (data.key === "comment_timeout_ms") {
+            if (data.key === CONFIG_KEY_COMMENT_TIMEOUT_MS) {
                 setCommentTimeoutMs(data.value as number);
+            } else if (data.key === CONFIG_KEY_COMMENTS_ENABLED) {
+                setCommentsEnabled(data.value as boolean);
             }
         });
 
@@ -101,8 +106,9 @@ const CommentComposer = ({position, on_submitted, on_cancel, className = ""}: Co
             }, ends - now);
         });
 
-        // request initial config value
-        socket.emit("get_public_config_value", "comment_timeout_ms");
+        // request initial config values
+        socket.emit("get_public_config_value", CONFIG_KEY_COMMENT_TIMEOUT_MS);
+        socket.emit("get_public_config_value", CONFIG_KEY_COMMENTS_ENABLED);
 
         // check for existing timeout
         socket.emit("check_comment_timeout");
@@ -113,7 +119,7 @@ const CommentComposer = ({position, on_submitted, on_cancel, className = ""}: Co
             if (input_value.trim().length === 0 || !position) {
                 return;
             }
-            
+
             // trim the x and y to 3 decimal places to minimise packet size
             const x = Math.round((position.grid_x + Number.EPSILON) * 1000) / 1000;
             const y = Math.round((position.grid_y + Number.EPSILON) * 1000) / 1000;
@@ -142,7 +148,7 @@ const CommentComposer = ({position, on_submitted, on_cancel, className = ""}: Co
                     timeout_ref.current = null;
                 }, comment_timeout_ms);
             }
-            
+
             // fire any post submit callback
             if (on_submitted) {
                 on_submitted(input_value, position);
@@ -178,38 +184,70 @@ const CommentComposer = ({position, on_submitted, on_cancel, className = ""}: Co
         return null;
     }
 
+    if (!comments_enabled) {
+        // hide self after short delay
+        if (self_hide_timeout_ref.current) {
+            clearTimeout(self_hide_timeout_ref.current);
+        }
+
+        self_hide_timeout_ref.current = setTimeout(() => {
+            // ensure comments still disabled before hiding
+            if (!comments_enabled) {
+                handle_cancel();
+            }
+
+            self_hide_timeout_ref.current = null;
+        }, 1500);
+
+        return (
+            <CommentBaseTooltip position={position} className={className} on_blur={handle_blur}>
+                <div className="h-6 w-60 flex items-center justify-center">
+                    <span className="text-sm text-white">Comments are currently disabled.</span>
+                </div>
+            </CommentBaseTooltip>
+        );
+    }
+
+    // if we got here, comments are enabled, clear any self hide timeout
+    if (self_hide_timeout_ref.current) {
+        clearTimeout(self_hide_timeout_ref.current);
+        self_hide_timeout_ref.current = null;
+    }
+
+    if (timeout_started && timed_out_until && Date.now() < timed_out_until) {
+        return (
+            <CommentBaseTooltip position={position} className={className} on_blur={handle_blur}>
+                <TimeoutStatus start={timeout_started} until={timed_out_until} />
+            </CommentBaseTooltip>
+        );
+    }
+
     return (
         <CommentBaseTooltip position={position} className={className} on_blur={handle_blur}>
-            {timeout_started && timed_out_until && Date.now() < timed_out_until ? (
-                <TimeoutStatus start={timeout_started} until={timed_out_until} />
-            ) : (
-                <>
-                    <input
-                        type="text"
-                        value={input_value}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                                handle_submit();
-                            } else if (e.key === "Escape") {
-                                handle_cancel();
-                            }
-                        }}
-                        placeholder="Enter your comment"
-                        className="h-6 w-48 px-2 py-1 text-sm text-white focus:outline-none"
-                        autoFocus={true}
-                        maxLength={100}
-                    />
+            <input
+                type="text"
+                value={input_value}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                        handle_submit();
+                    } else if (e.key === "Escape") {
+                        handle_cancel();
+                    }
+                }}
+                placeholder="Enter your comment"
+                className="h-6 w-48 px-2 py-1 text-sm text-white focus:outline-none"
+                autoFocus={true}
+                maxLength={100}
+            />
 
-                    <button title="Send comment" className="cursor-pointer" onClick={handle_submit}>
-                        <Send className="w-4 h-4" />
-                    </button>
+            <button title="Send comment" className="cursor-pointer" onClick={handle_submit}>
+                <Send className="w-4 h-4" />
+            </button>
 
-                    <button title="Cancel" className="cursor-pointer" onClick={handle_cancel}>
-                        <X className="w-4 h-4" />
-                    </button>
-                </>
-            )}
+            <button title="Cancel" className="cursor-pointer" onClick={handle_cancel}>
+                <X className="w-4 h-4" />
+            </button>
         </CommentBaseTooltip>
     )
 }

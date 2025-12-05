@@ -1,7 +1,7 @@
 import type {SocketHandlerFlags, SocketHandlerFunction} from "@/server/types";
 import {delete_manual_stat, get_all_stats, get_all_stats_of_type, get_stat_type, StatKeyType} from "@/server/stats";
 
-export const handler: SocketHandlerFunction = async ({pool, payload, io, socket}) => {
+export const handler: SocketHandlerFunction = async ({pool, payload, io}) => {
     if (typeof payload !== "string") {
         return;
     }

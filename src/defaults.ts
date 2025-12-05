@@ -8,3 +8,4 @@ export const DEFAULT_ADMIN_ANONYMOUS = false;
 export const DEFAULT_COMMENT_TIMEOUT_MS = 5000;
 export const DEFAULT_AUTOMOD_ENABLED = true;
 export const DEFAULT_CENSOR_ENABLED = true;
+export const DEFAULT_COMMENTS_ENABLED = true;

@@ -1,7 +1,7 @@
 import type {SocketHandlerFlags, SocketHandlerFunction} from "@/server/types";
 import {get_all_stats, get_all_stats_of_type, get_stat_type, set_db_stat, StatKeyType} from "@/server/stats";
 
-export const handler: SocketHandlerFunction = async ({pool, payload, io, socket}) => {
+export const handler: SocketHandlerFunction = async ({pool, payload, io}) => {
     const {key, value} = payload;
     if (typeof key !== "string" || typeof value !== "number" || isNaN(value)) {
         return;
