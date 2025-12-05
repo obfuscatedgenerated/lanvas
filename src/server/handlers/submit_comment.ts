@@ -7,8 +7,8 @@ import {apply_basic_censor, AutoModStatus, check_text} from "@/server/automod";
 import {comment_timeout_user, get_calculated_comment_timeout, remove_comment_timeout} from "@/server/timeouts";
 
 import {get_config} from "@/server/config";
-import {CONFIG_KEY_ADMIN_GOD, CONFIG_KEY_AUTOMOD_ENABLED} from "@/consts";
-import {DEFAULT_ADMIN_GOD, DEFAULT_AUTOMOD_ENABLED} from "@/defaults";
+import {CONFIG_KEY_ADMIN_GOD, CONFIG_KEY_AUTOMOD_ENABLED, CONFIG_KEY_CENSOR_ENABLED} from "@/consts";
+import {DEFAULT_ADMIN_GOD, DEFAULT_AUTOMOD_ENABLED, DEFAULT_CENSOR_ENABLED} from "@/defaults";
 
 export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
     const user = socket.user!;
@@ -54,7 +54,7 @@ export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
 
     comment_timeout_user(user.sub!);
 
-    const censor_enabled = get_config(CONFIG_KEY_AUTOMOD_ENABLED, DEFAULT_AUTOMOD_ENABLED);
+    const censor_enabled = get_config(CONFIG_KEY_CENSOR_ENABLED, DEFAULT_CENSOR_ENABLED);
     if (censor_enabled) {
         comment = apply_basic_censor(comment);
     }
