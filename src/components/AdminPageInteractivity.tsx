@@ -1164,7 +1164,6 @@ const AdminPageInteractivity = () => {
 export default AdminPageInteractivity;
 
 // TODO: tidy this up into components
-// TODO: time lapse from either og image for time sample, or per pixel history
 // TODO: rollback to previous pixel option
 // TODO: give admin ability to purge old pixels from history to reduce db size, but warn them that this means no rollbacks and no per pixel timelapse
 // TODO: some consistency in how these inputs work! perhaps best to make some ui components for each input type to compose together

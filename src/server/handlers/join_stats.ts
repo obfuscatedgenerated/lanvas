@@ -14,5 +14,3 @@ export const handler: SocketHandlerFunction = ({socket}) => {
 
     socket.emit("stats", Object.fromEntries(get_all_stats()));
 }
-
-// TODO: could use context or namespace for this, but this is fine for now

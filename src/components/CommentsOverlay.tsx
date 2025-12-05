@@ -105,4 +105,3 @@ const CommentsOverlay = ({pixel_grid_ref_api, visible = true}: {pixel_grid_ref_a
 export default CommentsOverlay;
 
 // TODO: should the compose tooltip be moved here as well for performance? would be nice to not have it scale down tho, will investigate
-// TODO: button to toggle comments visibility
