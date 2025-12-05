@@ -45,7 +45,7 @@ setInterval(() => {
 
 import * as handlers from "@/server/handlers/@ALL";
 import {is_automod_supported, preload_model} from "@/server/automod";
-import {get_all_stats, load_stats, set_virtual_stat} from "@/server/stats";
+import {get_all_stats, init_virtual_stat, load_stats, set_virtual_stat} from "@/server/stats";
 
 const dev = process.env.NODE_ENV !== "production";
 
@@ -82,6 +82,15 @@ const req_handler = app.getRequestHandler();
 
 const connected_users = new Set<ConnectedUserDetails>();
 const unique_connected_user_ids = new Set<string>();
+
+const init_virtual_stats = async () => {
+    init_virtual_stat("connected_unique_users", 0);
+
+    // pixels are now stored with snowflake rather than overwriting, so we can count the total placed pixels
+    const pixel_history_res = await pool.query("SELECT COUNT(*) AS count FROM pixels");
+    const total_pixels = parseInt(pixel_history_res.rows[0].count, 10) || 0;
+    init_virtual_stat("total_pixels_placed", total_pixels);
+}
 
 const main = async () => {
     // check the database connection
@@ -143,6 +152,9 @@ const main = async () => {
             }
         }
     }
+
+    // initialise virtual stats
+    await init_virtual_stats();
 
     const http_server = createServer(req_handler);
 
@@ -234,7 +246,7 @@ const main = async () => {
         io.to("admin").emit("connected_users", Array.from(connected_users));
 
         // update in-memory stats cache
-        set_virtual_stat("connected_unique_users", unique_connected_user_ids.size, true);
+        set_virtual_stat("connected_unique_users", unique_connected_user_ids.size);
 
         // emit updated stats to all clients in stats room
         io.to("stats").emit("stats", Object.fromEntries(get_all_stats()));
@@ -267,7 +279,7 @@ const main = async () => {
                 unique_connected_user_ids.delete(socket.user.sub);
 
                 // update in-memory stats cache
-                set_virtual_stat("connected_unique_users", unique_connected_user_ids.size, true);
+                set_virtual_stat("connected_unique_users", unique_connected_user_ids.size);
 
                 // emit updated stats to all clients in stats room
                 io.to("stats").emit("stats", Object.fromEntries(get_all_stats()));

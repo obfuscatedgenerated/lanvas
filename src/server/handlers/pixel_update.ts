@@ -19,7 +19,7 @@ import {intercept_client} from "@/server/prometheus";
 
 import {get_calculated_pixel_timeout, is_user_in_pixel_timeout, remove_pixel_timeout, pixel_timeout_user} from "@/server/timeouts";
 import snowflake from "@/snowflake";
-import {get_all_stats, increment_db_stat} from "@/server/stats";
+import {get_all_stats, increment_virtual_stat} from "@/server/stats";
 
 // handle pixel updates from clients
 
@@ -92,8 +92,8 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}
         // broadcast the pixel update to all connected clients
         io.emit("pixel_update", {x, y, color, author});
 
-        // try to update the database
-        let transaction_open = false;
+        //// try to update the database
+        //let transaction_open = false;
 
         client = await pool.connect();
         intercept_client(client);
@@ -107,9 +107,11 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}
                 [user_id, socket.user.name, socket.user.picture || null]
             );
 
-            // create a transaction to ensure both pixel and stats are updated together
-            await client.query("BEGIN");
-            transaction_open = true;
+            // no longer needed because total_pixels_placed is now a virtual stat
+            // TODO probably dont need this client now either, but i remember since adding the upsert to the client rather than pool, it didnt memory leak anymore?????
+            // // create a transaction to ensure both pixel and stats are updated together
+            // await client.query("BEGIN");
+            // transaction_open = true;
 
             const snowflake_id = snowflake.generate();
 
@@ -121,14 +123,15 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}
 
             // TODO: ensure the latest cached pixel is the one with the latest snowflake to avoid reload inconsistencies? kinda over the top for the likelihood rn tho
 
-            // and increment the total_pixels_placed stat, as well as returning the new total
-            // TODO: since now storing history, can make this a virtual stat and use count instead
-            await increment_db_stat(client, "total_pixels_placed");
+            // await increment_db_stat(client, "total_pixels_placed");
 
-            await client.query("COMMIT");
-            transaction_open = false;
+            //await client.query("COMMIT");
+            //transaction_open = false;
 
             console.log(`Database updated for pixel at (${x}, ${y})`);
+
+            // and increment the total_pixels_placed stat, as well as returning the new total
+            increment_virtual_stat("total_pixels_placed");
 
             // emit updated stats to all clients in stats room
             io.to("stats").emit("stats", Object.fromEntries(get_all_stats()));
@@ -148,14 +151,14 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}
             // notify the user that their update failed to reset their client timer
             socket.emit("pixel_update_rejected", {reason: "database_error"});
 
-            // rollback the transaction
-            if (transaction_open) {
-                try {
-                    await client.query("ROLLBACK");
-                } catch (rollback_error) {
-                    console.error("Error rolling back transaction:", rollback_error);
-                }
-            }
+            // // rollback the transaction
+            // if (transaction_open) {
+            //     try {
+            //         await client.query("ROLLBACK");
+            //     } catch (rollback_error) {
+            //         console.error("Error rolling back transaction:", rollback_error);
+            //     }
+            // }
         }
     } catch (error) {
         console.error("pixel_update failed", error);

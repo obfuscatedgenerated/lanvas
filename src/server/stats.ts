@@ -131,6 +131,10 @@ export const set_db_stat = async (client: ClientType, key: string, value: number
         }
     }
 
+    if (stat_type === StatKeyType.VIRTUAL) {
+        throw new Error(`Stat key ${key} is virtual, cannot set in database`);
+    }
+
     // ensure the stat is set in the db
     if (!options.best_effort) {
         const res = await client.query("UPDATE stats SET value = $1 WHERE key = $2", [value, key]);
@@ -182,6 +186,10 @@ export const increment_db_stat = async (client: ClientType, key: string, increme
         } else {
             throw new Error(`Stat key ${key} does not exist`);
         }
+    }
+
+    if (stat_type === StatKeyType.VIRTUAL) {
+        throw new Error(`Stat key ${key} is virtual, cannot increment in database`);
     }
 
     // do an atomic increment in the db and get the new value
