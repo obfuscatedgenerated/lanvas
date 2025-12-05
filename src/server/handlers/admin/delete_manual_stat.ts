@@ -1,48 +1,28 @@
-import type {SocketHandlerFunction, SocketHandlerFlags} from "@/server/types";
+import type {SocketHandlerFlags, SocketHandlerFunction} from "@/server/types";
+import {delete_manual_stat, get_all_stats, get_all_stats_of_type, get_stat_type, StatKeyType} from "@/server/stats";
 
-export const handler: SocketHandlerFunction = async ({pool, payload, io, socket, stats, manual_stat_keys}) => {
-    const user = socket.user!;
-
+export const handler: SocketHandlerFunction = async ({pool, payload, io, socket}) => {
     if (typeof payload !== "string") {
         return;
     }
 
-    if (!stats.has(payload)) {
-        console.log(`Stat key ${payload} does not exist, cannot delete via admin_delete_manual_stat`);
-        return;
-    }
-
-    if (!manual_stat_keys.has(payload)) {
-        console.log(`Stat key ${payload} is not marked as manual, cannot delete via admin_delete_manual_stat`);
+    const key_type = get_stat_type(payload);
+    if (key_type !== StatKeyType.MANUAL) {
+        console.log(`Stat key ${payload} does not exist or is not marked as manual, cannot delete via admin_delete_manual_stat`);
         return;
     }
 
     // delete from database
     try {
-        await pool.query(
-            `DELETE FROM stats WHERE key = $1`,
-            [payload]
-        );
-        console.log(`Manual stat ${payload} deleted from database by admin ${user.name} (id: ${user.sub})`);
-
-        // update in-memory stats cache
-        stats.delete(payload);
-        manual_stat_keys.delete(payload);
+        await delete_manual_stat(pool, payload);
 
         // emit updated stats to all clients in stats room
-        io.to("stats").emit("stats", Object.fromEntries(stats));
+        io.to("stats").emit("stats", Object.fromEntries(get_all_stats()));
 
         // emit updated manual stats to admin clients
-        const manual_stats: {[key: string]: number} = {};
-        for (const manual_key of manual_stat_keys) {
-            const stat_value = stats.get(manual_key);
-            if (typeof stat_value === "number") {
-                manual_stats[manual_key] = stat_value;
-            }
-        }
-        io.to("admin").emit("manual_stats", manual_stats);
+        io.to("admin").emit("manual_stats", Object.fromEntries(get_all_stats_of_type(StatKeyType.MANUAL)));
     } catch (db_error) {
-        console.error("Database error during deleting manual stat:", db_error);
+        console.error("Eerror during deleting manual stat:", db_error);
     }
 }
 

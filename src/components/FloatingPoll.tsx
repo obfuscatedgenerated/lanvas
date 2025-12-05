@@ -74,7 +74,7 @@ const FloatingPoll = () => {
     const hidden = poll_state === PollState.HIDDEN || user_hiding;
 
     return (
-        <div className={`z-9999 font-sans fixed right-[50vw] translate-x-[50%] sm:translate-x-0 top-20 sm:right-10 min-w-64 w-full sm:w-fit max-w-9/10 sm:max-w-100 bg-neutral-600/75 backdrop-blur-sm border border-neutral-500/75 rounded shadow-lg p-4 transition-opacity duration-500 ${hidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+        <div className={`z-9999 font-sans fixed right-[50vw] translate-x-[50%] sm:translate-x-0 top-25 sm:right-10 min-w-64 w-full sm:w-fit max-w-9/10 sm:max-w-100 bg-neutral-600/75 backdrop-blur-sm border border-neutral-500/75 rounded shadow-lg p-4 transition-opacity duration-500 ${hidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
             <div className="w-full flex items-start justify-between mb-2 gap-2">
                 {question && <h3 className="text-lg font-semibold break-words max-w-[92.5%]">{question}</h3>}
 

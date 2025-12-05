@@ -21,11 +21,8 @@ export interface SocketHandlerContext {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     payload: any;
 
-    // TODO: move these to singletons. for now will send all relevant data references as context
     connected_users: Set<ConnectedUserDetails>;
     unique_connected_user_ids: Set<string>;
-    stats: Map<string, number>;
-    manual_stat_keys: Set<string>;
 }
 
 export type SocketHandlerFunction = (context: SocketHandlerContext) => Promise<void> | void;

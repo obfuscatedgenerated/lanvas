@@ -19,10 +19,11 @@ import {intercept_client} from "@/server/prometheus";
 
 import {get_calculated_pixel_timeout, is_user_in_pixel_timeout, remove_pixel_timeout, pixel_timeout_user} from "@/server/timeouts";
 import snowflake from "@/snowflake";
+import {get_all_stats, increment_db_stat} from "@/server/stats";
 
 // handle pixel updates from clients
 
-export const handler: SocketHandlerFunction = async ({socket, payload, io, pool, stats}) => {
+export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}) => {
     let client: PoolClient | null = null;
 
     try {
@@ -122,24 +123,15 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool,
 
             // and increment the total_pixels_placed stat, as well as returning the new total
             // TODO: since now storing history, can make this a virtual stat and use count instead
-            const stats_res = await client.query(
-                `INSERT INTO stats (key, value)
-                         VALUES ('total_pixels_placed', 1)
-                         ON CONFLICT (key) DO UPDATE SET value = stats.value + 1
-                         RETURNING value`,
-            );
+            await increment_db_stat(client, "total_pixels_placed");
 
             await client.query("COMMIT");
             transaction_open = false;
 
-            // update in-memory stats cache
-            const new_total = parseInt(stats_res.rows[0].value, 10);
-            stats.set("total_pixels_placed", new_total);
-
             console.log(`Database updated for pixel at (${x}, ${y})`);
 
             // emit updated stats to all clients in stats room
-            io.to("stats").emit("stats", Object.fromEntries(stats));
+            io.to("stats").emit("stats", Object.fromEntries(get_all_stats()));
         } catch (db_error) {
             console.error("Database error during pixel update:", db_error);
 

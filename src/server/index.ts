@@ -45,6 +45,7 @@ setInterval(() => {
 
 import * as handlers from "@/server/handlers/@ALL";
 import {is_automod_supported, preload_model} from "@/server/automod";
+import {get_all_stats, load_stats, set_virtual_stat} from "@/server/stats";
 
 const dev = process.env.NODE_ENV !== "production";
 
@@ -81,29 +82,6 @@ const req_handler = app.getRequestHandler();
 
 const connected_users = new Set<ConnectedUserDetails>();
 const unique_connected_user_ids = new Set<string>();
-
-const stats = new Map<string, number>();
-const manual_stat_keys = new Set<string>();
-
-const load_stats = async () => {
-    const stats_res = await pool.query("SELECT key, value, manual FROM stats");
-    for (const row of stats_res.rows) {
-        const value = parseInt(row.value, 10);
-
-        if (isNaN(value)) {
-            console.error(`Invalid stat value for key ${row.key}: ${row.value}`);
-            continue;
-        }
-
-        stats.set(row.key, value);
-
-        if (row.manual) {
-            manual_stat_keys.add(row.key);
-        } else {
-            manual_stat_keys.delete(row.key);
-        }
-    }
-}
 
 const main = async () => {
     // check the database connection
@@ -143,10 +121,9 @@ const main = async () => {
     console.log(`Loaded ${ban_count} banned users from database.`);
 
     // load stats from database
-    await load_stats();
+    const stat_key_count = await load_stats(pool);
 
-    console.log(`Loaded ${stats.size} stats from database.`);
-    console.log(`Manual stats keys: ${Array.from(manual_stat_keys).join(", ")}`);
+    console.log(`Loaded ${stat_key_count} stats from database.`);
 
     // load existing pixels from database
     const loaded_pixel_count = await load_pixels(pool);
@@ -257,10 +234,10 @@ const main = async () => {
         io.to("admin").emit("connected_users", Array.from(connected_users));
 
         // update in-memory stats cache
-        stats.set("connected_unique_users", unique_connected_user_ids.size);
+        set_virtual_stat("connected_unique_users", unique_connected_user_ids.size, true);
 
         // emit updated stats to all clients in stats room
-        io.to("stats").emit("stats", Object.fromEntries(stats));
+        io.to("stats").emit("stats", Object.fromEntries(get_all_stats()));
 
         socket.on("disconnect", () => {
             console.log(`Client disconnected: ${socket.id}`);
@@ -290,10 +267,10 @@ const main = async () => {
                 unique_connected_user_ids.delete(socket.user.sub);
 
                 // update in-memory stats cache
-                stats.set("connected_unique_users", unique_connected_user_ids.size);
+                set_virtual_stat("connected_unique_users", unique_connected_user_ids.size, true);
 
                 // emit updated stats to all clients in stats room
-                io.to("stats").emit("stats", Object.fromEntries(stats));
+                io.to("stats").emit("stats", Object.fromEntries(get_all_stats()));
             }
         });
 
@@ -325,8 +302,6 @@ const main = async () => {
 
                     connected_users,
                     unique_connected_user_ids,
-                    stats,
-                    manual_stat_keys,
                 });
             });
         }
@@ -352,5 +327,4 @@ const main = async () => {
 main();
 
 // TODO: unique users ever stat
-// TODO: move manual stat calc to a function or cache
 // TODO: remove duplication of readonly and set config readonly, as clinets currently only listen when its admin_set_readonly event
