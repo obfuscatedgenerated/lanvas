@@ -3,7 +3,7 @@ import {get_grid_size} from "@/server/grid";
 
 import type {Author, Comment} from "@/types";
 import {is_user_banned} from "@/server/banlist";
-import {AutoModStatus, check_text} from "@/server/automod";
+import {apply_basic_censor, AutoModStatus, check_text} from "@/server/automod";
 import {comment_timeout_user, get_calculated_comment_timeout, remove_comment_timeout} from "@/server/timeouts";
 
 import {get_config} from "@/server/config";
@@ -17,7 +17,8 @@ export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
         return;
     }
 
-    const {comment, x, y} = payload;
+    const {x, y} = payload;
+    let {comment} = payload;
     if (typeof comment !== "string" || typeof x !== "number" || typeof y !== "number") {
         return;
     }
@@ -52,6 +53,11 @@ export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
     }
 
     comment_timeout_user(user.sub!);
+
+    const censor_enabled = get_config(CONFIG_KEY_AUTOMOD_ENABLED, DEFAULT_AUTOMOD_ENABLED);
+    if (censor_enabled) {
+        comment = apply_basic_censor(comment);
+    }
 
     const automod_enabled = get_config(CONFIG_KEY_AUTOMOD_ENABLED, DEFAULT_AUTOMOD_ENABLED);
     if (automod_enabled) {

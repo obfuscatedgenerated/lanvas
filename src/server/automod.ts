@@ -1,6 +1,12 @@
 import { LRUCache } from "lru-cache";
+import {
+    englishDataset,
+    englishRecommendedTransformers, fixedCharCensorStrategy, keepStartCensorStrategy,
+    RegExpMatcher,
+    TextCensor
+} from "obscenity";
 
-const BANNED_LABELS = ["severe_toxic", "obscene", "threat", "identity_hate"];
+const BANNED_LABELS = ["severe_toxic", "threat", "identity_hate"];
 const FLAG_THRESHOLD = 0.7;
 
 const CACHE_MAX = 10000;
@@ -25,6 +31,15 @@ const known_bad_cache = new LRUCache<string, string[]>({
     maxSize: 100 * CACHE_MAX,
     sizeCalculation: (_value, key) => key.length,
 });
+
+const matcher = new RegExpMatcher({
+    ...englishDataset.build(),
+    ...englishRecommendedTransformers,
+});
+
+const censor = new TextCensor();
+const censor_strategy = keepStartCensorStrategy(fixedCharCensorStrategy("♥"));
+censor.setStrategy(censor_strategy);
 
 export enum AutoModStatus {
     CLEAN, // the text is clean
@@ -93,6 +108,12 @@ export const preload_model = async (): Promise<boolean> => {
     }
 };
 
+export const apply_basic_censor = (text: string): string => {
+    // censoring obvious bad words the old school way
+    const matches = matcher.getAllMatches(text);
+    return censor.applyTo(text, matches);
+}
+
 export const check_text = async (text: string): Promise<AutoModResult> => {
     // check known good cache
     if (known_good_cache.has(text)) {
@@ -105,6 +126,7 @@ export const check_text = async (text: string): Promise<AutoModResult> => {
         return {status: AutoModStatus.FLAGGED, violating_labels: cached_bad, cache_hit: true};
     }
 
+    // will now analyse toxic intent with the model
     let pipeline: PipelineFunc;
 
     try {
@@ -149,6 +171,6 @@ export const check_text = async (text: string): Promise<AutoModResult> => {
     }
 };
 
-// TODO: fall back to dictionary based filtering
+// TODO: let admins exclude certain words from censoring
 // TODO: let admin configure labels and threshold
 // TODO: way for admins to manually revoke messages in the ui. if we generate message snowflakes on the server then we can just broadcast "revoke this id"

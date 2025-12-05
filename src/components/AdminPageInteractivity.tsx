@@ -12,7 +12,7 @@ import {X} from "lucide-react";
 
 import {
     DEFAULT_ADMIN_ANONYMOUS,
-    DEFAULT_ADMIN_GOD, DEFAULT_AUTOMOD_ENABLED, DEFAULT_COMMENT_TIMEOUT_MS,
+    DEFAULT_ADMIN_GOD, DEFAULT_AUTOMOD_ENABLED, DEFAULT_CENSOR_ENABLED, DEFAULT_COMMENT_TIMEOUT_MS,
     DEFAULT_GRID_HEIGHT,
     DEFAULT_GRID_WIDTH,
     DEFAULT_PIXEL_TIMEOUT_MS,
@@ -25,7 +25,7 @@ import {
     CONFIG_KEY_GRID_WIDTH,
     CONFIG_KEY_PIXEL_TIMEOUT_MS,
     CONFIG_KEY_COMMENT_TIMEOUT_MS,
-    CONFIG_KEY_READONLY, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER
+    CONFIG_KEY_READONLY, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER, CONFIG_KEY_CENSOR_ENABLED
 } from "@/consts";
 
 interface UserListProps {
@@ -621,6 +621,8 @@ const AdminPageInteractivity = () => {
     const [god_checkbox, setGodCheckbox] = useState(DEFAULT_ADMIN_GOD);
     const [anonymous_checkbox, setAnonymousCheckbox] = useState(DEFAULT_ADMIN_ANONYMOUS);
 
+    const [censor_checkbox, setCensorCheckbox] = useState(DEFAULT_CENSOR_ENABLED);
+
     const [automod_checkbox, setAutomodCheckbox] = useState(DEFAULT_AUTOMOD_ENABLED);
     const [automod_supported, setAutomodSupported] = useState(false);
 
@@ -678,6 +680,9 @@ const AdminPageInteractivity = () => {
                     setChatTimeoutMsInput(value || DEFAULT_COMMENT_TIMEOUT_MS);
                     setLastChatTimeoutMsSaved(value || DEFAULT_COMMENT_TIMEOUT_MS);
                     break;
+                case CONFIG_KEY_CENSOR_ENABLED:
+                    setCensorCheckbox(value !== undefined ? !!value : DEFAULT_CENSOR_ENABLED);
+                    break;
             }
         });
 
@@ -696,6 +701,7 @@ const AdminPageInteractivity = () => {
         socket.emit("admin_get_config_value", CONFIG_KEY_ADMIN_ANONYMOUS);
         socket.emit("admin_get_config_value", CONFIG_KEY_AUTOMOD_ENABLED);
         socket.emit("admin_get_config_value", CONFIG_KEY_COMMENT_TIMEOUT_MS);
+        socket.emit("admin_get_config_value", CONFIG_KEY_CENSOR_ENABLED);
 
         return () => {
             socket.disconnect();
@@ -946,12 +952,37 @@ const AdminPageInteractivity = () => {
             <h2 className="text-xl font-medium mb-2 mt-4">Chat settings</h2>
             <div className="flex gap-8">
                 <label>
-                    <span className="underline underline-offset-2 decoration-dotted cursor-help" title="Uses a local AI model on the server to filter extreme and toxic messages.">Automod:</span>
+                    <span className="underline underline-offset-2 decoration-dotted cursor-help" title="Replaces profanity to hearts ♥. Please note that this censoring ranges from mild swears, to slurs and sexually explicit language.">Censors:</span>
+
+                    <input
+                        type="checkbox"
+                        checked={censor_checkbox}
+                        onChange={(e) => {
+                            const new_value = e.target.checked;
+                            setCensorCheckbox(new_value);
+
+                            const confirmed = confirm(`Are you sure want to turn ${new_value ? "on" : "off"} censors?`);
+                            if (!confirmed) {
+                                // revert checkbox
+                                setCensorCheckbox(!new_value);
+                                return;
+                            }
+
+                            // submit change
+                            socket.emit("admin_set_config_value", {key: CONFIG_KEY_CENSOR_ENABLED, value: new_value, is_public: false});
+                        }}
+                        className="ml-2"
+                    />
+                </label>
+
+                <label>
+                    <span className="underline underline-offset-2 decoration-dotted cursor-help" title="Uses a local AI model on the server to filter extreme and toxic messages. Note that this does not cover profanity, it is instead primarily sentiment based.">AutoMod:</span>
 
                     <input
                         type="checkbox"
                         disabled={!automod_supported}
                         checked={automod_supported && automod_checkbox}
+                        title={automod_supported ? "" : "Missing the required dependencies to use AutoMod!"}
                         onChange={(e) => {
                             const new_value = e.target.checked;
                             setAutomodCheckbox(new_value);
