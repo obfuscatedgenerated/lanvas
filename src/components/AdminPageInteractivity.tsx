@@ -753,22 +753,29 @@ const AdminPageInteractivity = () => {
 
     const [message_input, setMessageInput] = useState("");
     const [persistent_checkbox, setPersistentCheckbox] = useState(false);
+    const [duration_input, setDurationInput] = useState("");
 
     const on_send_message_click = useCallback(
         () => {
             const message = message_input;
             const persist = persistent_checkbox;
+            const duration_ms = duration_input === "" ? undefined : parseInt(duration_input, 10);
+            
+            if (typeof duration_ms === "number" && (isNaN(duration_ms) || duration_ms < 0)) {
+                alert(`Invalid duration_ms: ${duration_input}`);
+                return;
+            }
 
-            const confirmed = confirm(`Are you sure want to send message "${message}" with persist=${persist}? This will be shown to all connected users, and overwrite any existing message.`);
+            const confirmed = confirm(`Are you sure want to send message "${message}" with persist=${persist}?;duration_ms=${duration_ms} This will be shown to all connected users, and overwrite any existing message.`);
             if (!confirmed) {
                 return;
             }
 
             // submit message
-            socket.emit("admin_send_message", {message, persist});
+            socket.emit("admin_send_message", {message, persist, duration_ms});
             setMessageInput("");
         },
-        [message_input, persistent_checkbox]
+        [duration_input, message_input, persistent_checkbox]
     );
 
     const [width_input, setWidthInput] = useState("");
@@ -1082,6 +1089,17 @@ const AdminPageInteractivity = () => {
                         className="ml-2"
                         checked={persistent_checkbox}
                         onChange={(e) => setPersistentCheckbox(e.target.checked)}
+                    />
+                </label>
+
+                <label>
+                    <span className="underline underline-offset-2 decoration-dotted cursor-help" title="Leave blank to make persistent messages stay until replaced, or for scrolling messages to use a default of 3.33s per character.">Duration (ms):</span>
+
+                    <input
+                        type="number"
+                        className="bg-gray-700 border border-gray-500 text-gray-100 text-md rounded-lg py-1 px-2 ml-2 w-32"
+                        value={duration_input}
+                        onChange={(e) => setDurationInput(e.target.value)}
                     />
                 </label>
 
