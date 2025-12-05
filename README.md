@@ -34,6 +34,20 @@ npm run build
 npm start
 ```
 
+## Timelapse generation
+
+To generate a timelapse video of the canvas history, run the following command:
+
+```bash
+npm run timelapse
+```
+
+This will create timelapses, both with and without an overlaid timestamp, in the `timelapses` folder as .webm files.
+
+You need [ffmpeg](https://ffmpeg.org/) installed and available in your PATH for this to work, and it must be compiled with libvpx support.
+
+If you don't have the right version of ffmpeg installed, the script will still output the image sequences and concat lists, allowing you to manually create the video later.
+
 ## About automod
 
 The automod system for comments uses a local AI model, [toxic-bert](https://huggingface.co/Xenova/toxic-bert) for classification of extreme and toxic messages. This model is only ever ran on the server.
