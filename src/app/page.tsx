@@ -10,11 +10,12 @@ import FloatingAdminMessage from "@/components/FloatingAdminMessage";
 import FloatingPoll from "@/components/FloatingPoll";
 import CommentComposer, {type CommentComposerPosition} from "@/components/CommentComposer";
 import FloatingCommentControl from "@/components/FloatingCommentControl";
+import AutomodPopup from "@/components/AutomodPopup";
+import KeyBindings from "@/components/KeyBindings";
 
 import {socket} from "@/socket";
 import {DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
 import {CONFIG_KEY_PIXEL_TIMEOUT_MS, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@/consts";
-import AutomodPopup from "@/components/AutomodPopup";
 
 export default function Home() {
     const [current_color, setCurrentColor] = useState("#000000");
@@ -189,6 +190,15 @@ export default function Home() {
 
     return (
         <>
+            <KeyBindings
+                bindings={{
+                    // TODO: open palette with c key, open help with ? or h key, stats with s etc. might have to make enabled flag contextful
+                    "g": () => setGridLinesEnabled(prev => !prev)
+                }}
+
+                enabled={!comment_composer_coords}
+            />
+
             <FloatingAdminMessage />
             <FloatingPoll />
 

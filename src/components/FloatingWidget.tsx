@@ -78,7 +78,7 @@ const FloatingWidget = (props: FloatingWidgetPropsWithGridLinesToggle) => (
         </div>
 
         <div className="font-sans fixed bottom-35 sm:bottom-7.5 right-7.5 sm:right-10 bg-neutral-900/70 backdrop-blur-sm border border-neutral-800/70 rounded-lg px-4 py-2">
-            <label className="cursor-pointer flex items-center gap-2">
+            <label className="cursor-pointer flex items-center gap-2" title="Shortcut: G">
                 <input
                     type="checkbox"
                     checked={props.grid_lines_enabled}

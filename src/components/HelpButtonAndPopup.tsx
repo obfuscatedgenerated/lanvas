@@ -48,6 +48,7 @@ const HelpPopup = ({ open, on_close }: HelpPopupProps) => (
                 { action: "Middle click and drag", description: "Pan canvas" },
                 { action: "Scroll wheel", description: "Zoom in/out" },
                 { action: "Right click", description: "Place comment" },
+                { action: "G", description: "Toggle grid lines" },
             ]}
         />
 
