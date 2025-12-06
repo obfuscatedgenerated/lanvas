@@ -6,8 +6,9 @@ import {createCanvas} from "canvas";
 import * as fs from "fs";
 import * as path from "path";
 import {fileURLToPath} from "url";
-
 import {spawn} from "child_process";
+
+import ProgressBar from "progress";
 
 import {CONFIG_KEY_GRID_HEIGHT, CONFIG_KEY_GRID_WIDTH} from "@/consts";
 import {DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH} from "@/defaults";
@@ -139,6 +140,15 @@ const main = async () => {
     const normal_list_file = fs.createWriteStream(normal_list_path);
     const timestamped_list_file = fs.createWriteStream(timestamped_list_path);
 
+    // count total pixels for progress logging
+    const count_res = await client.query("SELECT COUNT(*) FROM pixels");
+    const total_pixels = parseInt(count_res.rows[0].count, 10);
+
+    const progress_bar = new ProgressBar("Generating timelapse images [:bar] :current/:total (:percent) :etas", {
+        total: total_pixels,
+        width: 40,
+    });
+
     // step through each pixel placed in order of snowflake
     let finished = false;
     while (!finished) {
@@ -206,6 +216,8 @@ const main = async () => {
         normal_list_file.write(`duration ${SECONDS_PER_PIXEL}\n`);
         timestamped_list_file.write(`file '${path.join(timestamped_output_dir, `${snowflake}.png`)}'\n`);
         timestamped_list_file.write(`duration ${SECONDS_PER_PIXEL}\n`);
+
+        progress_bar.tick();
     }
 
     // repeat last frame to ensure it stays for the duration
