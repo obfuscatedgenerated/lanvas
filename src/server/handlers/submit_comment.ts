@@ -113,3 +113,5 @@ export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
         author,
     } as Comment);
 }
+
+// TODO: should comments also check in with afk? or should it just be pixel placing that counts?

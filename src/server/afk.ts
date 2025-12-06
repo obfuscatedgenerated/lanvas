@@ -51,3 +51,5 @@ export const on_activity_change = (listener: ActivityChangeListener) => {
 export const off_activity_change = (listener: ActivityChangeListener) => {
     activity_change_listeners.delete(listener);
 }
+
+// TODO: when user disconnects, clean up their timeout and active status
