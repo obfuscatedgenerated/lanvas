@@ -45,7 +45,8 @@ setInterval(() => {
 
 import * as handlers from "@/server/handlers/@ALL";
 import {is_automod_supported, preload_model} from "@/server/automod";
-import {get_all_stats, init_virtual_stat, load_stats, set_virtual_stat} from "@/server/stats";
+import {get_all_stats, increment_virtual_stat, init_virtual_stat, load_stats, set_virtual_stat} from "@/server/stats";
+import {on_activity_change} from "@/server/afk";
 
 const dev = process.env.NODE_ENV !== "production";
 
@@ -90,6 +91,9 @@ const init_virtual_stats = async () => {
     const pixel_history_res = await pool.query("SELECT COUNT(*) AS count FROM pixels");
     const total_pixels = parseInt(pixel_history_res.rows[0].count, 10) || 0;
     init_virtual_stat("total_pixels_placed", total_pixels);
+
+    // active users stat hooked into afk module
+    init_virtual_stat("active_users", 0);
 }
 
 const main = async () => {
@@ -324,6 +328,22 @@ const main = async () => {
                 console.warn(`Unknown event received from ${socket.id}: ${event}`, args);
             }
         });
+    });
+
+    // hook into afk module to inform admins of specific user activity changes
+    on_activity_change((user_id, is_active) => {
+        // tell admins specific user
+        io.to("admin").emit("user_activity_change", {
+            user_id,
+            is_active,
+        });
+
+        // change stat
+        increment_virtual_stat("active_users", is_active ? 1 : -1);
+
+        // tell the stats room
+        // TODO: create a stat update listener which handles this automatically, instead of doing it in each location
+        io.to("stats").emit("stats", Object.fromEntries(get_all_stats()));
     });
 
     http_server

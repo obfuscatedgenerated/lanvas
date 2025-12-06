@@ -9,11 +9,13 @@ export interface StatsData {
 const known_stat_labels: { [key: string]: string } = {
     total_pixels_placed: "Total pixels placed",
     connected_unique_users: "Connected users",
+    active_users: "Active users",
 };
 
 const stats_order = [
     "total_pixels_placed",
     "connected_unique_users",
+    "active_users",
 ];
 
 const StatEntry = ({ stat_key, stats, className = "" }: { stat_key: string; stats: StatsData; className?: string }) => (

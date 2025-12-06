@@ -20,6 +20,7 @@ import {intercept_client} from "@/server/prometheus";
 import {get_calculated_pixel_timeout, is_user_in_pixel_timeout, remove_pixel_timeout, pixel_timeout_user} from "@/server/timeouts";
 import snowflake from "@/snowflake";
 import {get_all_stats, increment_virtual_stat} from "@/server/stats";
+import {activity_check_in} from "@/server/afk";
 
 // handle pixel updates from clients
 
@@ -57,6 +58,8 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}
             socket.emit("pixel_update_rejected", {reason: "banned"});
             return;
         }
+
+        activity_check_in(user_id);
 
         const is_admin = socket.user.sub === process.env.DISCORD_ADMIN_USER_ID;
         const god = is_admin && get_config(CONFIG_KEY_ADMIN_GOD, DEFAULT_ADMIN_GOD);

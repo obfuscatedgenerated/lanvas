@@ -69,12 +69,12 @@ const UserList = ({
 
 interface ConnectedUserDetails {
     socket_id: string;
-    user_id?: string;
+    user_id: string;
     username?: string;
     context?: string;
 }
 
-const ConnectedUserList = ({connected_users}: { connected_users: ConnectedUserDetails[] }) => (
+const ConnectedUserList = ({connected_users, active_user_ids }: { connected_users: ConnectedUserDetails[]; active_user_ids: string[] }) => (
     <table className="table-fixed bg-neutral-900">
         <thead>
         <tr className="border-neutral-600 border-b-1">
@@ -82,15 +82,22 @@ const ConnectedUserList = ({connected_users}: { connected_users: ConnectedUserDe
             <th className="w-50">User ID</th>
             <th className="w-50">Username</th>
             <th className="w-25">Context</th>
+            <th className="w-20">Active?</th>
         </tr>
         </thead>
         <tbody>
         {connected_users.map(({socket_id, user_id, username, context}) => (
             <tr key={socket_id}>
                 <td className="text-center select-text">{socket_id}</td>
-                <td className="text-center select-text">{user_id || "(unknown)"}</td>
+                <td className="text-center select-text">{user_id}</td>
                 <td className="text-center select-text">{username || "(unknown)"}</td>
                 <td className="text-center select-text">{context || "(unknown)"}</td>
+                <td className="text-center">
+                    {context === "/"
+                        ? (active_user_ids.includes(user_id) ? "✔" : "✘")
+                        : ""
+                    }
+                </td>
             </tr>
         ))}
         </tbody>
@@ -616,6 +623,7 @@ const AdminPageInteractivity = () => {
     const [banned_usernames_cache, setBannedUsernamesCache] = useState<{ [user_id: string]: string }>({});
 
     const [connected_users, setConnectedUsers] = useState<ConnectedUserDetails[]>([]);
+    const [active_user_ids, setActiveUserIds] = useState<string[]>([]);
 
     const [manual_stats, setManualStats] = useState<{[key: string]: number}>({});
 
@@ -696,11 +704,27 @@ const AdminPageInteractivity = () => {
 
         socket.on("automod_support", setAutomodSupported);
 
+        socket.on("active_users", setActiveUserIds);
+        socket.on("user_activity_change", ({user_id, is_active}: {user_id: string, is_active: boolean}) => {
+            setActiveUserIds((prev) => {
+                if (is_active) {
+                    if (!prev.includes(user_id)) {
+                        return [...prev, user_id];
+                    }
+                } else {
+                    return prev.filter((id) => id !== user_id);
+                }
+
+                return prev;
+            });
+        });
+
         socket.emit("check_readonly");
         socket.emit("admin_request_banned_users");
         socket.emit("admin_request_connected_users");
         socket.emit("admin_request_manual_stats");
         socket.emit("admin_is_automod_supported");
+        socket.emit("admin_request_active_users");
 
         socket.emit("admin_get_config_value", CONFIG_KEY_GRID_WIDTH);
         socket.emit("admin_get_config_value", CONFIG_KEY_GRID_HEIGHT);
@@ -1075,7 +1099,7 @@ const AdminPageInteractivity = () => {
 
             <h2 className="text-xl font-medium mb-2">Connected users</h2>
 
-            <ConnectedUserList connected_users={connected_users} />
+            <ConnectedUserList connected_users={connected_users} active_user_ids={active_user_ids} />
 
             <h2 className="text-xl font-medium mb-2">Banned users</h2>
 
