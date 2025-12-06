@@ -37,6 +37,8 @@ if (!fs.existsSync(timestamped_output_dir)) {
 const PIXEL_SIZE = 10; // use slight oversampling. could also instead use pixelated on parent, but that leads to weird subpixel artifacts
 const SECONDS_PER_PIXEL = 0.25; // show each new pixel for this many seconds in the video
 
+const PAGE_SIZE = 250; // number of pixels to process in each db query
+
 const client = new Client({
     host: process.env.PGHOST,
     port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432,
@@ -149,27 +151,44 @@ const main = async () => {
         width: 40,
     });
 
+    let page_idx = 0;
+    let page_rows: {x: number, y: number, color: string, snowflake: string}[] = [];
+    let processed_rows = 0;
+
     // step through each pixel placed in order of snowflake
     let finished = false;
     while (!finished) {
-        const pixel_res = await client.query(`
-            SELECT
-                x,
-                y,
-                color,
-                snowflake
-            FROM pixels
-            WHERE snowflake > $1
-            ORDER BY snowflake ASC
-            LIMIT 1
-        `, [last_snowflake]);
+        // check if a new page is needed
+        if (page_rows.length === 0) {
+            const pixel_res = await client.query(`
+                SELECT
+                    x,
+                    y,
+                    color,
+                    snowflake
+                FROM pixels
+                WHERE snowflake > $1
+                ORDER BY snowflake ASC
+                LIMIT $2
+            `, [last_snowflake, PAGE_SIZE]);
 
-        if (pixel_res.rows.length === 0) {
-            finished = true;
-            break;
+            if (pixel_res.rows.length === 0) {
+                finished = true;
+                break;
+            }
+
+            page_rows = pixel_res.rows;
+            page_idx++;
         }
 
-        const {x, y, color, snowflake} = pixel_res.rows[0];
+        const row = page_rows.shift();
+
+        if (!row) {
+            // page exhausted, continue to next iteration to load new page (or finish)
+            continue;
+        }
+
+        const {x, y, color, snowflake} = row;
         last_snowflake = snowflake;
 
         // draw pixel
@@ -218,6 +237,7 @@ const main = async () => {
         timestamped_list_file.write(`duration ${SECONDS_PER_PIXEL}\n`);
 
         progress_bar.tick();
+        processed_rows++;
     }
 
     // repeat last frame to ensure it stays for the duration
@@ -230,7 +250,7 @@ const main = async () => {
     normal_list_file.end();
     timestamped_list_file.end();
 
-    console.log("Timelapse image sequences generated.");
+    console.log(`Timelapse image sequences generated for ${processed_rows} pixels.`);
 
     // test for ffmpeg with libvpx
     try {
