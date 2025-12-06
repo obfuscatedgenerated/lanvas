@@ -10,6 +10,11 @@ import ColorPicker from "@/components/ColorPicker";
 
 const TIMEOUT_UPDATE_INTERVAL_MS = 100;
 
+interface GridLinesToggleProps {
+    grid_lines_enabled: boolean;
+    set_grid_lines_enabled: (enabled: boolean) => void;
+}
+
 interface ColorPickerContentProps {
     current_color: string;
     on_color_change: (color: string) => void;
@@ -31,6 +36,8 @@ interface FloatingWidgetPropsColorPicker extends ColorPickerContentProps {
 type FloatingWidgetPropsUnified = {type: "timeout" | "color"} & FloatingWidgetPropsTimeout & FloatingWidgetPropsColorPicker;
 
 type FloatingWidgetProps = FloatingWidgetPropsTimeout | FloatingWidgetPropsColorPicker | FloatingWidgetPropsUnified;
+
+type FloatingWidgetPropsWithGridLinesToggle = FloatingWidgetProps & GridLinesToggleProps;
 
 const ColorPickerContent = ({ current_color, on_color_change }: ColorPickerContentProps) => {
     return <ColorPicker current_color={current_color} on_color_change={on_color_change} />;
@@ -63,13 +70,25 @@ const TimeoutContent = ({ start_time, duration }: TimeoutContentProps) => {
     );
 }
 
-const FloatingWidget = (props: FloatingWidgetProps) => {
-    return (
-        <div className="absolute bottom-35 sm:bottom-7.5 right-7.5 sm:right-10 w-15 h-15 rounded-full bg-neutral-700">
+const FloatingWidget = (props: FloatingWidgetPropsWithGridLinesToggle) => (
+    <>
+        <div className="fixed bottom-55 sm:bottom-22.5 right-7.5 sm:right-10 w-15 h-15 rounded-full bg-neutral-700">
             {props.mode === "timeout" && <TimeoutContent start_time={props.start_time} duration={props.duration} />}
             {props.mode === "color" && <ColorPickerContent current_color={props.current_color} on_color_change={props.on_color_change} />}
         </div>
-    )
-}
+
+        <div className="font-sans fixed bottom-35 sm:bottom-7.5 right-7.5 sm:right-10 bg-neutral-900/70 backdrop-blur-sm border border-neutral-800/70 rounded-lg px-4 py-2">
+            <label className="cursor-pointer flex items-center gap-2">
+                <input
+                    type="checkbox"
+                    checked={props.grid_lines_enabled}
+                    onChange={(e) => props.set_grid_lines_enabled(e.target.checked)}
+                />
+
+                Grid lines
+            </label>
+        </div>
+    </>
+);
 
 export default FloatingWidget;

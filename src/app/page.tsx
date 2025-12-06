@@ -33,6 +33,8 @@ export default function Home() {
 
     const [comments_on_canvas, setCommentsOnCanvas] = useState<boolean>(true);
 
+    const [grid_lines_enabled, setGridLinesEnabled] = useState<boolean>(false);
+
     // when pixel is submitted, switch to show timeout mode for the widget
     const handle_pixel_submitted = useCallback(
         () => {
@@ -225,6 +227,7 @@ export default function Home() {
                     on_transformed={on_transform}
 
                     comments_on_canvas={comments_on_canvas}
+                    show_grid_lines={grid_lines_enabled}
                 />
             </div>
 
@@ -239,6 +242,9 @@ export default function Home() {
 
                     start_time={timeout_start_time ?? -1}
                     duration={(timeout_end_time && timeout_start_time) ? (timeout_end_time - timeout_start_time) : -1}
+
+                    grid_lines_enabled={grid_lines_enabled}
+                    set_grid_lines_enabled={setGridLinesEnabled}
                 />
             }
         </>

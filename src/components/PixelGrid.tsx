@@ -17,6 +17,7 @@ import PixelTooltipContent from "@/components/PixelTooltipContent";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import {DEFAULT_GRID_COLOR} from "@/defaults";
 import CommentsOverlay from "@/components/CommentsOverlay";
+import GridLines from "@/components/GridLines";
 
 const PIXEL_SIZE = 10; // use slight oversampling. could also instead use pixelated on parent, but that leads to weird subpixel artifacts
 
@@ -144,11 +145,24 @@ interface PixelGridProps {
     tooltip?: boolean;
 
     comments_on_canvas?: boolean;
+
+    show_grid_lines?: boolean;
 }
 
 type AuthorData = (Author | null)[][];
 
-const PixelGrid = ({ ref, current_color, can_submit = true, on_pixel_submitted, on_pixel_update_rejected, on_right_click, tooltip =  true, on_transformed, comments_on_canvas = true }: PixelGridProps) => {
+const PixelGrid = ({
+    ref,
+    current_color,
+    can_submit = true,
+    on_pixel_submitted,
+    on_pixel_update_rejected,
+    on_right_click,
+    tooltip =  true,
+    on_transformed,
+    comments_on_canvas = true,
+    show_grid_lines = false,
+}: PixelGridProps) => {
     const [grid_width, setGridWidth] = useState(0);
     const [grid_height, setGridHeight] = useState(0);
 
@@ -450,6 +464,13 @@ const PixelGrid = ({ ref, current_color, can_submit = true, on_pixel_submitted, 
                         pixel_size={PIXEL_SIZE}
                         grid_height={grid_height}
                         grid_width={grid_width}
+                    />
+
+                    <GridLines
+                        pixel_size={PIXEL_SIZE}
+                        grid_height={grid_height}
+                        grid_width={grid_width}
+                        visible={show_grid_lines}
                     />
 
                     <CommentsOverlay visible={comments_on_canvas} pixel_grid_ref_api={ref_api} />
