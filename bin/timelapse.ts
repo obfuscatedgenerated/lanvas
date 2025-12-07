@@ -36,6 +36,7 @@ if (!fs.existsSync(timestamped_output_dir)) {
 
 const PIXEL_SIZE = 10; // use slight oversampling. could also instead use pixelated on parent, but that leads to weird subpixel artifacts
 const SECONDS_PER_PIXEL = 0.0333; // show each new pixel for this many seconds in the video
+const LAST_FRAME_HOLD_TIME = 3; // seconds to hold on the last frame
 
 const PAGE_SIZE = 250; // number of pixels to process in each db query
 
@@ -240,11 +241,11 @@ const main = async () => {
         processed_rows++;
     }
 
-    // repeat last frame to ensure it stays for the duration
+    // hold on last frame
     normal_list_file.write(`file '${path.join(normal_output_dir, `${last_snowflake}.png`)}'\n`);
-    normal_list_file.write(`duration ${SECONDS_PER_PIXEL}\n`);
+    normal_list_file.write(`duration ${LAST_FRAME_HOLD_TIME}\n`);
     timestamped_list_file.write(`file '${path.join(timestamped_output_dir, `${last_snowflake}.png`)}'\n`);
-    timestamped_list_file.write(`duration ${SECONDS_PER_PIXEL}\n`);
+    timestamped_list_file.write(`duration ${LAST_FRAME_HOLD_TIME}\n`);
 
     // close ffmpeg concat lists
     normal_list_file.end();
