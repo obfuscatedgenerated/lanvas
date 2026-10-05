@@ -92,6 +92,7 @@ const GridCanvas = ({ grid_data, pixel_size, grid_height, grid_width, ref, on_cl
         <canvas
             ref={canvas_ref}
             className="block pixelated"
+            style={{ width: grid_width * pixel_size, height: grid_height * pixel_size }}
             onClick={on_click}
             onMouseMove={on_mouse_move}
             onMouseLeave={on_mouse_leave}
