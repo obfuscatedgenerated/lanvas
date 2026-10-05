@@ -10,3 +10,16 @@ export interface Comment {
     y: number;
     author: Author;
 }
+
+export interface HeldGift {
+    id: string;
+    from: Author;
+    amount: number;
+    expires: number;
+}
+
+export interface GiftInfo {
+    balance: number;
+    next_expiry: number | null;
+    gifts: HeldGift[];
+}

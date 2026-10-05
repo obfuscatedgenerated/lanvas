@@ -9,3 +9,5 @@ export const DEFAULT_COMMENT_TIMEOUT_MS = 5000;
 export const DEFAULT_AUTOMOD_ENABLED = true;
 export const DEFAULT_CENSOR_ENABLED = true;
 export const DEFAULT_COMMENTS_ENABLED = true;
+export const DEFAULT_GIFT_EXPIRY_MS = 5 * 60 * 1000;
+export const GIFT_BURST_MIN_GAP_MS = 1000;

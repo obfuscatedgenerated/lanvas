@@ -16,6 +16,7 @@ import KeyBindings from "@/components/KeyBindings";
 import {socket} from "@/socket";
 import {DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
 import {CONFIG_KEY_PIXEL_TIMEOUT_MS, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@/consts";
+import type {GiftInfo} from "@/types";
 
 export default function Home() {
     const [current_color, setCurrentColor] = useState("#000000");
@@ -36,10 +37,20 @@ export default function Home() {
 
     const [grid_lines_enabled, setGridLinesEnabled] = useState<boolean>(false);
 
+    const [gift_info, setGiftInfo] = useState<GiftInfo>({balance: 0, next_expiry: null, gifts: []});
+
+    const in_timeout = timeout_start_time !== null;
+    const has_gifts = gift_info.balance > 0;
+
     // when pixel is submitted, switch to show timeout mode for the widget
     const handle_pixel_submitted = useCallback(
         () => {
             if (localStorage.getItem(LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER) === "true") {
+                return;
+            }
+
+            // placing while in timeout spends a gift, which doesn't restart the timer
+            if (in_timeout) {
                 return;
             }
 
@@ -52,7 +63,7 @@ export default function Home() {
                 setTimeoutEndTime(null);
             }, pixel_timeout_ms);
         },
-        [pixel_timeout_ms]
+        [pixel_timeout_ms, in_timeout]
     );
 
     // if the update was rejected, undo the timeout state
@@ -103,6 +114,8 @@ export default function Home() {
             }
         });
 
+        socket.on("gift_info", (info: GiftInfo) => setGiftInfo(info));
+
         socket.on("reload", () => {
             console.log("Received reload command from server, reloading page...");
             window.location.reload();
@@ -119,6 +132,9 @@ export default function Home() {
 
         // check for any timeouts on page load
         socket.emit("check_timeout");
+
+        // check for any held gifts on page load
+        socket.emit("check_gifts");
 
         // check if the canvas is in readonly mode
         socket.emit("check_readonly");
@@ -224,8 +240,8 @@ export default function Home() {
 
                     current_color={current_color}
 
-                    // don't allow submitting if readonly or in timeout
-                    can_submit={!is_readonly && timeout_start_time === null}
+                    // don't allow submitting if readonly, or in timeout without a gift to spend
+                    can_submit={!is_readonly && (!in_timeout || has_gifts)}
 
                     on_pixel_submitted={handle_pixel_submitted}
                     on_pixel_update_rejected={handle_pixel_update_rejected}
@@ -245,7 +261,8 @@ export default function Home() {
 
             {!is_readonly &&
                 <FloatingWidget
-                    mode={timeout_start_time ? "timeout" : "color"}
+                    // keep the color picker available while there are gifts to spend
+                    mode={in_timeout && !has_gifts ? "timeout" : "color"}
 
                     current_color={current_color}
                     on_color_change={setCurrentColor}

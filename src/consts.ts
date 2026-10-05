@@ -11,6 +11,8 @@ export const CONFIG_KEY_AUTOMOD_ENABLED = "automod_enabled";
 export const CONFIG_KEY_CENSOR_ENABLED = "censor_enabled";
 export const CONFIG_KEY_COMMENTS_ENABLED = "comments_enabled";
 
+export const CONFIG_KEY_GIFT_EXPIRY_MS = "gift_expiry_ms";
+
 export const LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER = "skip_client_timer";
 
 

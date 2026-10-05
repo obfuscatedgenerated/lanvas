@@ -227,7 +227,7 @@ const PixelGrid = ({
         socket.on("pixel_update_rejected", (data) => {
             console.log("Pixel update rejected", data);
 
-            if (data.reason === "timeout") {
+            if (data.reason === "timeout" || data.reason === "burst_gap") {
                 // ui should already prevent this, so just ignore in case of any millisecond clock sync moments
                 return;
             }

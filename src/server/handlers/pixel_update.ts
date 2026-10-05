@@ -21,6 +21,9 @@ import {get_calculated_pixel_timeout, is_user_in_pixel_timeout, remove_pixel_tim
 import snowflake from "@/snowflake";
 import {get_all_stats, increment_virtual_stat} from "@/server/stats";
 import {activity_check_in} from "@/server/afk";
+import {consume_gift, emit_gift_info, refund_gift} from "@/server/gifts";
+
+import type {HeldGift} from "@/types";
 
 // handle pixel updates from clients
 
@@ -65,12 +68,25 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}
         const god = is_admin && get_config(CONFIG_KEY_ADMIN_GOD, DEFAULT_ADMIN_GOD);
         const anonymous = is_admin && get_config(CONFIG_KEY_ADMIN_ANONYMOUS, DEFAULT_ADMIN_ANONYMOUS);
 
-        // check user isn't in timeout period
+        // check user isn't in timeout period, spending a held gift instead if they have one
+        let used_gift: HeldGift | null = null;
+
         if (!god && is_user_in_pixel_timeout(user_id)) {
-            // user is still in timeout period
-            const timeout = get_calculated_pixel_timeout(user_id)!;
-            socket.emit("pixel_update_rejected", {reason: "timeout", wait_time: timeout.remaining});
-            return;
+            const gift_result = consume_gift(user_id);
+
+            if (gift_result.status === "burst_gap") {
+                socket.emit("pixel_update_rejected", {reason: "burst_gap"});
+                return;
+            }
+
+            if (gift_result.status === "none") {
+                // user is still in timeout period
+                const timeout = get_calculated_pixel_timeout(user_id)!;
+                socket.emit("pixel_update_rejected", {reason: "timeout", wait_time: timeout.remaining});
+                return;
+            }
+
+            used_gift = gift_result.gift;
         }
 
         const author = anonymous ? null :{
@@ -85,8 +101,10 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}
         set_cell(x, y, color, author);
         console.log(`Pixel updated at (${x}, ${y}) to ${color} by user ${socket.user.name} (id: ${user_id}) ${god ? "[GOD MODE]" : ""} ${anonymous ? "[ANONYMOUS]" : ""}`);
 
-        // set new timeout for user with default duration (from config)
-        if (!god) {
+        // set new timeout for user with default duration (from config), unless they spent a gift
+        if (used_gift) {
+            emit_gift_info(io, user_id);
+        } else if (!god) {
             pixel_timeout_user(user_id);
             // TODO: could emit here to the client rather than having the client calculate it themselves,
             //  although that makes rollback a little annoying without adding a new event or sending a 0 timeout
@@ -148,11 +166,25 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}
             // notify clients to revert the pixel
             io.emit("pixel_update", {x, y, color: old_color, author: old_author});
 
-            // remove the timeout since the update failed
-            remove_pixel_timeout(user_id);
+            // give back whatever the placement cost since the update failed
+            if (used_gift) {
+                refund_gift(user_id, used_gift);
+            } else {
+                remove_pixel_timeout(user_id);
+            }
 
             // notify the user that their update failed to reset their client timer
             socket.emit("pixel_update_rejected", {reason: "database_error"});
+
+            // a gift placement never started a timeout, so restore the client's view of the existing one
+            if (used_gift) {
+                const existing_timeout = get_calculated_pixel_timeout(user_id);
+                if (existing_timeout) {
+                    socket.emit("timeout_info", existing_timeout);
+                }
+
+                emit_gift_info(io, user_id);
+            }
 
             // // rollback the transaction
             // if (transaction_open) {

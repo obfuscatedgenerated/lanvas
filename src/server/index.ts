@@ -47,6 +47,7 @@ import * as handlers from "@/server/handlers/@ALL";
 import {is_automod_supported, preload_model} from "@/server/automod";
 import {get_all_stats, increment_virtual_stat, init_virtual_stat, load_stats, set_virtual_stat} from "@/server/stats";
 import {on_activity_change} from "@/server/afk";
+import {cleanup_expired_gifts, emit_gift_info, user_room} from "@/server/gifts";
 
 const dev = process.env.NODE_ENV !== "production";
 
@@ -172,6 +173,13 @@ const main = async () => {
 
     const io = new Server(http_server, io_opts);
 
+    // expire held gifts and tell affected users
+    setInterval(() => {
+        for (const user_id of cleanup_expired_gifts()) {
+            emit_gift_info(io, user_id);
+        }
+    }, 5 * 1000); // every 5 seconds
+
     // use admin ui only in dev mode
     if (dev) {
         instrument(io, {
@@ -229,6 +237,9 @@ const main = async () => {
             socket.disconnect(true);
             return;
         }
+
+        // personal room so events can target a user across all their tabs
+        socket.join(user_room(socket.user.sub));
 
         // if they are admin, subscribe to the admin room
         if (socket.user.sub === process.env.DISCORD_ADMIN_USER_ID) {
