@@ -7,6 +7,7 @@ export interface ConnectedUserDetails {
     user_id?: string;
     username?: string;
     context?: string;
+    avatar_url?: string | null;
 }
 
 export interface SocketWithJWT extends Socket {

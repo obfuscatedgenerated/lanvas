@@ -253,6 +253,7 @@ const main = async () => {
             user_id: socket.user.sub,
             username: socket.user.name || undefined,
             context: socket.handshake.query.context as string | undefined,
+            avatar_url: socket.user.picture || null,
         });
 
         unique_connected_user_ids.add(socket.user.sub);
@@ -355,6 +356,9 @@ const main = async () => {
         // tell the stats room
         // TODO: create a stat update listener which handles this automatically, instead of doing it in each location
         io.to("stats").emit("stats", Object.fromEntries(get_all_stats()));
+
+        // tell anyone with the gifting ui open
+        io.to("online_users").emit("online_user_activity", {user_id, is_active});
     });
 
     http_server

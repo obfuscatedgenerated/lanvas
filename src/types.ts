@@ -4,6 +4,10 @@ export interface Author {
     avatar_url: string | null;
 }
 
+export interface OnlineUser extends Author {
+    is_active: boolean;
+}
+
 export interface Comment {
     comment: string;
     x: number;

@@ -9,6 +9,9 @@ import colors from "tailwindcss/colors";
 import ColorPicker from "@/components/ColorPicker";
 import {Gift} from "lucide-react";
 import {GiftingPopup} from "@/components/GiftingPopup";
+import usePublicConfigValue from "@/hooks/usePublicConfigValue";
+import {CONFIG_KEY_GIFTING_ENABLED} from "@/consts";
+import {DEFAULT_GIFTING_ENABLED} from "@/defaults";
 
 const TIMEOUT_UPDATE_INTERVAL_MS = 100;
 
@@ -90,31 +93,35 @@ const GiftingButton = () => {
     );
 }
 
-const FloatingWidget = (props: FloatingWidgetPropsWithGridLinesToggle) => (
-    <>
-        { props.mode === "color" && (
-            <div className="fixed bottom-55 sm:bottom-22.5 right-25 sm:right-30 w-15 h-15 rounded-full bg-neutral-700">
-                <GiftingButton />
+const FloatingWidget = (props: FloatingWidgetPropsWithGridLinesToggle) => {
+    const gifting_enabled = usePublicConfigValue(CONFIG_KEY_GIFTING_ENABLED, DEFAULT_GIFTING_ENABLED);
+
+    return (
+        <>
+            {gifting_enabled && props.mode === "color" && (
+                <div className="fixed bottom-55 sm:bottom-22.5 right-25 sm:right-30 w-15 h-15 rounded-full bg-neutral-700">
+                    <GiftingButton />
+                </div>
+            )}
+
+            <div className="fixed bottom-55 sm:bottom-22.5 right-7.5 sm:right-10 w-15 h-15 rounded-full bg-neutral-700">
+                {props.mode === "timeout" && <TimeoutContent start_time={props.start_time} duration={props.duration} />}
+                {props.mode === "color" && <ColorPickerContent current_color={props.current_color} on_color_change={props.on_color_change} />}
             </div>
-        )}
 
-        <div className="fixed bottom-55 sm:bottom-22.5 right-7.5 sm:right-10 w-15 h-15 rounded-full bg-neutral-700">
-            {props.mode === "timeout" && <TimeoutContent start_time={props.start_time} duration={props.duration} />}
-            {props.mode === "color" && <ColorPickerContent current_color={props.current_color} on_color_change={props.on_color_change} />}
-        </div>
+            <div className="font-sans fixed bottom-35 sm:bottom-7.5 right-7.5 sm:right-10 bg-neutral-900/70 backdrop-blur-sm border border-neutral-800/70 rounded-lg px-4 py-2">
+                <label className="cursor-pointer flex items-center gap-2" title="Shortcut: G">
+                    <input
+                        type="checkbox"
+                        checked={props.grid_lines_enabled}
+                        onChange={(e) => props.set_grid_lines_enabled(e.target.checked)}
+                    />
 
-        <div className="font-sans fixed bottom-35 sm:bottom-7.5 right-7.5 sm:right-10 bg-neutral-900/70 backdrop-blur-sm border border-neutral-800/70 rounded-lg px-4 py-2">
-            <label className="cursor-pointer flex items-center gap-2" title="Shortcut: G">
-                <input
-                    type="checkbox"
-                    checked={props.grid_lines_enabled}
-                    onChange={(e) => props.set_grid_lines_enabled(e.target.checked)}
-                />
-
-                Grid lines
-            </label>
-        </div>
-    </>
-);
+                    Grid lines
+                </label>
+            </div>
+        </>
+    );
+}
 
 export default FloatingWidget;

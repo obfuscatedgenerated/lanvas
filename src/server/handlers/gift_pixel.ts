@@ -6,17 +6,16 @@ import {CONFIG_KEY_ADMIN_GOD, CONFIG_KEY_GIFTING_ENABLED, CONFIG_KEY_READONLY} f
 import {DEFAULT_ADMIN_GOD, DEFAULT_GIFTING_ENABLED} from "@/defaults";
 
 import {is_user_banned} from "@/server/banlist";
-import {get_cell_author} from "@/server/grid";
 import {get_calculated_pixel_timeout, is_user_in_pixel_timeout, pixel_timeout_user} from "@/server/timeouts";
 import {emit_gift_info, give_gift, user_room} from "@/server/gifts";
-import {activity_check_in} from "@/server/afk";
+import {activity_check_in, is_user_active} from "@/server/afk";
 
 // gift your ready pixel to the author of the pixel at (x, y)
 
-export const handler: SocketHandlerFunction = ({socket, payload, io, unique_connected_user_ids}) => {
-    const {x, y} = payload ?? {};
+export const handler: SocketHandlerFunction = ({socket, payload, io, unique_connected_user_ids, connected_users}) => {
+    const {to_id} = payload ?? {};
 
-    if (typeof x !== "number" || typeof y !== "number") {
+    if (typeof to_id !== "string") {
         return;
     }
 
@@ -44,10 +43,22 @@ export const handler: SocketHandlerFunction = ({socket, payload, io, unique_conn
 
     activity_check_in(user_id);
 
-    // recipient is looked up server side rather than trusted from the client
-    const recipient = get_cell_author(x, y);
+    let recipient: Author | null = null;
+
+    for (const connected of connected_users) {
+        if (connected.user_id === to_id) {
+            recipient = {user_id: to_id, name: connected.username || "Unknown", avatar_url: connected.avatar_url ?? null};
+            break;
+        }
+    }
+
     if (!recipient) {
-        socket.emit("gift_rejected", {reason: "no_author"});
+        socket.emit("gift_rejected", {reason: "recipient_offline"});
+        return;
+    }
+
+    if (!is_user_active(recipient.user_id)) {
+        socket.emit("gift_rejected", {reason: "recipient_afk", recipient});
         return;
     }
 
