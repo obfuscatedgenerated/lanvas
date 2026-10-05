@@ -7,6 +7,7 @@ import CommentBaseTooltip from "@/components/CommentBaseTooltip";
 import {socket} from "@/socket";
 import {DEFAULT_COMMENT_TIMEOUT_MS, DEFAULT_COMMENTS_ENABLED} from "@/defaults";
 import {CONFIG_KEY_COMMENT_TIMEOUT_MS, CONFIG_KEY_COMMENTS_ENABLED, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@/consts";
+import usePublicConfigValue from "@/hooks/usePublicConfigValue";
 
 export interface CommentComposerPosition {
     x: number;
@@ -48,10 +49,10 @@ const TimeoutStatus = ({start, until}: {start: number; until: number}) => {
 const CommentComposer = ({position, on_submitted, on_cancel, className = ""}: CommentComposerProps) => {
     const [input_value, setInputValue] = useState("");
 
-    const [comments_enabled, setCommentsEnabled] = useState(DEFAULT_COMMENTS_ENABLED);
-    const self_hide_timeout_ref = useRef<NodeJS.Timeout | null>(null);
+    const comments_enabled = usePublicConfigValue(CONFIG_KEY_COMMENTS_ENABLED, DEFAULT_COMMENTS_ENABLED);
+    const comment_timeout_ms = usePublicConfigValue(CONFIG_KEY_COMMENT_TIMEOUT_MS, DEFAULT_COMMENT_TIMEOUT_MS);
 
-    const [comment_timeout_ms, setCommentTimeoutMs] = useState(DEFAULT_COMMENT_TIMEOUT_MS);
+    const self_hide_timeout_ref = useRef<NodeJS.Timeout | null>(null);
 
     const [timeout_started, setTimeoutStarted] = useState<number | null>(null);
     const [timed_out_until, setTimedOutUntil] = useState<number | null>(null);
@@ -59,14 +60,6 @@ const CommentComposer = ({position, on_submitted, on_cancel, className = ""}: Co
 
     // register socket listener
     useEffect(() => {
-        socket.on("config_value", (data: {key: string; value: unknown}) => {
-            if (data.key === CONFIG_KEY_COMMENT_TIMEOUT_MS) {
-                setCommentTimeoutMs(data.value as number);
-            } else if (data.key === CONFIG_KEY_COMMENTS_ENABLED) {
-                setCommentsEnabled(data.value as boolean);
-            }
-        });
-
         socket.on("comment_rejected", ({reason}) => {
             // don't show fallback alert for automod rejections, we have a fancy popup for that
             if (reason !== "automod") {

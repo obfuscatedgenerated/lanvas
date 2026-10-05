@@ -17,6 +17,7 @@ import {socket} from "@/socket";
 import {DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
 import {CONFIG_KEY_PIXEL_TIMEOUT_MS, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@/consts";
 import type {GiftInfo} from "@/types";
+import usePublicConfigValue from "@/hooks/usePublicConfigValue";
 
 export default function Home() {
     const [current_color, setCurrentColor] = useState("#000000");
@@ -25,7 +26,7 @@ export default function Home() {
     const [timeout_end_time, setTimeoutEndTime] = useState<number | null>(null);
 
     const [is_readonly, setIsReadonly] = useState(false);
-    const [pixel_timeout_ms, setPixelTimeoutMs] = useState(DEFAULT_PIXEL_TIMEOUT_MS);
+    const pixel_timeout_ms = usePublicConfigValue(CONFIG_KEY_PIXEL_TIMEOUT_MS, DEFAULT_PIXEL_TIMEOUT_MS);
 
     const pixel_grid_ref = useRef<PixelGridRef | null>(null);
 
@@ -106,14 +107,6 @@ export default function Home() {
             }
         });
 
-        socket.on("config_value", ({key, value}) => {
-            console.log("Received config value:", key, value);
-
-            if (key === CONFIG_KEY_PIXEL_TIMEOUT_MS) {
-                setPixelTimeoutMs(value);
-            }
-        });
-
         socket.on("gift_info", (info: GiftInfo) => setGiftInfo(info));
 
         socket.on("reload", () => {
@@ -138,9 +131,6 @@ export default function Home() {
 
         // check if the canvas is in readonly mode
         socket.emit("check_readonly");
-
-        // request timeout config value
-        socket.emit("get_public_config_value", CONFIG_KEY_PIXEL_TIMEOUT_MS);
 
         return () => {
             socket.disconnect();

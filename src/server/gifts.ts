@@ -4,7 +4,7 @@ import type {Author, GiftInfo, HeldGift} from "@/types";
 
 import {get_config} from "@/server/config";
 import {CONFIG_KEY_GIFT_EXPIRY_MS} from "@/consts";
-import {DEFAULT_GIFT_EXPIRY_MS, GIFT_BURST_MIN_GAP_MS} from "@/defaults";
+import {DEFAULT_GIFT_EXPIRY_MS, DEFAULT_GIFT_BURST_GAP_MS} from "@/defaults";
 import snowflake from "@/snowflake";
 
 // user id to the gifts they currently hold, soonest expiring first
@@ -79,7 +79,7 @@ export const consume_gift = (user_id: string): ConsumeGiftResult => {
     const current_time = Date.now();
     const last_use = last_gift_use.get(user_id);
 
-    if (last_use !== undefined && current_time - last_use < GIFT_BURST_MIN_GAP_MS) {
+    if (last_use !== undefined && current_time - last_use < get_config(CONFIG_KEY_GIFT_BURST_GAP_MS, DEFAULT_GIFT_BURST_GAP_MS)) {
         return {status: "burst_gap"};
     }
 
@@ -124,7 +124,7 @@ export const cleanup_expired_gifts = (): string[] => {
 
     const current_time = Date.now();
     for (const [user_id, last_use] of last_gift_use.entries()) {
-        if (current_time - last_use >= GIFT_BURST_MIN_GAP_MS) {
+        if (current_time - last_use >= DEFAULT_GIFT_BURST_GAP_MS) {
             last_gift_use.delete(user_id);
         }
     }
