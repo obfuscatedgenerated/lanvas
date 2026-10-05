@@ -6,13 +6,14 @@ import {CONFIG_KEY_ADMIN_GOD, CONFIG_KEY_GIFTING_ENABLED, CONFIG_KEY_READONLY} f
 import {DEFAULT_ADMIN_GOD, DEFAULT_GIFTING_ENABLED} from "@/defaults";
 
 import {is_user_banned} from "@/server/banlist";
-import {get_calculated_pixel_timeout, is_user_in_pixel_timeout, pixel_timeout_user} from "@/server/timeouts";
+import {get_calculated_pixel_timeout, is_user_in_pixel_timeout, pixel_timeout_user, remove_pixel_timeout} from "@/server/timeouts";
 import {emit_gift_info, give_gift, user_room} from "@/server/gifts";
 import {activity_check_in, is_user_active} from "@/server/afk";
+import snowflake from "@/snowflake";
 
-// gift your ready pixel to the author of the pixel at (x, y)
+// gift your ready pixel to another online user
 
-export const handler: SocketHandlerFunction = ({socket, payload, io, unique_connected_user_ids, connected_users}) => {
+export const handler: SocketHandlerFunction = async ({socket, payload, io, pool, connected_users}) => {
     const {to_id} = payload ?? {};
 
     if (typeof to_id !== "string") {
@@ -43,11 +44,21 @@ export const handler: SocketHandlerFunction = ({socket, payload, io, unique_conn
 
     activity_check_in(user_id);
 
+    if (to_id === user_id) {
+        socket.emit("gift_rejected", {reason: "self"});
+        return;
+    }
+
+    // recipient must currently be connected, which also gives us their display details
     let recipient: Author | null = null;
 
     for (const connected of connected_users) {
         if (connected.user_id === to_id) {
-            recipient = {user_id: to_id, name: connected.username || "Unknown", avatar_url: connected.avatar_url ?? null};
+            recipient = {
+                user_id: to_id,
+                name: connected.username || "Unknown",
+                avatar_url: connected.avatar_url ?? null,
+            };
             break;
         }
     }
@@ -59,16 +70,6 @@ export const handler: SocketHandlerFunction = ({socket, payload, io, unique_conn
 
     if (!is_user_active(recipient.user_id)) {
         socket.emit("gift_rejected", {reason: "recipient_afk", recipient});
-        return;
-    }
-
-    if (recipient.user_id === user_id) {
-        socket.emit("gift_rejected", {reason: "self"});
-        return;
-    }
-
-    if (!unique_connected_user_ids.has(recipient.user_id)) {
-        socket.emit("gift_rejected", {reason: "recipient_offline", recipient});
         return;
     }
 
@@ -87,9 +88,9 @@ export const handler: SocketHandlerFunction = ({socket, payload, io, unique_conn
         return;
     }
 
+    // take the pixel before awaiting the db, so a second request can't spend it in the meantime
     if (!god) {
         pixel_timeout_user(user_id);
-        io.to(user_room(user_id)).emit("timeout_info", get_calculated_pixel_timeout(user_id));
     }
 
     const sender: Author = {
@@ -98,11 +99,50 @@ export const handler: SocketHandlerFunction = ({socket, payload, io, unique_conn
         avatar_url: user.picture || null,
     };
 
-    give_gift(recipient.user_id, sender);
+    const gift_snowflake = snowflake.generate();
+
+    try {
+        // keep user details current so stats can join on usernames
+        await pool.query(
+            `INSERT INTO user_details (user_id, username, avatar_url)
+                     VALUES ($1, $2, $3)
+                     ON CONFLICT (user_id) DO UPDATE SET username = EXCLUDED.username, avatar_url = EXCLUDED.avatar_url`,
+            [sender.user_id, sender.name, sender.avatar_url]
+        );
+
+        // the recipient's name may be a fallback, so never overwrite an existing record with it
+        await pool.query(
+            `INSERT INTO user_details (user_id, username, avatar_url)
+                     VALUES ($1, $2, $3)
+                     ON CONFLICT (user_id) DO NOTHING`,
+            [recipient.user_id, recipient.name, recipient.avatar_url]
+        );
+
+        await pool.query(
+            "INSERT INTO gift_log (snowflake, from_id, to_id, amount) VALUES ($1, $2, $3, $4)",
+            [gift_snowflake, sender.user_id, recipient.user_id, 1]
+        );
+    } catch (db_error) {
+        console.error("Database error during gift:", db_error);
+
+        // give the sender their pixel back
+        if (!god) {
+            remove_pixel_timeout(user_id);
+        }
+
+        socket.emit("gift_rejected", {reason: "database_error"});
+        return;
+    }
+
+    if (!god) {
+        io.to(user_room(user_id)).emit("timeout_info", get_calculated_pixel_timeout(user_id));
+    }
+
+    give_gift(recipient.user_id, sender, 1, gift_snowflake.toString());
 
     emit_gift_info(io, recipient.user_id);
-    io.to(user_room(recipient.user_id)).emit("gift_received", {from: sender, x, y});
+    io.to(user_room(recipient.user_id)).emit("gift_received", {from: sender});
     socket.emit("gift_sent", {to: recipient});
 
-    console.log(`Gift from ${user.name} (id: ${user_id}) to ${recipient.name} (id: ${recipient.user_id}) via pixel (${x}, ${y})`);
+    console.log(`Gift from ${user.name} (id: ${user_id}) to ${recipient.name} (id: ${recipient.user_id})`);
 }

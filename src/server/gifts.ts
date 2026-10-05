@@ -3,7 +3,7 @@ import type {Server} from "socket.io";
 import type {Author, GiftInfo, HeldGift} from "@/types";
 
 import {get_config} from "@/server/config";
-import {CONFIG_KEY_GIFT_EXPIRY_MS} from "@/consts";
+import {CONFIG_KEY_GIFT_BURST_GAP_MS, CONFIG_KEY_GIFT_EXPIRY_MS} from "@/consts";
 import {DEFAULT_GIFT_EXPIRY_MS, DEFAULT_GIFT_BURST_GAP_MS} from "@/defaults";
 import snowflake from "@/snowflake";
 
@@ -48,9 +48,9 @@ export const get_gift_info = (user_id: string): GiftInfo => {
     };
 }
 
-export const give_gift = (to_id: string, from: Author, amount = 1): HeldGift => {
+export const give_gift = (to_id: string, from: Author, amount = 1, id = snowflake.generate().toString()): HeldGift => {
     const gift: HeldGift = {
-        id: snowflake.generate().toString(),
+        id,
         from,
         amount,
         expires: Date.now() + get_config(CONFIG_KEY_GIFT_EXPIRY_MS, DEFAULT_GIFT_EXPIRY_MS),

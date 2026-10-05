@@ -214,3 +214,15 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres GRANT SELECT,INSERT,DELETE,UPDATE ON 
 -- PostgreSQL database dump complete
 --
 
+CREATE TABLE public.gift_log (
+    snowflake bigint NOT NULL,
+    from_id bigint NOT NULL,
+    to_id bigint NOT NULL,
+    amount integer NOT NULL DEFAULT 1,
+    CONSTRAINT gift_log_pkey PRIMARY KEY (snowflake)
+);
+
+ALTER TABLE public.gift_log OWNER TO postgres;
+
+ALTER TABLE public.pixels ADD COLUMN gift_snowflake bigint;
+

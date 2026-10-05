@@ -138,8 +138,8 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}
 
             // then upsert the pixel
             await client.query(
-                "INSERT INTO pixels (x, y, color, author_id, snowflake) VALUES ($1, $2, $3, $4, $5)",
-                [x, y, color, anonymous ? null : user_id, snowflake_id],
+                "INSERT INTO pixels (x, y, color, author_id, snowflake, gift_snowflake) VALUES ($1, $2, $3, $4, $5, $6)",
+                [x, y, color, anonymous ? null : user_id, snowflake_id, used_gift ? used_gift.id : null],
             );
 
             // TODO: ensure the latest cached pixel is the one with the latest snowflake to avoid reload inconsistencies? kinda over the top for the likelihood rn tho
