@@ -1,5 +1,5 @@
 import type {SocketHandlerFunction} from "@/server/types";
-import type {Author} from "@/types";
+import type {Author, GiftLogEntry} from "@/types";
 
 import {get_config} from "@/server/config";
 import {CONFIG_KEY_ADMIN_GOD, CONFIG_KEY_GIFTING_ENABLED, CONFIG_KEY_READONLY} from "@/consts";
@@ -143,6 +143,18 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool,
     emit_gift_info(io, recipient.user_id);
     io.to(user_room(recipient.user_id)).emit("gift_received", {from: sender});
     socket.emit("gift_sent", {to: recipient});
+
+    // live update for any admin viewing the gift log
+    const log_entry: GiftLogEntry = {
+        id: gift_snowflake.toString(),
+        timestamp: snowflake.timestampFrom(gift_snowflake),
+        from: {user_id: sender.user_id, name: sender.name},
+        to: {user_id: recipient.user_id, name: recipient.name},
+        amount: 1,
+        used: 0,
+    };
+
+    io.to("admin").emit("gift_logged", log_entry);
 
     console.log(`Gift from ${user.name} (id: ${user_id}) to ${recipient.name} (id: ${recipient.user_id})`);
 }

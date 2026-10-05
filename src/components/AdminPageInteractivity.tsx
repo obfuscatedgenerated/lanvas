@@ -41,6 +41,7 @@ import {
     CONFIG_KEY_READONLY,
     LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER
 } from "@/consts";
+import {GiftLogEntry} from "@/types";
 
 // ---------------------------------------------------------------------------------------------------------------------
 // reusable building blocks
@@ -661,6 +662,80 @@ const ConnectedUsersSection = () => {
     return (
         <AdminSection title="Connected users">
             <ConnectedUserList connected_users={connected_users} active_user_ids={active_user_ids} />
+        </AdminSection>
+    );
+};
+
+const GIFT_LOG_LIMIT = 100;
+
+const GiftLogSection = () => {
+    const [entries, setEntries] = useState<GiftLogEntry[]>([]);
+    const [load_failed, setLoadFailed] = useState(false);
+
+    const refresh = useCallback(() => {
+        setLoadFailed(false);
+        socket.emit("admin_request_gift_log", {limit: GIFT_LOG_LIMIT});
+    }, []);
+
+    useEffect(() => {
+        const handle_gift_log = (new_entries: GiftLogEntry[]) => setEntries(new_entries);
+        const handle_gift_log_error = () => setLoadFailed(true);
+
+        // newest first, capped so a long event doesn't grow the table forever
+        const handle_gift_logged = (entry: GiftLogEntry) => {
+            setEntries((previous) => [entry, ...previous].slice(0, GIFT_LOG_LIMIT));
+        };
+
+        socket.on("gift_log", handle_gift_log);
+        socket.on("gift_log_error", handle_gift_log_error);
+        socket.on("gift_logged", handle_gift_logged);
+
+        refresh();
+
+        return () => {
+            socket.off("gift_log", handle_gift_log);
+            socket.off("gift_log_error", handle_gift_log_error);
+            socket.off("gift_logged", handle_gift_logged);
+        };
+    }, [refresh]);
+
+    return (
+        <AdminSection title="Gift log">
+            <div className="flex items-center gap-4">
+                <FancyButton onClick={refresh}>Refresh</FancyButton>
+                <span className="text-sm text-gray-400">
+                    Showing the latest {entries.length} gifts. New gifts appear live, refresh to update the used counts.
+                </span>
+            </div>
+
+            {load_failed && (
+                <span className="text-red-500">Failed to load the gift log, check the server logs.</span>
+            )}
+
+            <div className="max-h-96 overflow-y-auto">
+                <table className="table-fixed bg-neutral-900">
+                    <thead className="sticky top-0 bg-neutral-900">
+                    <tr className="border-neutral-600 border-b-1">
+                        <th className="w-50">Time</th>
+                        <th className="w-50">From</th>
+                        <th className="w-50">To</th>
+                        <th className="w-20">Amount</th>
+                        <th className="w-20">Used</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {entries.map((entry) => (
+                        <tr key={entry.id}>
+                            <td className="text-center select-text">{new Date(entry.timestamp).toLocaleString()}</td>
+                            <td className="text-center select-text" title={entry.from.user_id}>{entry.from.name ?? entry.from.user_id}</td>
+                            <td className="text-center select-text" title={entry.to.user_id}>{entry.to.name ?? entry.to.user_id}</td>
+                            <td className="text-center select-text">{entry.amount}</td>
+                            <td className="text-center select-text">{entry.used}/{entry.amount}</td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </table>
+            </div>
         </AdminSection>
     );
 };
@@ -1303,6 +1378,8 @@ const AdminPageInteractivity = () => {
             <ConnectedUsersSection />
 
             <BannedUsersSection />
+
+            <GiftLogSection />
 
             <ManualStatsSection />
 

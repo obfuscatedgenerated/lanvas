@@ -27,3 +27,12 @@ export interface GiftInfo {
     next_expiry: number | null;
     gifts: HeldGift[];
 }
+
+export interface GiftLogEntry {
+    id: string;
+    timestamp: number;
+    from: {user_id: string; name: string | null};
+    to: {user_id: string; name: string | null};
+    amount: number;
+    used: number;
+}
