@@ -19,6 +19,7 @@ import {CONFIG_KEY_PIXEL_TIMEOUT_MS, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@
 import type {GiftInfo} from "@/types";
 import usePublicConfigValue from "@/hooks/usePublicConfigValue";
 import GiftedBanner from "@/components/GiftedBanner";
+import GiftJar from "@/components/GiftJar";
 
 export default function Home() {
     const [current_color, setCurrentColor] = useState("#000000");
@@ -250,6 +251,10 @@ export default function Home() {
             </div>
 
             <FloatingCommentControl comments_on_canvas={comments_on_canvas} setCommentsOnCanvas={setCommentsOnCanvas} />
+
+            {!is_readonly &&
+                <GiftJar gifts={gift_info.gifts} next_expiry={gift_info.next_expiry} />
+            }
 
             {!is_readonly &&
                 <FloatingWidget
