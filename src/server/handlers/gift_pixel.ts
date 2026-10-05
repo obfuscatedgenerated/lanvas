@@ -2,8 +2,8 @@ import type {SocketHandlerFunction} from "@/server/types";
 import type {Author} from "@/types";
 
 import {get_config} from "@/server/config";
-import {CONFIG_KEY_ADMIN_GOD, CONFIG_KEY_READONLY} from "@/consts";
-import {DEFAULT_ADMIN_GOD} from "@/defaults";
+import {CONFIG_KEY_ADMIN_GOD, CONFIG_KEY_GIFTING_ENABLED, CONFIG_KEY_READONLY} from "@/consts";
+import {DEFAULT_ADMIN_GOD, DEFAULT_GIFTING_ENABLED} from "@/defaults";
 
 import {is_user_banned} from "@/server/banlist";
 import {get_cell_author} from "@/server/grid";
@@ -22,6 +22,11 @@ export const handler: SocketHandlerFunction = ({socket, payload, io, unique_conn
 
     if (get_config(CONFIG_KEY_READONLY, false)) {
         socket.emit("gift_rejected", {reason: "readonly"});
+        return;
+    }
+
+    if (!get_config(CONFIG_KEY_GIFTING_ENABLED, DEFAULT_GIFTING_ENABLED)) {
+        socket.emit("gift_rejected", {reason: "disabled"});
         return;
     }
 

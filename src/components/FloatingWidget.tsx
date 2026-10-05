@@ -7,6 +7,8 @@ import "react-circular-progressbar/dist/styles.css";
 
 import colors from "tailwindcss/colors";
 import ColorPicker from "@/components/ColorPicker";
+import {Gift} from "lucide-react";
+import {GiftingPopup} from "@/components/GiftingPopup";
 
 const TIMEOUT_UPDATE_INTERVAL_MS = 100;
 
@@ -70,8 +72,32 @@ const TimeoutContent = ({ start_time, duration }: TimeoutContentProps) => {
     );
 }
 
+const GiftingButton = () => {
+    const [popup_open, setPopupOpen] = useState(false);
+
+    return (
+        <>
+            <button
+                className="w-full h-full flex items-center justify-center text-white outline-yellow-300 outline-1 cursor-pointer text-sm font-semibold hover:bg-yellow-600 hover:drop-shadow-[0_0_10px_rgba(207,170,11,0.9)] transition-colors rounded-full"
+                title="Gift this pixel to another user..."
+                onClick={() => setPopupOpen(true)}
+            >
+                <Gift />
+            </button>
+
+            <GiftingPopup open={popup_open} on_close={() => setPopupOpen(false)} />
+        </>
+    );
+}
+
 const FloatingWidget = (props: FloatingWidgetPropsWithGridLinesToggle) => (
     <>
+        { props.mode === "color" && (
+            <div className="fixed bottom-55 sm:bottom-22.5 right-25 sm:right-30 w-15 h-15 rounded-full bg-neutral-700">
+                <GiftingButton />
+            </div>
+        )}
+
         <div className="fixed bottom-55 sm:bottom-22.5 right-7.5 sm:right-10 w-15 h-15 rounded-full bg-neutral-700">
             {props.mode === "timeout" && <TimeoutContent start_time={props.start_time} duration={props.duration} />}
             {props.mode === "color" && <ColorPickerContent current_color={props.current_color} on_color_change={props.on_color_change} />}

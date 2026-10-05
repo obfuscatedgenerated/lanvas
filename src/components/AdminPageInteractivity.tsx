@@ -642,6 +642,8 @@ const AdminPageInteractivity = () => {
     const [chat_timeout_ms_input, setChatTimeoutMsInput] = useState(DEFAULT_COMMENT_TIMEOUT_MS.toString());
     const [last_chat_timeout_ms_saved, setLastChatTimeoutMsSaved] = useState(DEFAULT_COMMENT_TIMEOUT_MS.toString());
 
+    const [gifting_enabled_checkbox, setGiftingEnabledCheckbox] = useState(DEFAULT_GIFTING_ENABLED);
+
     // keep checkbox in sync with actual readonly state
     useEffect(() => {
         setReadonlyCheckbox(is_readonly);
@@ -699,6 +701,9 @@ const AdminPageInteractivity = () => {
                 case CONFIG_KEY_COMMENTS_ENABLED:
                     setCommentsEnabledCheckbox(value !== undefined ? !!value : DEFAULT_COMMENTS_ENABLED);
                     break;
+                case CONFIG_KEY_GIFTING_ENABLED:
+                    setGiftingEnabledCheckbox(value !== undefined ? !!value : DEFAULT_GIFTING_ENABLED);
+                    break;
             }
         });
 
@@ -735,6 +740,7 @@ const AdminPageInteractivity = () => {
         socket.emit("admin_get_config_value", CONFIG_KEY_COMMENT_TIMEOUT_MS);
         socket.emit("admin_get_config_value", CONFIG_KEY_CENSOR_ENABLED);
         socket.emit("admin_get_config_value", CONFIG_KEY_COMMENTS_ENABLED);
+        socket.emit("admin_get_config_value", CONFIG_KEY_GIFTING_ENABLED);
 
         return () => {
             socket.disconnect();
