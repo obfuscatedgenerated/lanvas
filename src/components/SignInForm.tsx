@@ -73,7 +73,18 @@ export default function SignInForm() {
 
                     <p>Known &quot;good&quot; and &quot;bad&quot; comment content may be temporarily cached to improve moderation performance. This cache is ephemeral and is discarded when the service is restarted. The contents of the cache cannot be viewed, it simply exists to speed up the automatic moderation process.</p>
 
-                    <p>For service integrity, prevent abuse, and facilitate moderation, site administrators have access to real-time session data. This includes your <strong>Socket ID, Discord User ID, username, and the specific page you are currently viewing</strong>.</p>
+                    <p>Users have the ability to gift their pixels to other users. <strong>Held gifts are ephemeral and are not stored.</strong> They are kept in memory until they are used or expire, and are discarded when the service is restarted. The data included in a gift is:</p>
+                    <ul className="list-disc">
+                        <li><strong>Your Discord User ID, username, and avatar URL</strong> to show the recipient who sent the gift.</li>
+                        <li><strong>The recipient&apos;s Discord User ID</strong> to deliver the gift.</li>
+                        <li><strong>The number of pixels and an expiry time</strong> for the gift.</li>
+                    </ul>
+
+                    <p>Gift totals, including who gave and received gifts and how many, are stored to show gifting statistics. These are anonymised or erased along with pixel data at the end of the event.</p>
+
+                    <p>While gifting is enabled, other signed-in users viewing the gifting menu can see your <strong>username, avatar, and whether you are currently active or AFK</strong>. This is not stored, and is only shared while you are connected to the canvas.</p>
+
+                    <p>For service integrity, prevent abuse, and facilitate moderation, site administrators have access to real-time session data. This includes your <strong>Socket ID, Discord User ID, username, avatar URL, whether you are currently active or AFK, and the specific page you are currently viewing</strong>.</p>
 
                     <p><strong>This session data is ephemeral.</strong> It is retained only for the duration of your active WebSocket connection and is immediately discarded when you disconnect or close the page.</p>
 
