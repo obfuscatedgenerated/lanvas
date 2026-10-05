@@ -35,7 +35,7 @@ if (!fs.existsSync(timestamped_output_dir)) {
 // TODO command line args for output dir, pixel size, seconds per pixel, etc
 
 const PIXEL_SIZE = 10; // use slight oversampling. could also instead use pixelated on parent, but that leads to weird subpixel artifacts
-const SECONDS_PER_PIXEL = 0.0333; // show each new pixel for this many seconds in the video
+const SECONDS_PER_PIXEL = 0.01667; // show each new pixel for this many seconds in the video
 const LAST_FRAME_HOLD_TIME = 3; // seconds to hold on the last frame
 
 const PAGE_SIZE = 250; // number of pixels to process in each db query
