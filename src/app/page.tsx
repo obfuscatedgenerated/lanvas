@@ -18,6 +18,7 @@ import {DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
 import {CONFIG_KEY_PIXEL_TIMEOUT_MS, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@/consts";
 import type {GiftInfo} from "@/types";
 import usePublicConfigValue from "@/hooks/usePublicConfigValue";
+import GiftedBanner from "@/components/GiftedBanner";
 
 export default function Home() {
     const [current_color, setCurrentColor] = useState("#000000");
@@ -206,6 +207,7 @@ export default function Home() {
             />
 
             <FloatingAdminMessage />
+            <GiftedBanner />
             <FloatingPoll />
 
             <AutomodPopup
