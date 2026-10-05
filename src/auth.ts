@@ -15,6 +15,7 @@ export const handler = NextAuth({
             clientId: process.env.DISCORD_CLIENT_ID,
             clientSecret: process.env.DISCORD_CLIENT_SECRET,
             authorization: { params: { scope: "identify guilds" } }, // need access to guilds
+            httpOptions: { timeout: 10000 },
         })
     ],
 
@@ -24,6 +25,14 @@ export const handler = NextAuth({
             // if the user is the DISCORD_ADMIN_USER_ID, allow sign in regardless
             if (process.env.DISCORD_ADMIN_USER_ID && user.id === process.env.DISCORD_ADMIN_USER_ID) {
                 return true;
+            }
+
+            // if the user is in DISCORD_BYPASS_USER_IDS, allow sign in regardless
+            if (process.env.DISCORD_BYPASS_USER_IDS) {
+                const bypass_ids = process.env.DISCORD_BYPASS_USER_IDS.split(",").map(id => id.trim());
+                if (bypass_ids.includes(user.id)) {
+                    return true;
+                }
             }
 
             const guild_id = process.env.DISCORD_GUILD_ID;
