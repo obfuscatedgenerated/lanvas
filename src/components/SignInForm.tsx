@@ -60,7 +60,7 @@ export default function SignInForm() {
 
                     <p>Historical pixel data is also stored, including the same data as above, in order to facilitate rollbacks and time lapses.</p>
 
-                    <p>At the end of the event, all pixels will be anonymised and all user details on record will be erased.</p>
+                    <p>At the end of the event, all pixels will be anonymised, records of interactions between users will be erased, and all user details on record will be erased.</p>
 
                     <p>Users have the ability to place live comments on the canvas. <strong>Comments are ephemeral and are not stored.</strong> They are only transmitted to other connected users in real-time. The data included in a comment is:</p>
                     <ul className="list-disc">
@@ -80,9 +80,11 @@ export default function SignInForm() {
                         <li><strong>The number of pixels and an expiry time</strong> for the gift.</li>
                     </ul>
 
-                    <p>Gift totals, including who gave and received gifts and how many, are stored to show gifting statistics. These are anonymised or erased along with pixel data at the end of the event.</p>
+                    <p>Some game features let users interact with each other, for example by sending or winning pixels. When these are used, <strong>a record of each interaction is stored</strong>, including who was involved, how many pixels, and when, in order to run the feature and show statistics. Anything held temporarily for these features, such as pixels waiting to be used, is kept in memory only and discarded when it expires or the service restarts.</p>
 
-                    <p>While gifting is enabled, other signed-in users viewing the gifting menu can see your <strong>username, avatar, and whether you are currently active or AFK</strong>. This is not stored, and is only shared while you are connected to the canvas.</p>
+                    <p>Some features announce what happened to all connected users, including <strong>your username, avatar, and the outcome</strong>, and may temporarily change how your name appears to others. These announcements are not stored.</p>
+
+                    <p>While some features are enabled, other signed-in users may be able to see your <strong>username, avatar, and whether you are currently active or AFK</strong>. This is not stored, and is only shared while you are connected to the canvas.</p>
 
                     <p>For service integrity, prevent abuse, and facilitate moderation, site administrators have access to real-time session data. This includes your <strong>Socket ID, Discord User ID, username, avatar URL, whether you are currently active or AFK, and the specific page you are currently viewing</strong>.</p>
 
