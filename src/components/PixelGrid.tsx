@@ -129,6 +129,15 @@ export const grid_to_canvas_space = (
     };
 }
 
+// what an overlay drawn over the canvas needs to line itself up with the grid
+export interface PixelGridOverlayContext {
+    grid_data: string[][];
+    grid_width: number;
+    grid_height: number;
+    pixel_size: number;
+    api: PixelGridRef;
+}
+
 interface PixelGridProps {
     ref?: React.RefObject<PixelGridRef | null>;
 
@@ -147,6 +156,9 @@ interface PixelGridProps {
     comments_on_canvas?: boolean;
 
     show_grid_lines?: boolean;
+
+    // extra layers drawn above the pixels and below comments, moving and zooming with the canvas
+    overlay?: (context: PixelGridOverlayContext) => React.ReactNode;
 }
 
 type AuthorData = (Author | null)[][];
@@ -162,6 +174,7 @@ const PixelGrid = ({
     on_transformed,
     comments_on_canvas = true,
     show_grid_lines = false,
+    overlay
 }: PixelGridProps) => {
     const [grid_width, setGridWidth] = useState(0);
     const [grid_height, setGridHeight] = useState(0);
@@ -472,6 +485,8 @@ const PixelGrid = ({
                         grid_width={grid_width}
                         visible={show_grid_lines}
                     />
+                    
+                    {overlay?.({grid_data, grid_width, grid_height, pixel_size: PIXEL_SIZE, api: ref_api})}
 
                     <CommentsOverlay visible={comments_on_canvas} pixel_grid_ref_api={ref_api} />
                 </TransformComponent>

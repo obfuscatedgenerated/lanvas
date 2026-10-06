@@ -27,9 +27,11 @@ import AFKHeartbeatActivity from "@/components/AFKHeartbeatActivity";
 import ClownTracker from "@/components/ClownTracker";
 import CasinoAnnouncements from "@/components/CasinoAnnouncements";
 import DuckParade from "@/components/DuckParade";
-import {AdwarePrank} from "@/components/AdwarePrank";
 import {Pranks} from "@/components/Pranks";
 import {screen_to_page_space} from "@/lib/page_flip";
+import useTemplate from "@/hooks/useTemplate";
+import TemplateOverlay, {TemplateProgress} from "@/components/TemplateOverlay";
+import TemplatePanel from "@/components/TemplatePanel";
 
 export default function Home() {
     const [current_color, setCurrentColor] = useState("#000000");
@@ -49,6 +51,10 @@ export default function Home() {
     const [comments_on_canvas, setCommentsOnCanvas] = useState<boolean>(true);
 
     const [grid_lines_enabled, setGridLinesEnabled] = useState<boolean>(false);
+
+    const template = useTemplate();
+    const [template_progress, setTemplateProgress] = useState<TemplateProgress | null>(null);
+    const [template_move_mode, setTemplateMoveMode] = useState(false);
 
     const [gift_info, setGiftInfo] = useState<GiftInfo>({balance: 0, next_expiry: null, gifts: [], burst_remaining_ms: 0, burst_gap_ms: 0});
 
@@ -224,7 +230,12 @@ export default function Home() {
             <KeyBindings
                 bindings={{
                     // TODO: open palette with c key, open help with ? or h key, stats with s etc. might have to make enabled flag contextful
-                    "g": () => setGridLinesEnabled(prev => !prev)
+                    "g": () => setGridLinesEnabled(prev => !prev),
+                    "t": () => {
+                        if (template.settings) {
+                            template.update({visible: !template.settings.visible});
+                        }
+                    }
                 }}
 
                 enabled={!comment_composer_coords}
@@ -281,8 +292,27 @@ export default function Home() {
 
                     comments_on_canvas={comments_on_canvas}
                     show_grid_lines={grid_lines_enabled}
+
+                    overlay={(context) => template.settings && template.cells && template.settings.visible && (
+                        <TemplateOverlay
+                            {...context}
+                            settings={template.settings}
+                            cells={template.cells}
+                            move_mode={template_move_mode}
+                            on_move={(x, y) => template.update({x, y})}
+                            on_progress={setTemplateProgress}
+                            on_pick_colour={setCurrentColor}
+                        />
+                    )}
                 />
             </div>
+
+            <TemplatePanel
+                template={template}
+                progress={template_progress}
+                move_mode={template_move_mode}
+                set_move_mode={setTemplateMoveMode}
+            />
 
             <FloatingCommentControl comments_on_canvas={comments_on_canvas} setCommentsOnCanvas={setCommentsOnCanvas} />
 

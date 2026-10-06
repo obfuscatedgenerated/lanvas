@@ -49,6 +49,8 @@ const HelpPopup = ({ open, on_close }: HelpPopupProps) => (
                 { action: "Scroll wheel", description: "Zoom in/out" },
                 { action: "Right click", description: "Place comment" },
                 { action: "G", description: "Toggle grid lines" },
+                { action: "T", description: "Toggle template visibility" },
+                { action: "E", description: "Sample template colour" }
             ]}
         />
 

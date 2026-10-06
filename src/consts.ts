@@ -19,6 +19,7 @@ export const CONFIG_KEY_CASINO_POT = "casino_pot";
 export const CONFIG_KEY_CASINO_POT_SEED = "casino_pot_seed";
 
 export const LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER = "skip_client_timer";
+export const LOCALSTORAGE_KEY_TEMPLATE = "template";
 
 
 // TODO: consts for event names
