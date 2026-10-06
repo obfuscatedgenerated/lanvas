@@ -14,13 +14,19 @@ import AutomodPopup from "@/components/AutomodPopup";
 import KeyBindings from "@/components/KeyBindings";
 
 import {socket} from "@/socket";
-import {DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
-import {CONFIG_KEY_PIXEL_TIMEOUT_MS, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@/consts";
+import {DEFAULT_CASINO_ENABLED, DEFAULT_GIFTING_ENABLED, DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
+import {
+    CONFIG_KEY_CASINO_ENABLED,
+    CONFIG_KEY_GIFTING_ENABLED, CONFIG_KEY_PIXEL_TIMEOUT_MS, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER
+} from "@/consts";
 import type {GiftInfo} from "@/types";
 import usePublicConfigValue from "@/hooks/usePublicConfigValue";
 import GiftedBanner from "@/components/GiftedBanner";
 import {AFKWarning} from "@/components/AFKWarning";
 import AFKHeartbeatActivity from "@/components/AFKHeartbeatActivity";
+import ClownTracker from "@/components/ClownTracker";
+import CasinoAnnouncements from "@/components/CasinoAnnouncements";
+import DuckParade from "@/components/DuckParade";
 
 export default function Home() {
     const [current_color, setCurrentColor] = useState("#000000");
@@ -203,6 +209,9 @@ export default function Home() {
         []
     );
 
+    const gifting_enabled = usePublicConfigValue(CONFIG_KEY_GIFTING_ENABLED, DEFAULT_GIFTING_ENABLED);
+    const casino_enabled = usePublicConfigValue(CONFIG_KEY_CASINO_ENABLED, DEFAULT_CASINO_ENABLED);
+
     return (
         <>
             <AFKHeartbeatActivity />
@@ -217,7 +226,16 @@ export default function Home() {
             />
 
             <FloatingAdminMessage />
-            <GiftedBanner />
+            {gifting_enabled && (
+                <GiftedBanner />
+            )}
+            {casino_enabled && (
+                <>
+                    <CasinoAnnouncements />
+                    <DuckParade />
+                    <ClownTracker />
+                </>
+            )}
             <FloatingPoll />
 
             <AutomodPopup

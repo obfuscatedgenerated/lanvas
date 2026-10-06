@@ -114,7 +114,13 @@ export const CasinoPopup = ({can_wager, casino_cooldown, ...popup_props}: Casino
         }
     }, [spinning, pending_result]);
 
-    const on_spin_end = useCallback(() => setSpinning(false), []);
+    const on_spin_end = useCallback(() => {
+        setSpinning(false)
+
+        setTimeout(() => {
+            popup_props.on_close()
+        }, 1000);
+    }, [popup_props]);
 
     const spin = () => {
         setRejection(null);
