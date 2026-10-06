@@ -38,3 +38,4 @@ export * as stop_online_users from "./stop_online_users";
 export * as activity_ping from "./activity_ping";
 export * as spin_wheel from "./spin_wheel";
 export * as request_casino_wheel from "./request_casino_wheel";
+export * as check_casino_timeout from "./check_casino_timeout";
