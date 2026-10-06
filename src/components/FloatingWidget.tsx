@@ -213,7 +213,7 @@ const FloatingWidget = ({current_color, on_color_change, cooldown, burst, gifts,
                 <GiftingPopup open={gifting_popup_open} on_close={() => setGiftingPopupOpen(false)} in_timeout={in_cooldown} />
             )}
             {casino_enabled && (
-                <CasinoPopup open={casino_popup_open} on_close={() => setCasinoPopupOpen(false)} in_timeout={in_cooldown} />
+                <CasinoPopup open={casino_popup_open} on_close={() => setCasinoPopupOpen(false)} can_wager={!in_cooldown || gift_balance > 0} />
             )}
 
             <div className="font-sans fixed bottom-35 sm:bottom-7.5 right-7.5 sm:right-10 bg-neutral-900/70 backdrop-blur-sm border border-neutral-800/70 rounded-lg px-4 py-2">

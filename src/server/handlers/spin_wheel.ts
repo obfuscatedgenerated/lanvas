@@ -25,7 +25,7 @@ import {spin} from "@/server/casino";
 
 // wager a pixel on the wheel: checks, wager and timeout all happen synchronously before spinning, so double clicks can't both get through
 
-export const handler: SocketHandlerFunction = ({socket, io, pool}) => {
+export const handler: SocketHandlerFunction = ({socket, io, pool, connected_users}) => {
     if (!get_config(CONFIG_KEY_CASINO_ENABLED, DEFAULT_CASINO_ENABLED)) {
         socket.emit("spin_rejected", {reason: "disabled"});
         return;
@@ -88,11 +88,12 @@ export const handler: SocketHandlerFunction = ({socket, io, pool}) => {
         avatar_url: user.picture || null,
     };
 
-    const outcome = spin({io, pool, spinner});
+    const outcome = spin({io, pool, spinner, connected_users});
 
     // the spinner's wheel starts turning now, everyone else hears the result once it lands
     io.to(user_room(user_id)).emit("spin_started", {
-        outcome_id: outcome.id,
+        segment_id: outcome.segment_id,
+        tease_segment_id: outcome.tease_segment_id ?? null,
         casino_timeout: get_calculated_casino_timeout(user_id),
     });
 

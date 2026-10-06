@@ -1,30 +1,186 @@
-import {ComponentProps, useEffect, useMemo, useState} from "react";
+import {ComponentProps, useCallback, useEffect, useState} from "react";
 
 import Popup from "@/components/Popup";
-
-import {socket} from "@/socket";
 import FancyButton from "@/components/FancyButton";
 import RiggedWheel from "@/components/RiggedWheel";
 
+import {socket} from "@/socket";
+import type {WheelSegment} from "@/types";
+
 interface CasinoPopupProps extends ComponentProps<typeof Popup> {
-    in_timeout: boolean;
+    // a spin costs a pixel, either your ready one or a held gift
+    can_wager: boolean;
 }
 
-export const CasinoPopup = ({in_timeout, ...popup_props}: CasinoPopupProps) => {
-    const [spin_key, setSpinKey] = useState(0);
+interface CasinoWheelMessage {
+    segments: WheelSegment[];
+    pot: number;
+    casino_timeout_remaining_ms: number;
+}
 
-    // obviously needs more guard logic and to be decided by the server, just testing the wheel component for now
+interface SpinStartedMessage {
+    segment_id: string;
+    tease_segment_id: string | null;
+    casino_timeout: {remaining: number} | null;
+}
+
+const REJECTION_MESSAGES: Record<string, string> = {
+    disabled: "The casino is closed",
+    readonly: "The canvas is read only right now",
+    unauthenticated: "Sign in to spin",
+    banned: "You can't spin",
+    spin_timeout: "The wheel needs a rest, try again soon",
+    burst_gap: "Slow down a little",
+    no_pixel: "You need a pixel to bet, wait for yours or get gifted one",
+};
+
+const format_remaining = (remaining_ms: number): string => {
+    const total_seconds = Math.max(0, Math.ceil(remaining_ms / 1000));
+    const minutes = Math.floor(total_seconds / 60);
+    const seconds = total_seconds % 60;
+
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+};
+
+export const CasinoPopup = ({can_wager, ...popup_props}: CasinoPopupProps) => {
+    const [segments, setSegments] = useState<WheelSegment[]>([]);
+    const [pot, setPot] = useState<number | null>(null);
+
+    const [result_id, setResultId] = useState<string | null>(null);
+    const [tease_id, setTeaseId] = useState<string | null>(null);
+    const [spin_key, setSpinKey] = useState(0);
+    const [spinning, setSpinning] = useState(false);
+
+    // the server's announcement can arrive before the wheel stops (the rigged creep runs longer), so it waits here
+    const [pending_result, setPendingResult] = useState<string | null>(null);
+    const [shown_result, setShownResult] = useState<string | null>(null);
+    const [rejection, setRejection] = useState<string | null>(null);
+
+    // when the next spin is allowed, on this client's clock, converted from a relative duration to avoid clock drift
+    const [next_spin_at, setNextSpinAt] = useState<number | null>(null);
+    const [current_time, setCurrentTime] = useState(Date.now());
+
+    useEffect(() => {
+        if (!popup_props.open) {
+            return;
+        }
+
+        const handle_wheel = ({segments: new_segments, pot: new_pot, casino_timeout_remaining_ms}: CasinoWheelMessage) => {
+            setSegments(new_segments);
+            setPot(new_pot);
+            setNextSpinAt(casino_timeout_remaining_ms > 0 ? Date.now() + casino_timeout_remaining_ms : null);
+        };
+
+        const handle_spin_started = ({segment_id, tease_segment_id, casino_timeout}: SpinStartedMessage) => {
+            setRejection(null);
+            setShownResult(null);
+            setPendingResult(null);
+
+            setResultId(segment_id);
+            setTeaseId(tease_segment_id);
+            setSpinning(true);
+            setSpinKey((previous) => previous + 1);
+
+            setNextSpinAt(casino_timeout && casino_timeout.remaining > 0 ? Date.now() + casino_timeout.remaining : null);
+        };
+
+        const handle_spin_rejected = ({reason}: {reason: string}) => {
+            setRejection(REJECTION_MESSAGES[reason] ?? `Couldn't spin: ${reason}`);
+        };
+
+        // only our own result, everyone's results go through the feed instead
+        const handle_own_result = ({message}: {message: string}) => setPendingResult(message);
+
+        socket.on("casino_wheel", handle_wheel);
+        socket.on("casino_pot", setPot);
+        socket.on("spin_started", handle_spin_started);
+        socket.on("spin_rejected", handle_spin_rejected);
+        socket.on("casino_own_result", handle_own_result);
+
+        socket.emit("request_casino_wheel");
+
+        return () => {
+            socket.off("casino_wheel", handle_wheel);
+            socket.off("casino_pot", setPot);
+            socket.off("spin_started", handle_spin_started);
+            socket.off("spin_rejected", handle_spin_rejected);
+            socket.off("casino_own_result", handle_own_result);
+        };
+    }, [popup_props.open]);
+
+    // reveal the announcement once the wheel has actually stopped
+    useEffect(() => {
+        if (!spinning && pending_result) {
+            setShownResult(pending_result);
+            setPendingResult(null);
+        }
+    }, [spinning, pending_result]);
+
+    // tick the spin countdown while it's running
+    useEffect(() => {
+        if (next_spin_at === null) {
+            return;
+        }
+
+        const interval = setInterval(() => {
+            const now = Date.now();
+            setCurrentTime(now);
+
+            if (now >= next_spin_at) {
+                setNextSpinAt(null);
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [next_spin_at]);
+
+    const on_spin_end = useCallback(() => setSpinning(false), []);
+
+    const spin = () => {
+        setRejection(null);
+        socket.emit("spin_wheel");
+    };
+
+    const waiting_for_spin = next_spin_at !== null && next_spin_at > current_time;
+    const spin_disabled = spinning || waiting_for_spin || !can_wager || segments.length === 0;
+
+    const button_label = spinning
+        ? "Spinning..."
+        : waiting_for_spin
+            ? `Next spin in ${format_remaining(next_spin_at - current_time)}`
+            : "Bet a pixel and spin!";
 
     return (
-        <Popup {...popup_props} className="bg-transparent">
-            <div className="flex flex-col items-stretch justify-center gap-8">
-                {in_timeout && (
-                    <p className="text-yellow-400 mt-2">Your pixel isn&apos;t ready yet, wait for your timer to finish to gift it.</p>
+        <Popup {...popup_props} className="bg-transparent p-6 max-w-3xl w-11/12 max-h-4/5 overflow-y-auto">
+            <div className="flex flex-col items-center justify-center gap-6">
+                {pot !== null && (
+                    <p className="text-lg font-semibold text-yellow-300">🎰 Jackpot: {pot} pixels</p>
                 )}
 
-                <RiggedWheel segments={[{id: "test", label: "test", color: "red"}, {id: "jackpot", label: "win a million quid!!", color: "green"}]} result_id={"test"} spin_key={spin_key} />
+                {segments.length > 0
+                    ? (
+                        <RiggedWheel
+                            segments={segments}
+                            result_id={result_id}
+                            tease_id={tease_id}
+                            spin_key={spin_key}
+                            on_spin_end={on_spin_end}
+                        />
+                    )
+                    : <p className="text-neutral-400">Loading the wheel...</p>
+                }
 
-                <FancyButton onClick={() => setSpinKey((prev) => prev + 1)}>Spin!</FancyButton>
+                <p className="min-h-6 text-center" aria-live="polite">
+                    {shown_result ?? rejection ?? (!can_wager && !spinning ? "You need a pixel to bet, wait for yours or ask someone nicely for a gift :)" : "")}
+                </p>
+
+                <FancyButton
+                    className="ml-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={spin_disabled}
+                    onClick={spin}
+                >
+                    {button_label}
+                </FancyButton>
             </div>
         </Popup>
     );

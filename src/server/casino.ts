@@ -259,6 +259,7 @@ const OUTCOMES: CasinoOutcome[] = [
         // the client sees outcome_id "duck" in casino_result and sends the duck waddling
         apply: (context) => `🦆 ${context.spinner.name} summoned a duck`,
     },
+    // TODO: more weird outcomes
 
     // busts: 35%
     {
@@ -355,6 +356,9 @@ export const spin = (context: CasinoContext): CasinoOutcome => {
                 message,
                 announce: outcome.announce,
             });
+
+            // the spinner's popup shows its own result without needing to know who it's signed in as
+            context.io.to(user_room(context.spinner.user_id)).emit("casino_own_result", {outcome_id: outcome.id, message});
         } catch (apply_error) {
             console.error(`Casino outcome ${outcome.id} failed:`, apply_error);
         }
