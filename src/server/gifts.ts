@@ -15,6 +15,17 @@ const last_gift_use = new Map<string, number>();
 
 export const user_room = (user_id: string): string => `user:${user_id}`;
 
+// unspent pixels from gifts that expired since the last drain, waiting to feed the casino pot
+let expired_pixel_total = 0;
+
+// hands over the expired pixels counted so far and starts counting again from zero
+export const take_expired_pixels = (): number => {
+    const expired_pixels = expired_pixel_total;
+    expired_pixel_total = 0;
+
+    return expired_pixels;
+}
+
 // drop expired or empty gifts for a user, returning what's left
 const prune_gifts = (user_id: string): HeldGift[] => {
     const gifts = held_gifts.get(user_id);
@@ -23,7 +34,19 @@ const prune_gifts = (user_id: string): HeldGift[] => {
     }
 
     const current_time = Date.now();
-    const remaining = gifts.filter(gift => gift.expires > current_time && gift.amount > 0);
+    const remaining: HeldGift[] = [];
+
+    for (const gift of gifts) {
+        // spent gifts just disappear, only pixels that ran out of time are counted
+        if (gift.expires <= current_time) {
+            expired_pixel_total += gift.amount;
+            continue;
+        }
+
+        if (gift.amount > 0) {
+            remaining.push(gift);
+        }
+    }
 
     if (remaining.length === 0) {
         held_gifts.delete(user_id);
@@ -52,6 +75,7 @@ export const get_gift_info = (user_id: string): GiftInfo => {
         burst_gap_ms,
     };
 }
+// TODO: compute balance from gift log unused on restart
 
 export const give_gift = (to_id: string, from: Author, amount = 1, id = snowflake.generate().toString()): HeldGift => {
     const gift: HeldGift = {

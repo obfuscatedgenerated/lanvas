@@ -40,3 +40,10 @@ export interface GiftLogEntry {
     amount: number;
     used: number;
 }
+
+export interface WheelSegment {
+    id: string;
+    label: string;
+    color: string;
+    weight?: number; // relative slice size, defaults to 1
+}

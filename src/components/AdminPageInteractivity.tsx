@@ -13,7 +13,7 @@ import {X} from "lucide-react";
 import {
     DEFAULT_ADMIN_ANONYMOUS,
     DEFAULT_ADMIN_GOD,
-    DEFAULT_AUTOMOD_ENABLED, DEFAULT_CASINO_ENABLED, DEFAULT_CASINO_TIMEOUT_MS,
+    DEFAULT_AUTOMOD_ENABLED, DEFAULT_CASINO_ENABLED, DEFAULT_CASINO_POT_SEED, DEFAULT_CASINO_TIMEOUT_MS,
     DEFAULT_CENSOR_ENABLED,
     DEFAULT_COMMENT_TIMEOUT_MS,
     DEFAULT_COMMENTS_ENABLED,
@@ -28,7 +28,8 @@ import {
 import {
     CONFIG_KEY_ADMIN_ANONYMOUS,
     CONFIG_KEY_ADMIN_GOD,
-    CONFIG_KEY_AUTOMOD_ENABLED, CONFIG_KEY_CASINO_ENABLED, CONFIG_KEY_CASINO_TIMEOUT_MS,
+    CONFIG_KEY_AUTOMOD_ENABLED, CONFIG_KEY_CASINO_ENABLED,
+    CONFIG_KEY_CASINO_POT, CONFIG_KEY_CASINO_POT_SEED, CONFIG_KEY_CASINO_TIMEOUT_MS,
     CONFIG_KEY_CENSOR_ENABLED,
     CONFIG_KEY_COMMENT_TIMEOUT_MS,
     CONFIG_KEY_COMMENTS_ENABLED,
@@ -1390,6 +1391,25 @@ const AdminPageInteractivity = () => {
                     is_public={true}
                     label="Spin timeout (ms)"
                     confirm_name="spin timeout"
+                />
+
+                <ConfigNumberInput
+                    config_key={CONFIG_KEY_CASINO_POT_SEED}
+                    default_value={DEFAULT_CASINO_POT_SEED}
+                    is_public={false}
+                    label="Pot seed"
+                    confirm_name="pot seed"
+                    help="The pot starts at this value, and grows with each spin. The pot is reset to this value when a user wins."
+                />
+
+                <ConfigNumberInput
+                    config_key={CONFIG_KEY_CASINO_POT}
+                    default_value={DEFAULT_CASINO_POT_SEED}
+                    is_public={false}
+                    label="Live pot"
+                    confirm_name="pot"
+                    help="The current pot value. This it automatically filled by expired gifts etc, so only edit manually if you know what you're doing."
+                    confirm_note="This will reset the pot to this value, and is not recommended unless you know what you're doing."
                 />
             </AdminSection>
 

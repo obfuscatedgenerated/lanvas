@@ -47,8 +47,9 @@ import * as handlers from "@/server/handlers/@ALL";
 import {is_automod_supported, preload_model} from "@/server/automod";
 import {get_all_stats, increment_virtual_stat, init_virtual_stat, load_stats, set_virtual_stat} from "@/server/stats";
 import {activity_check_in, activity_check_out, on_activity_change} from "@/server/afk";
-import {cleanup_expired_gifts, emit_gift_info, user_room} from "@/server/gifts";
+import {cleanup_expired_gifts, emit_gift_info, take_expired_pixels, user_room} from "@/server/gifts";
 import {forget_activity_ping} from "@/server/handlers/activity_ping";
+import {add_to_pot} from "@/server/casino";
 
 const dev = process.env.NODE_ENV !== "production";
 
@@ -178,6 +179,12 @@ const main = async () => {
     setInterval(() => {
         for (const user_id of cleanup_expired_gifts()) {
             emit_gift_info(io, user_id);
+        }
+
+        // expired gifts are fed into the casino pot
+        const expired_pixels = take_expired_pixels();
+        if (expired_pixels > 0) {
+            add_to_pot(io, pool, expired_pixels);
         }
     }, 5 * 1000); // every 5 seconds
 

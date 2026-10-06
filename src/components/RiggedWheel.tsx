@@ -1,13 +1,7 @@
 "use client";
 
 import {useEffect, useMemo, useRef, useState} from "react";
-
-export interface WheelSegment {
-    id: string;
-    label: string;
-    color: string;
-    weight?: number; // relative slice size, defaults to 1
-}
+import {WheelSegment} from "@/types";
 
 interface RiggedWheelProps {
     segments: WheelSegment[];
