@@ -286,7 +286,7 @@ const FloatingWidget = ({current_color, on_color_change, cooldown, burst, gifts,
                     </div>
                 </div>
 
-                <div ref={button_row_ref} className="flex items-center gap-4">
+                <div ref={button_row_ref} className="flex items-center justify-end gap-4">
                     {casino_enabled && (
                         <div className="relative w-15 h-15 rounded-full bg-neutral-700">
                             <button
