@@ -186,7 +186,7 @@ const FloatingWidget = ({current_color, on_color_change, cooldown, burst, gifts,
                 setForceWhite(true);
                 setTimeout(() => setForceWhite(false), 600000);
                 return;
-            } else if (outcome_id === "pride_minute") {
+            } else if (outcome_id === "rainbow") {
                 setForceRainbow(true);
                 setTimeout(() => setForceRainbow(false), 60000);
                 return;

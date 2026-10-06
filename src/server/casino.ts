@@ -183,7 +183,7 @@ const SEGMENTS: Omit<WheelSegment, "weight">[] = [
     {id: "duck", label: "🦆", color: "#ca8a04"},
     {id: "adware", label: "Adware", color: "#f97316"},
     {id: "upside_down", label: "uʍop ǝpᴉsd∩", color: "#0ea5e9"},
-    {id: "pride_minute", label: "Pride minute 🏳‍🌈❤", color: "#a855f7"},
+    {id: "rainbow", label: "Taste the rainbow", color: "#a855f7"},
     {id: "eraserhead", label: "Eraserhead", color: "#52525b"},
     {id: "jackpot", label: "JACKPOT", color: "#eab308"},
     {id: "nothing", label: "Nothing", color: "#404040"},
@@ -282,13 +282,13 @@ const OUTCOMES: CasinoOutcome[] = [
         apply: (context) => `🔄 ${context.spinner.name} got turned upside down`,
     },
     {
-        id: "pride_minute",
+        id: "rainbow",
         kind: "weird",
         weight: 5,
-        segment_id: "pride_minute",
+        segment_id: "rainbow",
         announce: "feed",
         // client side randomisation of colour picker (through the hue) for only the spinner for 1 min
-        apply: (context) => `🏳️‍🌈 ${context.spinner.name} is celebrating pride minute!`,
+        apply: (context) => `🌈 ${context.spinner.name} is tasting the rainbow!`,
     },
     {
         id: "eraserhead",
