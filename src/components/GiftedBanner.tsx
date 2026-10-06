@@ -32,11 +32,12 @@ const GiftedBanner = () => {
             }
         };
 
-        const handle_gift_received = ({from}: {from: Author}) => {
+        const handle_gift_received = ({from, amount = 1}: {from: Author; amount?: number}) => {
             clear_timers();
 
+            // count pixels rather than gifts, so a single triple win and three separate gifts are the same
             const is_repeat = visible_ref.current && last_sender_id_ref.current === from.user_id;
-            setCount((previous) => is_repeat ? previous + 1 : 1);
+            setCount((previous) => is_repeat ? previous + amount : amount);
 
             last_sender_id_ref.current = from.user_id;
             visible_ref.current = true;
@@ -78,8 +79,7 @@ const GiftedBanner = () => {
                 )}
 
                 <span>
-                    <strong>{sender.name}</strong> gifted you a pixel!
-                    {count > 1 && <span className="text-emerald-400 font-semibold"> ×{count}</span>}
+                    <strong>{sender.name}</strong> gifted you {count === 1 ? "a pixel" : <span className="text-emerald-400 font-semibold">{count} pixels</span>}!
                 </span>
             </div>
         </div>
