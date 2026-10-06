@@ -13,6 +13,7 @@ import {DEFAULT_ADMIN_GOD, DEFAULT_CASINO_ENABLED, DEFAULT_CASINO_TIMEOUT_MS} fr
 import {is_user_banned} from "@/server/banlist";
 import {activity_check_in} from "@/server/afk";
 import {
+    calculate_timeout_data,
     casino_timeout_user,
     get_calculated_casino_timeout,
     get_calculated_pixel_timeout,
@@ -79,7 +80,12 @@ export const handler: SocketHandlerFunction = ({socket, io, pool, connected_user
             emit_gift_info(io, user_id);
         }
 
-        casino_timeout_user(user_id, get_config(CONFIG_KEY_CASINO_TIMEOUT_MS, DEFAULT_CASINO_TIMEOUT_MS));
+        const uncomp_timeout = casino_timeout_user(user_id, get_config(CONFIG_KEY_CASINO_TIMEOUT_MS, DEFAULT_CASINO_TIMEOUT_MS));
+        const timeout = calculate_timeout_data(uncomp_timeout);
+        socket.emit("casino_timeout_info", {
+            remaining_ms: timeout ? timeout.remaining : 0,
+            duration_ms: timeout ? timeout.ends - timeout.started : 0,
+        });
     }
 
     const spinner: Author = {

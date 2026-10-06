@@ -1,6 +1,6 @@
 "use client";
 
-import {useState, useEffect, useRef} from "react";
+import {useEffect, useRef, useState} from "react";
 
 import {CircularProgressbar} from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
@@ -13,24 +13,20 @@ import GiftJar from "@/components/GiftJar";
 import {GiftingPopup} from "@/components/GiftingPopup";
 
 import usePublicConfigValue from "@/hooks/usePublicConfigValue";
+import useRemainingMs from "@/hooks/useRemainingMs";
 import {CONFIG_KEY_CASINO_ENABLED, CONFIG_KEY_GIFTING_ENABLED} from "@/consts";
 import {DEFAULT_CASINO_ENABLED, DEFAULT_GIFTING_ENABLED} from "@/defaults";
 
-import type {HeldGift} from "@/types";
+import type {Cooldown, HeldGift} from "@/types";
 import {useElementWidth} from "@/hooks/useElementWidth";
 import {CasinoPopup} from "@/components/CasinoPopup";
+import {socket} from "@/socket";
 
-const COOLDOWN_UPDATE_INTERVAL_MS = 100;
 const READY_FLASH_MS = 900;
 
 const JAR_BORDER_PX = 1;
 const JAR_MIN_HEIGHT_PX = 48;
 const JAR_MAX_HEIGHT_PX = 122;
-
-export interface Cooldown {
-    start_time: number;
-    duration: number;
-}
 
 interface FloatingWidgetProps {
     current_color: string;
@@ -49,31 +45,28 @@ interface FloatingWidgetProps {
     set_grid_lines_enabled: (enabled: boolean) => void;
 }
 
-// milliseconds left on your own pixel's cooldown, ticking while one is active
-const useRemainingMs = (start_time: number | null, duration: number | null): number => {
-    const [remaining_ms, setRemainingMs] = useState(0);
-
-    useEffect(() => {
-        if (start_time === null || duration === null) {
-            setRemainingMs(0);
-            return;
-        }
-
-        const update = () => setRemainingMs(Math.max(0, start_time + duration - Date.now()));
-        update();
-
-        const interval = setInterval(update, COOLDOWN_UPDATE_INTERVAL_MS);
-        return () => clearInterval(interval);
-    }, [start_time, duration]);
-
-    return remaining_ms;
-};
-
 const seconds_label = (remaining_ms: number): string => `${Math.ceil(remaining_ms / 1000)}s`;
 
 // red only ever means "you can't place right now"
-const BlockedRing = ({remaining_ms, duration}: {remaining_ms: number; duration: number}) => {
-    const percentage = duration > 0 ? 100 * remaining_ms / duration : 0;
+const BlockedRing = ({
+    remaining_ms,
+    duration,
+    show_time = true,
+    ring_color = colors.rose[400],
+    label_border_class = "border-rose-400/70",
+    incrementing = false
+}: {
+    remaining_ms: number;
+    duration: number;
+    show_time?: boolean;
+    ring_color?: string;
+    label_border_class?: string
+    incrementing?: boolean;
+}) => {
+    let percentage = duration > 0 ? 100 * remaining_ms / duration : 0;
+    if (incrementing) {
+        percentage = 100 - percentage;
+    }
 
     return (
         <>
@@ -83,16 +76,54 @@ const BlockedRing = ({remaining_ms, duration}: {remaining_ms: number; duration: 
                     strokeWidth={8}
                     styles={{
                         trail: {stroke: "transparent"},
-                        path: {stroke: colors.rose[400], transition: "none"},
+                        path: {stroke: ring_color, transition: "none"},
                     }}
                 />
             </div>
 
-            <span className="font-sans absolute -top-2 -left-2 pointer-events-none select-none text-xs font-semibold bg-neutral-900 border border-rose-400/70 rounded-full px-1.5 py-0.5">
-                {seconds_label(remaining_ms)}
-            </span>
+            {show_time && (
+                <span className={`font-sans absolute -top-2 -left-2 pointer-events-none select-none text-xs font-semibold bg-neutral-900 border ${label_border_class} rounded-full px-1.5 py-0.5`}>
+                    {seconds_label(remaining_ms)}
+                </span>
+            )}
         </>
     );
+};
+
+const useCasinoCooldown = (): Cooldown | null => {
+    const [cooldown, setCooldown] = useState<Cooldown | null>(null);
+
+    useEffect(() => {
+        // relative values converted on receipt, so client clock drift doesn't matter
+        const handle_timeout_info = ({remaining_ms, duration_ms}: {remaining_ms: number; duration_ms: number}) => {
+            if (remaining_ms <= 0 || duration_ms <= 0) {
+                setCooldown(null);
+                return;
+            }
+
+            const ends_at = Date.now() + remaining_ms;
+            setCooldown({start_time: ends_at - duration_ms, duration: duration_ms});
+        };
+
+        socket.on("casino_timeout_info", handle_timeout_info);
+        socket.emit("check_casino_timeout");
+
+        return () => {
+            socket.off("casino_timeout_info", handle_timeout_info);
+        };
+    }, []);
+
+    // clear it once it runs out, so the button re-enables without waiting for the server
+    useEffect(() => {
+        if (!cooldown) {
+            return;
+        }
+
+        const timeout = setTimeout(() => setCooldown(null), cooldown.start_time + cooldown.duration - Date.now());
+        return () => clearTimeout(timeout);
+    }, [cooldown]);
+
+    return cooldown;
 };
 
 const FloatingWidget = ({current_color, on_color_change, cooldown, burst, gifts, next_gift_expiry, grid_lines_enabled, set_grid_lines_enabled}: FloatingWidgetProps) => {
@@ -107,6 +138,9 @@ const FloatingWidget = ({current_color, on_color_change, cooldown, burst, gifts,
 
     const burst_remaining_ms = useRemainingMs(burst?.start_time ?? null, burst?.duration ?? null);
     const burst_percentage = burst && burst.duration > 0 ? 100 * burst_remaining_ms / burst.duration : 0;
+
+    const casino_cooldown = useCasinoCooldown();
+    const casino_remaining_ms = useRemainingMs(casino_cooldown?.start_time ?? null, casino_cooldown?.duration ?? null);
 
     const [button_row_ref, button_row_width] = useElementWidth<HTMLDivElement>();
 
@@ -170,17 +204,27 @@ const FloatingWidget = ({current_color, on_color_change, cooldown, burst, gifts,
                 </div>
 
                 <div ref={button_row_ref} className="flex items-center gap-4">
-                    {/*TODO: casino specific tiemout (defualt 5min) with timer around the button */}
                     {casino_enabled && (
                         <div className="relative w-15 h-15 rounded-full bg-neutral-700">
                             <button
                                 className="w-full h-full flex items-center justify-center text-white outline-cyan-300 outline-1 cursor-pointer text-sm font-semibold hover:bg-cyan-600 hover:drop-shadow-[0_0_10px_rgba(0,254,252,0.9)] transition-colors rounded-full disabled:opacity-40 disabled:cursor-not-allowed disabled:outline-neutral-500 disabled:hover:bg-transparent disabled:hover:drop-shadow-none"
-                                title={in_cooldown ? "You can't spin again yet" : "Test your luck..."}
-                                disabled={in_cooldown}
+                                title={casino_cooldown ? "You can't spin again yet" : "Test your luck..."}
+                                disabled={!!casino_cooldown}
                                 onClick={() => setCasinoPopupOpen(true)}
                             >
                                 <Dices />
                             </button>
+
+                            {casino_cooldown && (
+                                <BlockedRing
+                                    remaining_ms={casino_remaining_ms}
+                                    duration={casino_cooldown.duration}
+                                    show_time={false}
+                                    ring_color={colors.cyan[300]}
+                                    label_border_class="border-cyan-300/70"
+                                    incrementing
+                                />
+                            )}
                         </div>
                     )}
 
@@ -213,7 +257,7 @@ const FloatingWidget = ({current_color, on_color_change, cooldown, burst, gifts,
                 <GiftingPopup open={gifting_popup_open} on_close={() => setGiftingPopupOpen(false)} in_timeout={in_cooldown} />
             )}
             {casino_enabled && (
-                <CasinoPopup open={casino_popup_open} on_close={() => setCasinoPopupOpen(false)} can_wager={!in_cooldown || gift_balance > 0} />
+                <CasinoPopup open={casino_popup_open} on_close={() => setCasinoPopupOpen(false)} can_wager={!in_cooldown || gift_balance > 0} casino_cooldown={casino_cooldown} />
             )}
 
             <div className="font-sans fixed bottom-35 sm:bottom-7.5 right-7.5 sm:right-10 bg-neutral-900/70 backdrop-blur-sm border border-neutral-800/70 rounded-lg px-4 py-2">

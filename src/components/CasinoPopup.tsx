@@ -4,24 +4,27 @@ import Popup from "@/components/Popup";
 import FancyButton from "@/components/FancyButton";
 import RiggedWheel from "@/components/RiggedWheel";
 
+import useRemainingMs from "@/hooks/useRemainingMs";
+
 import {socket} from "@/socket";
-import type {WheelSegment} from "@/types";
+import type {Cooldown, WheelSegment} from "@/types";
 
 interface CasinoPopupProps extends ComponentProps<typeof Popup> {
     // a spin costs a pixel, either your ready one or a held gift
     can_wager: boolean;
+
+    // owned by the dock so the button's ring and this popup always agree, null when a spin is allowed
+    casino_cooldown: Cooldown | null;
 }
 
 interface CasinoWheelMessage {
     segments: WheelSegment[];
     pot: number;
-    casino_timeout_remaining_ms: number;
 }
 
 interface SpinStartedMessage {
     segment_id: string;
     tease_segment_id: string | null;
-    casino_timeout: {remaining: number} | null;
 }
 
 const REJECTION_MESSAGES: Record<string, string> = {
@@ -42,7 +45,7 @@ const format_remaining = (remaining_ms: number): string => {
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 };
 
-export const CasinoPopup = ({can_wager, ...popup_props}: CasinoPopupProps) => {
+export const CasinoPopup = ({can_wager, casino_cooldown, ...popup_props}: CasinoPopupProps) => {
     const [segments, setSegments] = useState<WheelSegment[]>([]);
     const [pot, setPot] = useState<number | null>(null);
 
@@ -56,22 +59,19 @@ export const CasinoPopup = ({can_wager, ...popup_props}: CasinoPopupProps) => {
     const [shown_result, setShownResult] = useState<string | null>(null);
     const [rejection, setRejection] = useState<string | null>(null);
 
-    // when the next spin is allowed, on this client's clock, converted from a relative duration to avoid clock drift
-    const [next_spin_at, setNextSpinAt] = useState<number | null>(null);
-    const [current_time, setCurrentTime] = useState(Date.now());
+    const cooldown_remaining_ms = useRemainingMs(casino_cooldown?.start_time ?? null, casino_cooldown?.duration ?? null);
 
     useEffect(() => {
         if (!popup_props.open) {
             return;
         }
 
-        const handle_wheel = ({segments: new_segments, pot: new_pot, casino_timeout_remaining_ms}: CasinoWheelMessage) => {
+        const handle_wheel = ({segments: new_segments, pot: new_pot}: CasinoWheelMessage) => {
             setSegments(new_segments);
             setPot(new_pot);
-            setNextSpinAt(casino_timeout_remaining_ms > 0 ? Date.now() + casino_timeout_remaining_ms : null);
         };
 
-        const handle_spin_started = ({segment_id, tease_segment_id, casino_timeout}: SpinStartedMessage) => {
+        const handle_spin_started = ({segment_id, tease_segment_id}: SpinStartedMessage) => {
             setRejection(null);
             setShownResult(null);
             setPendingResult(null);
@@ -80,8 +80,6 @@ export const CasinoPopup = ({can_wager, ...popup_props}: CasinoPopupProps) => {
             setTeaseId(tease_segment_id);
             setSpinning(true);
             setSpinKey((previous) => previous + 1);
-
-            setNextSpinAt(casino_timeout && casino_timeout.remaining > 0 ? Date.now() + casino_timeout.remaining : null);
         };
 
         const handle_spin_rejected = ({reason}: {reason: string}) => {
@@ -116,24 +114,6 @@ export const CasinoPopup = ({can_wager, ...popup_props}: CasinoPopupProps) => {
         }
     }, [spinning, pending_result]);
 
-    // tick the spin countdown while it's running
-    useEffect(() => {
-        if (next_spin_at === null) {
-            return;
-        }
-
-        const interval = setInterval(() => {
-            const now = Date.now();
-            setCurrentTime(now);
-
-            if (now >= next_spin_at) {
-                setNextSpinAt(null);
-            }
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [next_spin_at]);
-
     const on_spin_end = useCallback(() => setSpinning(false), []);
 
     const spin = () => {
@@ -141,13 +121,13 @@ export const CasinoPopup = ({can_wager, ...popup_props}: CasinoPopupProps) => {
         socket.emit("spin_wheel");
     };
 
-    const waiting_for_spin = next_spin_at !== null && next_spin_at > current_time;
+    const waiting_for_spin = cooldown_remaining_ms > 0;
     const spin_disabled = spinning || waiting_for_spin || !can_wager || segments.length === 0;
 
     const button_label = spinning
         ? "Spinning..."
         : waiting_for_spin
-            ? `Next spin in ${format_remaining(next_spin_at - current_time)}`
+            ? `Next spin in ${format_remaining(cooldown_remaining_ms)}`
             : "Bet a pixel and spin!";
 
     return (

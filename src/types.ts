@@ -8,6 +8,11 @@ export interface OnlineUser extends Author {
     is_active: boolean;
 }
 
+export interface Cooldown {
+    start_time: number;
+    duration: number;
+}
+
 export interface Comment {
     comment: string;
     x: number;

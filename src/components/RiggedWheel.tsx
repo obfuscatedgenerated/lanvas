@@ -147,6 +147,9 @@ const RiggedWheel = ({segments, result_id, tease_id = null, spin_key, spin_durat
     const result_ref = useRef<PlacedSegment | null>(null);
     const pause_timeout_ref = useRef<NodeJS.Timeout | null>(null);
 
+    // the spin_key already acted on, starting with whatever it was at mount so opening the wheel doesn't replay the last spin
+    const handled_spin_key_ref = useRef(spin_key);
+
     const on_spin_end_ref = useRef(on_spin_end);
     useEffect(() => {
         on_spin_end_ref.current = on_spin_end;
@@ -161,9 +164,11 @@ const RiggedWheel = ({segments, result_id, tease_id = null, spin_key, spin_durat
     }, []);
 
     useEffect(() => {
-        if (spin_key === 0 || result_id === null) {
+        if (spin_key === handled_spin_key_ref.current || result_id === null) {
             return;
         }
+
+        handled_spin_key_ref.current = spin_key;
 
         const result = placed_segments.find((placed) => placed.segment.id === result_id);
         if (!result) {
