@@ -1,11 +1,11 @@
 "use client";
 
 import {useEffect, useRef, useState, type ReactNode} from "react";
-import {ImagePlus, Eye, EyeOff, Move, Trash2, X} from "lucide-react";
+import {Download, Eye, EyeOff, ImagePlus, Lock, Move, RotateCcw, Trash2, X} from "lucide-react";
 
 import type {TemplateController} from "@/hooks/useTemplate";
 import type {TemplateProgress} from "@/components/TemplateOverlay";
-import {MIN_TEMPLATE_WIDTH, type TemplateDisplayMode, type TemplateSampling} from "@/lib/template";
+import {is_template_file, MIN_TEMPLATE_WIDTH, TEMPLATE_FILE_EXTENSION, type TemplateDisplayMode, type TemplateSampling} from "@/lib/template";
 
 interface TemplatePanelProps {
     template: TemplateController;
@@ -58,12 +58,16 @@ const MODE_OPTIONS: SegmentedOption<TemplateDisplayMode>[] = [
     {value: "mismatches", label: "To do", title: "Only the cells that don't match yet"},
 ];
 
-const first_image_file = (files: FileList | null | undefined): File | null =>
-    Array.from(files ?? []).find((file) => file.type.startsWith("image/")) ?? null;
+// images to trace from, or template files someone shared
+const first_importable_file = (files: FileList | null | undefined): File | null =>
+    Array.from(files ?? []).find((file) => file.type.startsWith("image/") || is_template_file(file)) ?? null;
 
 // floating controls for the personal template, collapsed to a button when not in use
 const TemplatePanel = ({template, progress, move_mode, set_move_mode}: TemplatePanelProps) => {
-    const {settings, height, error, import_file, update, clear} = template;
+    const {settings, height, error, import_file, export_file, update, reset_to_shared_position, clear} = template;
+
+    const is_shared = !!settings?.shared;
+    const away_from_shared_position = !!settings?.shared && (settings.x !== settings.shared.x || settings.y !== settings.shared.y);
 
     const [open, setOpen] = useState(false);
     const [dragging_file, setDraggingFile] = useState(false);
@@ -76,7 +80,7 @@ const TemplatePanel = ({template, progress, move_mode, set_move_mode}: TemplateP
         }
 
         const handle_paste = (event: ClipboardEvent) => {
-            const file = first_image_file(event.clipboardData?.files);
+            const file = first_importable_file(event.clipboardData?.files);
 
             if (file) {
                 event.preventDefault();
@@ -123,7 +127,7 @@ const TemplatePanel = ({template, progress, move_mode, set_move_mode}: TemplateP
                 event.preventDefault();
                 setDraggingFile(false);
 
-                const file = first_image_file(event.dataTransfer.files);
+                const file = first_importable_file(event.dataTransfer.files);
                 if (file) {
                     void import_file(file);
                 }
@@ -132,18 +136,31 @@ const TemplatePanel = ({template, progress, move_mode, set_move_mode}: TemplateP
             <div className="flex items-center justify-between">
                 <h2 className="font-semibold text-base">Template</h2>
 
-                <button type="button" className="cursor-pointer text-neutral-400 hover:text-white" title="Close" onClick={() => setOpen(false)}>
-                    <X size={18} />
-                </button>
+                <div className="flex items-center gap-2">
+                    {settings && (
+                        <button
+                            type="button"
+                            className="cursor-pointer text-neutral-400 hover:text-white"
+                            title={settings.visible ? "Hide template (T)" : "Show template (T)"}
+                            onClick={() => update({visible: !settings.visible})}
+                        >
+                            {settings.visible ? <Eye size={18} /> : <EyeOff size={18} />}
+                        </button>
+                    )}
+
+                    <button type="button" className="cursor-pointer text-neutral-400 hover:text-white" title="Close" onClick={() => setOpen(false)}>
+                        <X size={18} />
+                    </button>
+                </div>
             </div>
 
             <input
                 ref={file_input_ref}
                 type="file"
-                accept="image/*"
+                accept={`image/*,application/json,.json,${TEMPLATE_FILE_EXTENSION}`}
                 className="hidden"
                 onChange={(event) => {
-                    const file = first_image_file(event.target.files);
+                    const file = first_importable_file(event.target.files);
                     if (file) {
                         void import_file(file);
                     }
@@ -160,8 +177,8 @@ const TemplatePanel = ({template, progress, move_mode, set_move_mode}: TemplateP
                     onClick={() => file_input_ref.current?.click()}
                 >
                     <ImagePlus size={28} />
-                    <span>Choose an image, drop one here, or paste</span>
-                    <span className="text-xs text-neutral-500">It stays on your device and is only shown to you</span>
+                    <span>Choose an image or a template file, drop one here, or paste</span>
+                    <span className="text-xs text-neutral-500">Images stay on your device and are only shown to you</span>
                 </button>
             )}
 
@@ -190,35 +207,49 @@ const TemplatePanel = ({template, progress, move_mode, set_move_mode}: TemplateP
                         </div>
                     </div>
 
-                    <Row label="Size">
-                        <span className="flex items-center gap-1">
-                            <input
-                                type="number"
-                                className={INPUT_CLASS}
-                                min={MIN_TEMPLATE_WIDTH}
-                                max={template.max_width}
-                                value={settings.width}
-                                onChange={(event) => {
-                                    const width = parseInt(event.target.value, 10);
-                                    if (!isNaN(width)) {
-                                        update({width});
-                                    }
-                                }}
-                            />
-                            <span className="text-neutral-400">× {height}</span>
-                        </span>
-                    </Row>
+                    {is_shared
+                        ? (
+                            <Row label="Size">
+                                <span className="flex items-center gap-1.5" title="Shared templates keep their size, so everyone's matches exactly">
+                                    <Lock size={12} className="text-neutral-400" />
+                                    {settings.width} × {height}
+                                </span>
+                            </Row>
+                        )
+                        : (
+                            <>
+                                <Row label="Size">
+                                    <span className="flex items-center gap-1">
+                                        <input
+                                            type="number"
+                                            className={INPUT_CLASS}
+                                            min={MIN_TEMPLATE_WIDTH}
+                                            max={template.max_width}
+                                            value={settings.width}
+                                            onChange={(event) => {
+                                                const width = parseInt(event.target.value, 10);
+                                                if (!isNaN(width)) {
+                                                    update({width});
+                                                }
+                                            }}
+                                        />
+                                        <span className="text-neutral-400">× {height}</span>
+                                    </span>
+                                </Row>
 
-                    <input
-                        type="range"
-                        aria-label="Template width"
-                        min={MIN_TEMPLATE_WIDTH}
-                        max={Math.min(template.max_width, settings.source_width)}
-                        value={settings.width}
-                        onChange={(event) => update({width: parseInt(event.target.value, 10)})}
-                    />
+                                <input
+                                    type="range"
+                                    aria-label="Template width"
+                                    min={MIN_TEMPLATE_WIDTH}
+                                    max={Math.min(template.max_width, settings.source_width)}
+                                    value={settings.width}
+                                    onChange={(event) => update({width: parseInt(event.target.value, 10)})}
+                                />
 
-                    <Segmented options={SAMPLING_OPTIONS} value={settings.sampling} on_change={(sampling) => update({sampling})} />
+                                <Segmented options={SAMPLING_OPTIONS} value={settings.sampling} on_change={(sampling) => update({sampling})} />
+                            </>
+                        )
+                    }
 
                     <Row label="Position">
                         <span className="flex items-center gap-1">
@@ -262,14 +293,30 @@ const TemplatePanel = ({template, progress, move_mode, set_move_mode}: TemplateP
                             {move_mode ? "Done moving" : "Move"}
                         </button>
 
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={settings.grid_align}
-                                onChange={(event) => update({grid_align: event.target.checked})}
-                            />
-                            Snap to grid
-                        </label>
+                        {is_shared
+                            ? (
+                                <button
+                                    type="button"
+                                    disabled={!away_from_shared_position}
+                                    className="flex items-center gap-1.5 px-2 py-1 rounded-md border bg-neutral-800 border-neutral-700 hover:bg-neutral-700 cursor-pointer disabled:opacity-40 disabled:cursor-default disabled:hover:bg-neutral-800"
+                                    title="Put it back where whoever shared it meant it to go"
+                                    onClick={reset_to_shared_position}
+                                >
+                                    <RotateCcw size={14} />
+                                    Shared spot
+                                </button>
+                            )
+                            : (
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={settings.grid_align}
+                                        onChange={(event) => update({grid_align: event.target.checked})}
+                                    />
+                                    Snap to grid
+                                </label>
+                            )
+                        }
                     </div>
 
                     {move_mode && (
@@ -294,11 +341,12 @@ const TemplatePanel = ({template, progress, move_mode, set_move_mode}: TemplateP
                     <div className="flex items-center gap-2">
                         <button
                             type="button"
-                            className="flex items-center gap-1.5 px-2 py-1 rounded-md border bg-neutral-800 border-neutral-700 hover:bg-neutral-700 cursor-pointer"
-                            onClick={() => update({visible: !settings.visible})}
+                            className="flex items-center gap-1.5 px-2 py-1 rounded-md border bg-sky-600 border-sky-500 hover:bg-sky-500 text-white cursor-pointer"
+                            title="Save a file others can import to get exactly the same template in the same spot"
+                            onClick={export_file}
                         >
-                            {settings.visible ? <EyeOff size={14} /> : <Eye size={14} />}
-                            {settings.visible ? "Hide" : "Show"}
+                            <Download size={14} />
+                            Share
                         </button>
 
                         <button

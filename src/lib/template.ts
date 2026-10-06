@@ -25,6 +25,10 @@ export interface TemplateSettings {
     mode: TemplateDisplayMode;
     opacity: number; // 0 to 1
     visible: boolean;
+
+    // set when loaded from someone's template file: its size is locked so everyone's cells stay identical,
+    // and this remembers where it was meant to go
+    shared: {x: number; y: number} | null;
 }
 
 // rows of hex colours, null where the image is transparent
@@ -32,6 +36,7 @@ export type TemplateCells = (string | null)[][];
 
 export const MIN_TEMPLATE_WIDTH = 1;
 
+// larger sources are shrunk before storing, keeping localStorage small, templates are capped at the grid width separately
 const MAX_STORED_SOURCE_SIZE = 512;
 
 // pixels more transparent than this count as empty, so transparent pngs leave gaps
@@ -218,9 +223,189 @@ export const load_template_settings = (): TemplateSettings | null => {
             mode: parsed.mode === "solid" || parsed.mode === "mismatches" ? parsed.mode : "dots",
             opacity: typeof parsed.opacity === "number" ? parsed.opacity : 0.6,
             visible: parsed.visible ?? true,
+            shared: parsed.shared && typeof parsed.shared.x === "number" && typeof parsed.shared.y === "number"
+                ? {x: parsed.shared.x, y: parsed.shared.y}
+                : null,
         };
     } catch (storage_error) {
         console.warn("Couldn't load the saved template:", storage_error);
         return null;
     }
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
+// template files, for sharing an exact template with other players
+// ---------------------------------------------------------------------------------------------------------------------
+
+const TEMPLATE_FILE_VERSION = 1;
+
+// generous, files are only ever made by this site, this just stops a bad file hanging the tab
+const MAX_FILE_DIMENSION = 4096;
+
+export const TEMPLATE_FILE_EXTENSION = ".lanvas.json";
+
+interface TemplateFile {
+    lanvas_template: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+
+    // each colour once, cells refer to them by index, -1 for empty
+    palette: string[];
+    cells: number[];
+}
+
+export interface ParsedTemplateFile {
+    cells: TemplateCells;
+    x: number;
+    y: number;
+}
+
+export const is_template_file = (file: File): boolean =>
+    file.name.toLowerCase().endsWith(".json") || file.type === "application/json";
+
+export const serialise_template = (cells: TemplateCells, x: number, y: number): string => {
+    const palette: string[] = [];
+    const palette_indices = new Map<string, number>();
+    const indexed_cells: number[] = [];
+
+    for (const row of cells) {
+        for (const cell of row) {
+            // case differences would otherwise become separate palette entries
+            const colour = cell?.toLowerCase() ?? null;
+
+            if (colour === null) {
+                indexed_cells.push(-1);
+                continue;
+            }
+
+            let palette_index = palette_indices.get(colour);
+
+            if (palette_index === undefined) {
+                palette_index = palette.length;
+                palette.push(colour);
+                palette_indices.set(colour, palette_index);
+            }
+
+            indexed_cells.push(palette_index);
+        }
+    }
+
+    const file: TemplateFile = {
+        lanvas_template: TEMPLATE_FILE_VERSION,
+        x: Math.round(x),
+        y: Math.round(y),
+        width: cells[0]?.length ?? 0,
+        height: cells.length,
+        palette,
+        cells: indexed_cells,
+    };
+
+    return JSON.stringify(file);
+};
+
+const is_whole_number = (value: unknown): value is number => typeof value === "number" && Number.isInteger(value);
+
+export const parse_template_file = (text: string): ParsedTemplateFile => {
+    let parsed: Partial<TemplateFile>;
+
+    try {
+        parsed = JSON.parse(text);
+    } catch {
+        throw new Error("That file isn't a lanvas template");
+    }
+
+    if (typeof parsed !== "object" || parsed === null || parsed.lanvas_template === undefined) {
+        throw new Error("That file isn't a lanvas template");
+    }
+
+    if (parsed.lanvas_template !== TEMPLATE_FILE_VERSION) {
+        throw new Error("That template was made by a different version of lanvas");
+    }
+
+    const {x, y, width, height, palette, cells} = parsed;
+
+    if (!is_whole_number(x) || !is_whole_number(y) || !is_whole_number(width) || !is_whole_number(height)) {
+        throw new Error("That template file is damaged");
+    }
+
+    if (width < 1 || height < 1 || width > MAX_FILE_DIMENSION || height > MAX_FILE_DIMENSION) {
+        throw new Error("That template is an impossible size");
+    }
+
+    if (!Array.isArray(palette) || !palette.every((colour) => typeof colour === "string" && /^#[0-9a-f]{6}$/i.test(colour))) {
+        throw new Error("That template file has broken colours");
+    }
+
+    if (!Array.isArray(cells) || cells.length !== width * height) {
+        throw new Error("That template file is damaged");
+    }
+
+    const rows: TemplateCells = [];
+
+    for (let row = 0; row < height; row++) {
+        const cell_row: (string | null)[] = [];
+
+        for (let column = 0; column < width; column++) {
+            const palette_index = cells[row * width + column];
+
+            if (palette_index === -1) {
+                cell_row.push(null);
+                continue;
+            }
+
+            if (!is_whole_number(palette_index) || palette_index < 0 || palette_index >= palette.length) {
+                throw new Error("That template file is damaged");
+            }
+
+            cell_row.push(palette[palette_index].toLowerCase());
+        }
+
+        rows.push(cell_row);
+    }
+
+    return {cells: rows, x, y};
+};
+
+// draws cells at one pixel each, so sampling it sharp at the same size gives back exactly the same cells
+export const cells_to_data_url = (cells: TemplateCells): string => {
+    const width = cells[0]?.length ?? 0;
+    const height = cells.length;
+
+    const {canvas, context} = create_canvas_context(width, height);
+    const image_data = context.createImageData(width, height);
+
+    for (let row = 0; row < height; row++) {
+        for (let column = 0; column < width; column++) {
+            const colour = cells[row][column];
+            const rgb = colour ? parse_hex(colour) : null;
+            const offset = (row * width + column) * 4;
+
+            // left fully transparent when empty
+            if (!rgb) {
+                continue;
+            }
+
+            image_data.data[offset] = rgb[0];
+            image_data.data[offset + 1] = rgb[1];
+            image_data.data[offset + 2] = rgb[2];
+            image_data.data[offset + 3] = 255;
+        }
+    }
+
+    context.putImageData(image_data, 0, 0);
+    return canvas.toDataURL("image/png");
+};
+
+export const download_text_file = (filename: string, text: string, mime_type: string): void => {
+    const url = URL.createObjectURL(new Blob([text], {type: mime_type}));
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+
+    // after the click has been handled, so the download has started
+    setTimeout(() => URL.revokeObjectURL(url), 0);
 };
