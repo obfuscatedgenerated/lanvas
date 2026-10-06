@@ -26,6 +26,10 @@ export interface GiftInfo {
     balance: number;
     next_expiry: number | null;
     gifts: HeldGift[];
+
+    // relative rather than a timestamp, so client clock drift doesn't matter
+    burst_remaining_ms: number;
+    burst_gap_ms: number;
 }
 
 export interface GiftLogEntry {

@@ -65,7 +65,7 @@ export const GiftingPopup = ({in_timeout, ...popup_props}: GiftingPopupProps) =>
 
                         {user.is_active ? (
                             <button
-                                className="px-3 py-1 rounded bg-green-500 text-white disabled:bg-gray-300 disabled:text-gray-700 disabled:cursor-not-allowed"
+                                className="px-3 py-1 rounded cursor-pointer bg-green-500 text-white disabled:bg-gray-300 disabled:text-gray-700 disabled:cursor-not-allowed"
                                 disabled={in_timeout}
                                 onClick={() => {
                                     socket.emit("gift_pixel", {to_id: user.user_id});

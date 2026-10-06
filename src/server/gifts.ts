@@ -41,10 +41,15 @@ export const get_gift_balance = (user_id: string): number => sum_amounts(prune_g
 export const get_gift_info = (user_id: string): GiftInfo => {
     const gifts = prune_gifts(user_id);
 
+    const burst_gap_ms = get_config(CONFIG_KEY_GIFT_BURST_GAP_MS, DEFAULT_GIFT_BURST_GAP_MS);
+    const last_use = last_gift_use.get(user_id);
+
     return {
         balance: sum_amounts(gifts),
         next_expiry: gifts.length > 0 ? gifts[0].expires : null,
         gifts,
+        burst_remaining_ms: last_use === undefined ? 0 : Math.max(0, last_use + burst_gap_ms - Date.now()),
+        burst_gap_ms,
     };
 }
 

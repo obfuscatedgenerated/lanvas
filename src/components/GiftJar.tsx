@@ -4,12 +4,14 @@ import {useEffect, useMemo, useRef, useState} from "react";
 
 import type {HeldGift} from "@/types";
 
-// jar interior, in css pixels
-const JAR_WIDTH = 104;
-const JAR_HEIGHT = 124;
-
 const BALL_RADIUS = 12;
-const MAX_VISIBLE_BALLS = 20;
+const BALL_DIAMETER = BALL_RADIUS * 2;
+
+// gap kept between resting balls and the jar's bottom border so they aren't clipped by it
+const FLOOR_CLEARANCE = 2;
+
+// empty space kept above the top row so new balls have somewhere to drop from
+const HEADROOM = BALL_RADIUS;
 
 const GRAVITY = 900; // px per second squared
 const RESTITUTION = 0.45; // how much bounce survives a collision
@@ -43,9 +45,21 @@ interface BallSource {
     avatar_url: string | null;
 }
 
+interface JarBounds {
+    width: number;
+    height: number;
+}
+
 interface GiftJarProps {
     gifts: HeldGift[];
     next_expiry: number | null;
+
+    // interior width in css pixels, set by whatever the jar sits in
+    width: number;
+
+    // the jar grows with its contents between these heights
+    min_height: number;
+    max_height: number;
 }
 
 // stable colour per user for avatarless balls
@@ -69,9 +83,24 @@ const format_remaining = (remaining_ms: number): string => {
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 };
 
-const random_spawn_x = (): number => BALL_RADIUS + Math.random() * (JAR_WIDTH - BALL_RADIUS * 2);
+const balls_per_row = (width: number): number => Math.max(1, Math.floor(width / BALL_DIAMETER));
 
-const step_physics = (balls: Ball[], delta_seconds: number) => {
+// how many balls fit resting in the jar at its tallest without piling past the top
+const jar_capacity = (width: number, max_height: number): number => {
+    const rows = Math.max(1, Math.floor((max_height - FLOOR_CLEARANCE - HEADROOM) / BALL_DIAMETER));
+
+    return balls_per_row(width) * rows;
+};
+
+// just tall enough for the rows the balls need, within the allowed range
+const jar_height_for = (ball_count: number, width: number, min_height: number, max_height: number): number => {
+    const rows = Math.max(1, Math.ceil(ball_count / balls_per_row(width)));
+    const needed = rows * BALL_DIAMETER + FLOOR_CLEARANCE + HEADROOM;
+
+    return Math.min(max_height, Math.max(min_height, needed));
+};
+
+const step_physics = (balls: Ball[], delta_seconds: number, bounds: JarBounds) => {
     const damping = Math.pow(AIR_DAMPING_PER_SECOND, delta_seconds);
 
     for (const ball of balls) {
@@ -134,13 +163,15 @@ const step_physics = (balls: Ball[], delta_seconds: number) => {
             if (ball.x < BALL_RADIUS) {
                 ball.x = BALL_RADIUS;
                 ball.velocity_x = Math.abs(ball.velocity_x) * RESTITUTION;
-            } else if (ball.x > JAR_WIDTH - BALL_RADIUS) {
-                ball.x = JAR_WIDTH - BALL_RADIUS;
+            } else if (ball.x > bounds.width - BALL_RADIUS) {
+                ball.x = bounds.width - BALL_RADIUS;
                 ball.velocity_x = -Math.abs(ball.velocity_x) * RESTITUTION;
             }
 
-            if (ball.y > JAR_HEIGHT - BALL_RADIUS) {
-                ball.y = JAR_HEIGHT - BALL_RADIUS;
+            const floor = bounds.height - BALL_RADIUS - FLOOR_CLEARANCE;
+
+            if (ball.y > floor) {
+                ball.y = floor;
                 ball.velocity_y = -Math.abs(ball.velocity_y) * RESTITUTION;
                 ball.velocity_x *= FLOOR_FRICTION;
 
@@ -156,8 +187,8 @@ const step_physics = (balls: Ball[], delta_seconds: number) => {
     }
 };
 
-const draw_balls = (context: CanvasRenderingContext2D, balls: Ball[], images: Map<string, HTMLImageElement>) => {
-    context.clearRect(0, 0, JAR_WIDTH, JAR_HEIGHT);
+const draw_balls = (context: CanvasRenderingContext2D, balls: Ball[], images: Map<string, HTMLImageElement>, bounds: JarBounds) => {
+    context.clearRect(0, 0, bounds.width, bounds.height);
 
     for (const ball of balls) {
         context.save();
@@ -195,7 +226,7 @@ const draw_balls = (context: CanvasRenderingContext2D, balls: Ball[], images: Ma
     }
 };
 
-const GiftJar = ({gifts, next_expiry}: GiftJarProps) => {
+const GiftJar = ({gifts, next_expiry, width, min_height, max_height}: GiftJarProps) => {
     const canvas_ref = useRef<HTMLCanvasElement>(null);
     const balls_ref = useRef<Ball[]>([]);
     const images_ref = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -220,9 +251,16 @@ const GiftJar = ({gifts, next_expiry}: GiftJarProps) => {
         return sources;
     }, [gifts]);
 
-    const total_pixels = ball_sources.length;
-    const visible_sources = useMemo(() => ball_sources.slice(0, MAX_VISIBLE_BALLS), [ball_sources]);
-    const hidden_count = total_pixels - visible_sources.length;
+    const capacity = jar_capacity(width, max_height);
+    const visible_sources = useMemo(() => ball_sources.slice(0, capacity), [ball_sources, capacity]);
+    const hidden_count = ball_sources.length - visible_sources.length;
+
+    const height = jar_height_for(visible_sources.length, width, min_height, max_height);
+
+    const bounds_ref = useRef<JarBounds>({width, height});
+    useEffect(() => {
+        bounds_ref.current = {width, height};
+    }, [width, height]);
 
     const sender_summary = useMemo(() => {
         const counts = new Map<string, number>();
@@ -252,7 +290,7 @@ const GiftJar = ({gifts, next_expiry}: GiftJarProps) => {
                 name: source.name,
                 avatar_url: source.avatar_url,
                 hue: hue_from_id(source.user_id),
-                x: random_spawn_x(),
+                x: BALL_RADIUS + Math.random() * Math.max(0, bounds_ref.current.width - BALL_RADIUS * 2),
                 y: BALL_RADIUS,
                 velocity_x: (Math.random() - 0.5) * 60,
                 velocity_y: 0,
@@ -291,19 +329,20 @@ const GiftJar = ({gifts, next_expiry}: GiftJarProps) => {
 
             const canvas = canvas_ref.current;
             const context = canvas?.getContext("2d");
+            const bounds = bounds_ref.current;
 
             if (canvas && context) {
                 const pixel_ratio = window.devicePixelRatio || 1;
 
-                if (canvas.width !== JAR_WIDTH * pixel_ratio || canvas.height !== JAR_HEIGHT * pixel_ratio) {
-                    canvas.width = JAR_WIDTH * pixel_ratio;
-                    canvas.height = JAR_HEIGHT * pixel_ratio;
+                if (canvas.width !== bounds.width * pixel_ratio || canvas.height !== bounds.height * pixel_ratio) {
+                    canvas.width = bounds.width * pixel_ratio;
+                    canvas.height = bounds.height * pixel_ratio;
                 }
 
                 context.setTransform(pixel_ratio, 0, 0, pixel_ratio, 0, 0);
 
-                step_physics(balls_ref.current, delta_seconds);
-                draw_balls(context, balls_ref.current, images_ref.current);
+                step_physics(balls_ref.current, delta_seconds, bounds);
+                draw_balls(context, balls_ref.current, images_ref.current, bounds);
             }
 
             animation_frame = requestAnimationFrame(tick);
@@ -314,7 +353,7 @@ const GiftJar = ({gifts, next_expiry}: GiftJarProps) => {
         return () => cancelAnimationFrame(animation_frame);
     }, []);
 
-    // tick the expiry countdown while holding gifts
+    // keep the expiry in the tooltip current while holding gifts
     useEffect(() => {
         if (next_expiry === null) {
             return;
@@ -331,38 +370,26 @@ const GiftJar = ({gifts, next_expiry}: GiftJarProps) => {
         }
     };
 
-    const has_gifts = total_pixels > 0;
+    const tooltip = [
+        ball_sources.length > 0 ? `Held gifts: ${sender_summary}` : null,
+        hidden_count > 0 ? `${hidden_count} more not shown` : null,
+        next_expiry !== null ? `Next one expires in ${format_remaining(next_expiry - current_time)}` : null,
+        ball_sources.length > 0 ? "Click to shake" : null,
+    ].filter(Boolean).join("\n");
 
     return (
-        <div
-            className={`font-sans fixed bottom-72 sm:bottom-40 right-1.5 sm:right-4 flex flex-col items-center gap-1 select-none transition-opacity duration-300 ${has_gifts ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-            title={has_gifts ? `Held gifts: ${sender_summary}` : undefined}
-            aria-hidden={!has_gifts}
+        <button
+            type="button"
+            className="block cursor-pointer rounded-2xl bg-white/5 border border-white/10 overflow-hidden"
+            onClick={poke}
+            title={tooltip || undefined}
         >
-            <div className="text-xs bg-neutral-900/70 backdrop-blur-sm border border-neutral-800/70 rounded-full px-2 py-0.5 whitespace-nowrap">
-                🎁 ×{total_pixels}
-                {hidden_count > 0 && <span className="text-neutral-400"> (+{hidden_count} not shown)</span>}
-                {next_expiry !== null && (
-                    <span className="text-neutral-400"> · {format_remaining(next_expiry - current_time)}</span>
-                )}
-            </div>
-
-            {/* lid */}
-            <div className="h-2 rounded-t-md bg-neutral-400/50" style={{width: JAR_WIDTH - 16}} />
-
-            <button
-                type="button"
-                className="cursor-pointer border-2 border-t-0 border-white/25 bg-white/5 backdrop-blur-sm rounded-b-2xl rounded-t-sm overflow-hidden"
-                onClick={poke}
-                title="Shake the jar"
-            >
-                <canvas
-                    ref={canvas_ref}
-                    className="block"
-                    style={{width: JAR_WIDTH, height: JAR_HEIGHT}}
-                />
-            </button>
-        </div>
+            <canvas
+                ref={canvas_ref}
+                className="block"
+                style={{width, height}}
+            />
+        </button>
     );
 };
 

@@ -19,7 +19,6 @@ import {CONFIG_KEY_PIXEL_TIMEOUT_MS, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@
 import type {GiftInfo} from "@/types";
 import usePublicConfigValue from "@/hooks/usePublicConfigValue";
 import GiftedBanner from "@/components/GiftedBanner";
-import GiftJar from "@/components/GiftJar";
 
 export default function Home() {
     const [current_color, setCurrentColor] = useState("#000000");
@@ -40,7 +39,10 @@ export default function Home() {
 
     const [grid_lines_enabled, setGridLinesEnabled] = useState<boolean>(false);
 
-    const [gift_info, setGiftInfo] = useState<GiftInfo>({balance: 0, next_expiry: null, gifts: []});
+    const [gift_info, setGiftInfo] = useState<GiftInfo>({balance: 0, next_expiry: null, gifts: [], burst_remaining_ms: 0, burst_gap_ms: 0});
+
+    // when the burst gap ends on this client's clock, converted on receipt to avoid clock drift
+    const [burst_ends_at, setBurstEndsAt] = useState<number | null>(null);
 
     const in_timeout = timeout_start_time !== null;
     const has_gifts = gift_info.balance > 0;
@@ -109,7 +111,10 @@ export default function Home() {
             }
         });
 
-        socket.on("gift_info", (info: GiftInfo) => setGiftInfo(info));
+        socket.on("gift_info", (info: GiftInfo) => {
+            setGiftInfo(info);
+            setBurstEndsAt(info.burst_remaining_ms > 0 ? Date.now() + info.burst_remaining_ms : null);
+        });
 
         socket.on("reload", () => {
             console.log("Received reload command from server, reloading page...");
@@ -253,22 +258,24 @@ export default function Home() {
             <FloatingCommentControl comments_on_canvas={comments_on_canvas} setCommentsOnCanvas={setCommentsOnCanvas} />
 
             {!is_readonly &&
-                <GiftJar gifts={gift_info.gifts} next_expiry={gift_info.next_expiry} />
-            }
-
-            {!is_readonly &&
                 <FloatingWidget
-                    // keep the color picker available while there are gifts to spend
-                    mode={in_timeout && !has_gifts ? "timeout" : "color"}
-
                     current_color={current_color}
                     on_color_change={setCurrentColor}
 
-                    start_time={timeout_start_time ?? -1}
-                    duration={(timeout_end_time && timeout_start_time) ? (timeout_end_time - timeout_start_time) : -1}
+                    cooldown={timeout_start_time !== null && timeout_end_time !== null
+                        ? {start_time: timeout_start_time, duration: timeout_end_time - timeout_start_time}
+                        : null
+                    }
 
                     grid_lines_enabled={grid_lines_enabled}
                     set_grid_lines_enabled={setGridLinesEnabled}
+
+                    gifts={gift_info.gifts}
+                    next_gift_expiry={gift_info.next_expiry}
+                    burst={burst_ends_at !== null && gift_info.burst_gap_ms > 0
+                        ? {start_time: burst_ends_at - gift_info.burst_gap_ms, duration: gift_info.burst_gap_ms}
+                        : null
+                    }
                 />
             }
         </>
