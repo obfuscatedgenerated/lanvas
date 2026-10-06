@@ -5,7 +5,6 @@ import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {
     decode_data_url,
     load_template_settings,
-    MAX_TEMPLATE_WIDTH,
     MIN_TEMPLATE_WIDTH,
     normalise_source_file,
     sample_template_cells,
@@ -14,14 +13,18 @@ import {
     type TemplateCells,
     type TemplateSettings,
 } from "@/lib/template";
+import {CONFIG_KEY_GRID_WIDTH} from "@/consts";
+import usePublicConfigValue from "@/hooks/usePublicConfigValue";
+import {DEFAULT_GRID_WIDTH} from "@/defaults";
 
 // imported templates start small enough to be quick to finish, while keeping any smaller pixel art at its true size
-const DEFAULT_IMPORT_WIDTH = 64;
+const DEFAULT_IMPORT_WIDTH = 32;
 
 export interface TemplateController {
     settings: TemplateSettings | null;
     cells: TemplateCells | null;
     height: number;
+    max_width: number;
     error: string | null;
 
     import_file: (file: File) => Promise<void>;
@@ -29,10 +32,12 @@ export interface TemplateController {
     clear: () => void;
 }
 
-const clamp_width = (width: number): number => Math.min(MAX_TEMPLATE_WIDTH, Math.max(MIN_TEMPLATE_WIDTH, Math.round(width)));
+const clamp_width = (width: number, max_width: number): number => Math.min(max_width, Math.max(MIN_TEMPLATE_WIDTH, Math.round(width)));
 
 // owns the template's settings, its decoded image and the sampled cells, saving settings as they change
 const useTemplate = (): TemplateController => {
+    const max_width = Math.max(MIN_TEMPLATE_WIDTH, usePublicConfigValue(CONFIG_KEY_GRID_WIDTH, DEFAULT_GRID_WIDTH));
+
     const [settings, setSettings] = useState<TemplateSettings | null>(null);
     const [image, setImage] = useState<HTMLImageElement | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -89,7 +94,7 @@ const useTemplate = (): TemplateController => {
                 source_data_url: source.data_url,
                 source_width: source.width,
                 source_height: source.height,
-                width: clamp_width(Math.min(source.width, DEFAULT_IMPORT_WIDTH)),
+                width: clamp_width(Math.min(source.width, DEFAULT_IMPORT_WIDTH), max_width),
 
                 // a replacement keeps where the last one was and how it was shown
                 x: previous?.x ?? 0,
@@ -103,7 +108,7 @@ const useTemplate = (): TemplateController => {
         } catch (import_error) {
             setError(import_error instanceof Error ? import_error.message : "That image couldn't be imported");
         }
-    }, []);
+    }, [max_width]);
 
     const update = useCallback((changes: Partial<TemplateSettings>) => {
         setSettings((previous) => {
@@ -114,7 +119,7 @@ const useTemplate = (): TemplateController => {
             const next = {...previous, ...changes};
 
             if (changes.width !== undefined) {
-                next.width = clamp_width(changes.width);
+                next.width = clamp_width(changes.width, max_width);
             }
 
             // turning alignment on snaps straight to the nearest cell
@@ -125,7 +130,7 @@ const useTemplate = (): TemplateController => {
 
             return next;
         });
-    }, []);
+    }, [max_width]);
 
     const clear = useCallback(() => {
         setSettings(null);
@@ -133,7 +138,7 @@ const useTemplate = (): TemplateController => {
         setError(null);
     }, []);
 
-    return {settings, cells, height, error, import_file, update, clear};
+    return {settings, cells, height, error, import_file, update, clear, max_width};
 };
 
 export default useTemplate;

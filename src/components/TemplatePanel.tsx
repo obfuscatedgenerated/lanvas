@@ -5,7 +5,7 @@ import {ImagePlus, Eye, EyeOff, Move, Trash2, X} from "lucide-react";
 
 import type {TemplateController} from "@/hooks/useTemplate";
 import type {TemplateProgress} from "@/components/TemplateOverlay";
-import {MAX_TEMPLATE_WIDTH, MIN_TEMPLATE_WIDTH, type TemplateDisplayMode, type TemplateSampling} from "@/lib/template";
+import {MIN_TEMPLATE_WIDTH, type TemplateDisplayMode, type TemplateSampling} from "@/lib/template";
 
 interface TemplatePanelProps {
     template: TemplateController;
@@ -196,7 +196,7 @@ const TemplatePanel = ({template, progress, move_mode, set_move_mode}: TemplateP
                                 type="number"
                                 className={INPUT_CLASS}
                                 min={MIN_TEMPLATE_WIDTH}
-                                max={MAX_TEMPLATE_WIDTH}
+                                max={template.max_width}
                                 value={settings.width}
                                 onChange={(event) => {
                                     const width = parseInt(event.target.value, 10);
@@ -213,7 +213,7 @@ const TemplatePanel = ({template, progress, move_mode, set_move_mode}: TemplateP
                         type="range"
                         aria-label="Template width"
                         min={MIN_TEMPLATE_WIDTH}
-                        max={Math.min(MAX_TEMPLATE_WIDTH, settings.source_width)}
+                        max={Math.min(template.max_width, settings.source_width)}
                         value={settings.width}
                         onChange={(event) => update({width: parseInt(event.target.value, 10)})}
                     />

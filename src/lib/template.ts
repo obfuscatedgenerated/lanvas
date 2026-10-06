@@ -31,10 +31,8 @@ export interface TemplateSettings {
 export type TemplateCells = (string | null)[][];
 
 export const MIN_TEMPLATE_WIDTH = 1;
-export const MAX_TEMPLATE_WIDTH = 512;
 
-// larger sources are shrunk before storing, nobody needs more detail than the widest template allows
-const MAX_STORED_SOURCE_SIZE = MAX_TEMPLATE_WIDTH;
+const MAX_STORED_SOURCE_SIZE = 512;
 
 // pixels more transparent than this count as empty, so transparent pngs leave gaps
 const ALPHA_THRESHOLD = 128;
