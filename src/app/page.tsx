@@ -29,6 +29,7 @@ import CasinoAnnouncements from "@/components/CasinoAnnouncements";
 import DuckParade from "@/components/DuckParade";
 import {AdwarePrank} from "@/components/AdwarePrank";
 import {Pranks} from "@/components/Pranks";
+import {screen_to_page_space} from "@/lib/page_flip";
 
 export default function Home() {
     const [current_color, setCurrentColor] = useState("#000000");
@@ -160,10 +161,12 @@ export default function Home() {
                 return;
             }
 
+            const {page_x, page_y} = screen_to_page_space(event.clientX, event.clientY);
+
             setCommentComposerCoords({
-                // absolute screen x and y
-                x: event.clientX,
-                y: event.clientY,
+                // position on the unrotated page, which is what fixed elements use
+                x: page_x,
+                y: page_y,
 
                 // x and y in terms of grid coords
                 grid_x: pixel.true_x,

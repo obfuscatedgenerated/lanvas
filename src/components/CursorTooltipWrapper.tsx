@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import TooltipDiv from "@/components/TooltipDiv";
+import {screen_to_page_space} from "@/lib/page_flip";
 
 interface CursorTooltipProps {
     children: React.ReactElement;
@@ -13,7 +14,8 @@ const CursorTooltipWrapper = ({ children, content, visible }: CursorTooltipProps
     useEffect(() => {
         // track mouse position on window
         const handle_mouse_move = (e: MouseEvent) => {
-            setPosition({ x: e.clientX, y: e.clientY });
+            const {page_x, page_y} = screen_to_page_space(e.clientX, e.clientY);
+            setPosition({ x: page_x, y: page_y });
         };
 
         window.addEventListener("mousemove", handle_mouse_move);

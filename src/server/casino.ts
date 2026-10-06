@@ -270,7 +270,7 @@ const OUTCOMES: CasinoOutcome[] = [
         segment_id: "adware",
         announce: "feed",
         // client side popup spam for only the spinner for 1 min
-        apply: (context) => `💻 ${context.spinner.name} got adware`,
+        apply: (context) => `💻 ${context.spinner.name} got adware (for 1 minute)`,
     },
     {
         id: "upside_down",
@@ -279,7 +279,7 @@ const OUTCOMES: CasinoOutcome[] = [
         segment_id: "upside_down",
         announce: "feed",
         // client side flip for only the spinner for 1 min
-        apply: (context) => `🔄 ${context.spinner.name} got turned upside down`,
+        apply: (context) => `🔄 ${context.spinner.name} got turned upside down (for 1 minute)`,
     },
     {
         id: "rainbow",
@@ -288,7 +288,7 @@ const OUTCOMES: CasinoOutcome[] = [
         segment_id: "rainbow",
         announce: "feed",
         // client side randomisation of colour picker (through the hue) for only the spinner for 1 min
-        apply: (context) => `🌈 ${context.spinner.name} is tasting the rainbow!`,
+        apply: (context) => `🌈 ${context.spinner.name} is tasting the rainbow! (for 1 minute)`,
     },
     {
         id: "eraserhead",
@@ -297,7 +297,7 @@ const OUTCOMES: CasinoOutcome[] = [
         segment_id: "eraserhead",
         announce: "feed",
         // client side can only draw white pixels for only the spinner for 1 min
-        apply: (context) => `🎥 ${context.spinner.name} has become Eraserhead`,
+        apply: (context) => `🎥 ${context.spinner.name} has become Eraserhead (for 1 minute)`,
     },
 
     // busts: 35%

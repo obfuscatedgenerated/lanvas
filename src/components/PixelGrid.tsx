@@ -18,6 +18,7 @@ import useMediaQuery from "@/hooks/useMediaQuery";
 import {DEFAULT_GRID_COLOR} from "@/defaults";
 import CommentsOverlay from "@/components/CommentsOverlay";
 import GridLines from "@/components/GridLines";
+import {is_page_flipped} from "@/lib/page_flip";
 
 const PIXEL_SIZE = 10; // use slight oversampling. could also instead use pixelated on parent, but that leads to weird subpixel artifacts
 
@@ -54,20 +55,19 @@ export const screen_to_rect_space = (
     screen_x: number,
     screen_y: number,
     rect: DOMRect
-) => ({
-    rect_x: screen_x - rect.left,
-    rect_y: screen_y - rect.top,
-});
+) => is_page_flipped()
+    // upside down, the canvas's own left and top edges are on the right and bottom of the screen
+    ? {rect_x: rect.right - screen_x, rect_y: rect.bottom - screen_y}
+    : {rect_x: screen_x - rect.left, rect_y: screen_y - rect.top};
 
-// position relative to the canvas bounding rect to absolute screen position
+// position relative to the canvas bounding rect to the page position used to place fixed elements
 export const rect_to_screen_space = (
     rect_x: number,
     rect_y: number,
     rect: DOMRect
-) => ({
-    screen_x: rect_x + rect.left,
-    screen_y: rect_y + rect.top,
-});
+) => is_page_flipped()
+    ? {screen_x: window.innerWidth - rect.right + rect_x, screen_y: window.innerHeight - rect.bottom + rect_y}
+    : {screen_x: rect_x + rect.left, screen_y: rect_y + rect.top};
 
 // position relative to the canvas bounding rect to position relative to the actual canvas bitmap pixels (as they are supersampled from the actual grid data)
 export const rect_to_canvas_space = (
