@@ -13,6 +13,8 @@ export const CONFIG_KEY_COMMENTS_ENABLED = "comments_enabled";
 export const CONFIG_KEY_GIFT_EXPIRY_MS = "gift_expiry_ms";
 export const CONFIG_KEY_GIFTING_ENABLED = "gifting_enabled";
 export const CONFIG_KEY_GIFT_BURST_GAP_MS = "gift_burst_gap_ms";
+export const CONFIG_KEY_CASINO_ENABLED = "casino_enabled";
+export const CONFIG_KEY_CASINO_TIMEOUT_MS = "casino_timeout_ms";
 
 export const LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER = "skip_client_timer";
 

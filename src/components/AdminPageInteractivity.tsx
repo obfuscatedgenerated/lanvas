@@ -13,7 +13,7 @@ import {X} from "lucide-react";
 import {
     DEFAULT_ADMIN_ANONYMOUS,
     DEFAULT_ADMIN_GOD,
-    DEFAULT_AUTOMOD_ENABLED,
+    DEFAULT_AUTOMOD_ENABLED, DEFAULT_CASINO_ENABLED, DEFAULT_CASINO_TIMEOUT_MS,
     DEFAULT_CENSOR_ENABLED,
     DEFAULT_COMMENT_TIMEOUT_MS,
     DEFAULT_COMMENTS_ENABLED,
@@ -28,7 +28,7 @@ import {
 import {
     CONFIG_KEY_ADMIN_ANONYMOUS,
     CONFIG_KEY_ADMIN_GOD,
-    CONFIG_KEY_AUTOMOD_ENABLED,
+    CONFIG_KEY_AUTOMOD_ENABLED, CONFIG_KEY_CASINO_ENABLED, CONFIG_KEY_CASINO_TIMEOUT_MS,
     CONFIG_KEY_CENSOR_ENABLED,
     CONFIG_KEY_COMMENT_TIMEOUT_MS,
     CONFIG_KEY_COMMENTS_ENABLED,
@@ -1372,6 +1372,24 @@ const AdminPageInteractivity = () => {
                     label="Burst gap (ms)"
                     confirm_name="gift burst gap"
                     help="Minimum time between placements when spending held gifts, so a stack can't be dumped instantly."
+                />
+            </AdminSection>
+
+            <AdminSection title="Casino settings" row>
+                <ConfigCheckbox
+                    config_key={CONFIG_KEY_CASINO_ENABLED}
+                    default_value={DEFAULT_CASINO_ENABLED}
+                    is_public={true}
+                    label="Casino enabled"
+                    confirm_name="casino"
+                />
+
+                <ConfigNumberInput
+                    config_key={CONFIG_KEY_CASINO_TIMEOUT_MS}
+                    default_value={DEFAULT_CASINO_TIMEOUT_MS}
+                    is_public={true}
+                    label="Spin timeout (ms)"
+                    confirm_name="spin timeout"
                 />
             </AdminSection>
 

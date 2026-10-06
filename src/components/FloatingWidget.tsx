@@ -6,18 +6,19 @@ import {CircularProgressbar} from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 
 import colors from "tailwindcss/colors";
-import {Gift} from "lucide-react";
+import {Dices, Gift} from "lucide-react";
 
 import ColorPicker from "@/components/ColorPicker";
 import GiftJar from "@/components/GiftJar";
 import {GiftingPopup} from "@/components/GiftingPopup";
 
 import usePublicConfigValue from "@/hooks/usePublicConfigValue";
-import {CONFIG_KEY_GIFTING_ENABLED} from "@/consts";
-import {DEFAULT_GIFTING_ENABLED} from "@/defaults";
+import {CONFIG_KEY_CASINO_ENABLED, CONFIG_KEY_GIFTING_ENABLED} from "@/consts";
+import {DEFAULT_CASINO_ENABLED, DEFAULT_GIFTING_ENABLED} from "@/defaults";
 
 import type {HeldGift} from "@/types";
 import {useElementWidth} from "@/hooks/useElementWidth";
+import {CasinoPopup} from "@/components/CasinoPopup";
 
 const COOLDOWN_UPDATE_INTERVAL_MS = 100;
 const READY_FLASH_MS = 900;
@@ -96,7 +97,10 @@ const BlockedRing = ({remaining_ms, duration}: {remaining_ms: number; duration: 
 
 const FloatingWidget = ({current_color, on_color_change, cooldown, burst, gifts, next_gift_expiry, grid_lines_enabled, set_grid_lines_enabled}: FloatingWidgetProps) => {
     const gifting_enabled = usePublicConfigValue(CONFIG_KEY_GIFTING_ENABLED, DEFAULT_GIFTING_ENABLED);
+    const casino_enabled = usePublicConfigValue(CONFIG_KEY_CASINO_ENABLED, DEFAULT_CASINO_ENABLED);
+
     const [gifting_popup_open, setGiftingPopupOpen] = useState(false);
+    const [casino_popup_open, setCasinoPopupOpen] = useState(false);
 
     const in_cooldown = cooldown != null;
     const remaining_ms = useRemainingMs(cooldown?.start_time ?? null, cooldown?.duration ?? null);
@@ -166,6 +170,20 @@ const FloatingWidget = ({current_color, on_color_change, cooldown, burst, gifts,
                 </div>
 
                 <div ref={button_row_ref} className="flex items-center gap-4">
+                    {/*TODO: casino specific tiemout (defualt 5min) with timer around the button */}
+                    {casino_enabled && (
+                        <div className="relative w-15 h-15 rounded-full bg-neutral-700">
+                            <button
+                                className="w-full h-full flex items-center justify-center text-white outline-cyan-300 outline-1 cursor-pointer text-sm font-semibold hover:bg-cyan-600 hover:drop-shadow-[0_0_10px_rgba(0,254,252,0.9)] transition-colors rounded-full disabled:opacity-40 disabled:cursor-not-allowed disabled:outline-neutral-500 disabled:hover:bg-transparent disabled:hover:drop-shadow-none"
+                                title={in_cooldown ? "You can't spin again yet" : "Test your luck..."}
+                                disabled={in_cooldown}
+                                onClick={() => setCasinoPopupOpen(true)}
+                            >
+                                <Dices />
+                            </button>
+                        </div>
+                    )}
+
                     {gifting_enabled && (
                         <div className="relative w-15 h-15 rounded-full bg-neutral-700">
                             <button
@@ -191,8 +209,12 @@ const FloatingWidget = ({current_color, on_color_change, cooldown, burst, gifts,
                 </div>
             </div>
 
-            {/* kept outside the panel so its fixed positioning is relative to the screen, not the panel */}
-            <GiftingPopup open={gifting_popup_open} on_close={() => setGiftingPopupOpen(false)} in_timeout={in_cooldown} />
+            {gifting_enabled && (
+                <GiftingPopup open={gifting_popup_open} on_close={() => setGiftingPopupOpen(false)} in_timeout={in_cooldown} />
+            )}
+            {casino_enabled && (
+                <CasinoPopup open={casino_popup_open} on_close={() => setCasinoPopupOpen(false)} in_timeout={in_cooldown} />
+            )}
 
             <div className="font-sans fixed bottom-35 sm:bottom-7.5 right-7.5 sm:right-10 bg-neutral-900/70 backdrop-blur-sm border border-neutral-800/70 rounded-lg px-4 py-2">
                 <label className="cursor-pointer flex items-center gap-2" title="Shortcut: G">
