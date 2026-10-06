@@ -35,3 +35,4 @@ export * as gift_pixel from "./gift_pixel";
 export * as check_gifts from "./check_gifts";
 export * as request_online_users from "./request_online_users";
 export * as stop_online_users from "./stop_online_users";
+export * as activity_ping from "./activity_ping";

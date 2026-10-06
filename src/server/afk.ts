@@ -36,6 +36,20 @@ export const activity_check_in = (user_id: string) => {
     }
 }
 
+export const activity_check_out = (user_id: string) => {
+    if (active_users.has(user_id)) {
+        active_users.delete(user_id);
+        activity_change_listeners.forEach((listener) => {
+            listener(user_id, false);
+        });
+    }
+
+    if (user_timeouts.has(user_id)) {
+        clearTimeout(user_timeouts.get(user_id)!);
+        user_timeouts.delete(user_id);
+    }
+}
+
 export const is_user_active = (user_id: string): boolean => {
     return active_users.has(user_id);
 }
@@ -51,5 +65,3 @@ export const on_activity_change = (listener: ActivityChangeListener) => {
 export const off_activity_change = (listener: ActivityChangeListener) => {
     activity_change_listeners.delete(listener);
 }
-
-// TODO: when user disconnects, clean up their timeout and active status

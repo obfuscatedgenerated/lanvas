@@ -19,6 +19,8 @@ import {CONFIG_KEY_PIXEL_TIMEOUT_MS, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@
 import type {GiftInfo} from "@/types";
 import usePublicConfigValue from "@/hooks/usePublicConfigValue";
 import GiftedBanner from "@/components/GiftedBanner";
+import {AFKWarning} from "@/components/AFKWarning";
+import AFKHeartbeatActivity from "@/components/AFKHeartbeatActivity";
 
 export default function Home() {
     const [current_color, setCurrentColor] = useState("#000000");
@@ -203,6 +205,8 @@ export default function Home() {
 
     return (
         <>
+            <AFKHeartbeatActivity />
+
             <KeyBindings
                 bindings={{
                     // TODO: open palette with c key, open help with ? or h key, stats with s etc. might have to make enabled flag contextful
@@ -232,7 +236,9 @@ export default function Home() {
                 />
             </div>
 
-            <div className="flex-1">
+            <div className="flex-1 relative">
+                <AFKWarning />
+
                 <PixelGrid
                     ref={pixel_grid_ref}
 

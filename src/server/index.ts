@@ -46,8 +46,9 @@ setInterval(() => {
 import * as handlers from "@/server/handlers/@ALL";
 import {is_automod_supported, preload_model} from "@/server/automod";
 import {get_all_stats, increment_virtual_stat, init_virtual_stat, load_stats, set_virtual_stat} from "@/server/stats";
-import {on_activity_change} from "@/server/afk";
+import {activity_check_in, activity_check_out, on_activity_change} from "@/server/afk";
 import {cleanup_expired_gifts, emit_gift_info, user_room} from "@/server/gifts";
+import {forget_activity_ping} from "@/server/handlers/activity_ping";
 
 const dev = process.env.NODE_ENV !== "production";
 
@@ -258,6 +259,9 @@ const main = async () => {
 
         unique_connected_user_ids.add(socket.user.sub);
 
+        // check in
+        activity_check_in(socket.user.sub);
+
         // send updated connected users list to admin room
         io.to("admin").emit("connected_users", Array.from(connected_users));
 
@@ -299,6 +303,10 @@ const main = async () => {
 
                 // emit updated stats to all clients in stats room
                 io.to("stats").emit("stats", Object.fromEntries(get_all_stats()));
+
+                // check out to remove from afk table
+                activity_check_out(socket.user.sub);
+                forget_activity_ping(socket.user.sub);
             }
         });
 
@@ -359,6 +367,9 @@ const main = async () => {
 
         // tell anyone with the gifting ui open
         io.to("online_users").emit("online_user_activity", {user_id, is_active});
+
+        // tell the user themself
+        io.to(user_room(user_id)).emit("activity_change", {is_active});
     });
 
     http_server
