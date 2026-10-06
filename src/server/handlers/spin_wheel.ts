@@ -105,3 +105,5 @@ export const handler: SocketHandlerFunction = ({socket, io, pool, connected_user
 
     console.log(`${user.name} (id: ${user_id}) spun the wheel and will land on ${outcome.id}`);
 }
+
+// TODO: store the number of times each person span to compute the gambling addict

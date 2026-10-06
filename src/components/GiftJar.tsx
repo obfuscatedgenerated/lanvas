@@ -26,11 +26,31 @@ const ARRIVAL_SHAKE_SPEED = 90;
 
 const AVATAR_SIZE_QUERY = "size=64";
 
+// spent balls swell and burst, expired ones quietly fade away
+const POP_DURATION_MS = 260;
+const FADE_DURATION_MS = 700;
+const POP_SWELL_PORTION = 0.3; // fraction of the pop spent growing before it bursts
+const POP_SWELL_SCALE = 1.35;
+
+// a gift that disappears within this long of its expiry is treated as expired rather than spent
+const EXPIRY_TOLERANCE_MS = 1500;
+
+type RemovalKind = "pop" | "fade";
+
+interface Removal {
+    kind: RemovalKind;
+    started_at: number;
+}
+
 interface Ball {
     key: string;
     name: string;
     avatar_url: string | null;
     hue: number;
+    expires: number;
+
+    // set while the ball is animating out, it no longer takes part in physics
+    removal: Removal | null;
     x: number;
     y: number;
     velocity_x: number;
@@ -43,6 +63,7 @@ interface BallSource {
     name: string;
     user_id: string;
     avatar_url: string | null;
+    expires: number;
 }
 
 interface JarBounds {
@@ -100,7 +121,31 @@ const jar_height_for = (ball_count: number, width: number, min_height: number, m
     return Math.min(max_height, Math.max(min_height, needed));
 };
 
-const step_physics = (balls: Ball[], delta_seconds: number, bounds: JarBounds) => {
+const removal_duration = (kind: RemovalKind): number => kind === "pop" ? POP_DURATION_MS : FADE_DURATION_MS;
+
+const removal_finished = (ball: Ball, now: number): boolean =>
+    ball.removal !== null && now - ball.removal.started_at >= removal_duration(ball.removal.kind);
+
+// scale and opacity for a ball part way through leaving the jar
+const removal_appearance = (removal: Removal, now: number): {scale: number; opacity: number; progress: number} => {
+    const progress = Math.min(1, (now - removal.started_at) / removal_duration(removal.kind));
+
+    if (removal.kind === "fade") {
+        return {scale: 1 - 0.2 * progress, opacity: 1 - progress, progress};
+    }
+
+    if (progress < POP_SWELL_PORTION) {
+        return {scale: 1 + (POP_SWELL_SCALE - 1) * (progress / POP_SWELL_PORTION), opacity: 1, progress};
+    }
+
+    const burst_progress = (progress - POP_SWELL_PORTION) / (1 - POP_SWELL_PORTION);
+    return {scale: POP_SWELL_SCALE * (1 - burst_progress), opacity: 1 - burst_progress, progress};
+};
+
+const step_physics = (all_balls: Ball[], delta_seconds: number, bounds: JarBounds) => {
+    // leaving balls hold still where they are so the rest can settle into the gap
+    const balls = all_balls.filter((ball) => ball.removal === null);
+
     const damping = Math.pow(AIR_DAMPING_PER_SECOND, delta_seconds);
 
     for (const ball of balls) {
@@ -187,13 +232,38 @@ const step_physics = (balls: Ball[], delta_seconds: number, bounds: JarBounds) =
     }
 };
 
-const draw_balls = (context: CanvasRenderingContext2D, balls: Ball[], images: Map<string, HTMLImageElement>, bounds: JarBounds) => {
+const draw_balls = (context: CanvasRenderingContext2D, balls: Ball[], images: Map<string, HTMLImageElement>, bounds: JarBounds, now: number) => {
     context.clearRect(0, 0, bounds.width, bounds.height);
 
     for (const ball of balls) {
+        const appearance = ball.removal ? removal_appearance(ball.removal, now) : null;
+
+        // a ring bursting outwards sells the pop
+        if (appearance && ball.removal?.kind === "pop" && appearance.progress >= POP_SWELL_PORTION) {
+            const burst_progress = (appearance.progress - POP_SWELL_PORTION) / (1 - POP_SWELL_PORTION);
+
+            context.save();
+            context.globalAlpha = 1 - burst_progress;
+            context.lineWidth = 2;
+            context.strokeStyle = "rgba(253, 224, 71, 0.9)";
+            context.beginPath();
+            context.arc(ball.x, ball.y, BALL_RADIUS * (POP_SWELL_SCALE + burst_progress), 0, Math.PI * 2);
+            context.stroke();
+            context.restore();
+        }
+
+        if (appearance && appearance.scale <= 0) {
+            continue;
+        }
+
         context.save();
         context.translate(ball.x, ball.y);
         context.rotate(ball.angle);
+
+        if (appearance) {
+            context.globalAlpha = appearance.opacity;
+            context.scale(appearance.scale, appearance.scale);
+        }
 
         context.beginPath();
         context.arc(0, 0, BALL_RADIUS, 0, Math.PI * 2);
@@ -244,6 +314,7 @@ const GiftJar = ({gifts, next_expiry, width, min_height, max_height}: GiftJarPro
                     name: gift.from.name,
                     user_id: gift.from.user_id,
                     avatar_url: gift.from.avatar_url ? sized_avatar_url(gift.from.avatar_url) : null,
+                    expires: gift.expires,
                 });
             }
         }
@@ -272,10 +343,25 @@ const GiftJar = ({gifts, next_expiry, width, min_height, max_height}: GiftJarPro
         return Array.from(counts.entries()).map(([name, count]) => `${count} from ${name}`).join(", ");
     }, [ball_sources]);
 
-    // sync balls with held gifts: drop spent or expired ones, drop new ones in from the top
+    // sync balls with held gifts: animate out spent or expired ones, drop new ones in from the top
     useEffect(() => {
         const visible_keys = new Set(visible_sources.map((source) => source.key));
-        const existing_balls = balls_ref.current.filter((ball) => visible_keys.has(ball.key));
+        const now = performance.now();
+        const wall_time = Date.now();
+
+        for (const ball of balls_ref.current) {
+            if (visible_keys.has(ball.key)) {
+                // refunded or shown again, so it stays after all
+                ball.removal = null;
+            } else if (ball.removal === null) {
+                ball.removal = {
+                    kind: ball.expires <= wall_time + EXPIRY_TOLERANCE_MS ? "fade" : "pop",
+                    started_at: now,
+                };
+            }
+        }
+
+        const existing_balls = [...balls_ref.current];
         const existing_keys = new Set(existing_balls.map((ball) => ball.key));
 
         let added_any = false;
@@ -290,6 +376,8 @@ const GiftJar = ({gifts, next_expiry, width, min_height, max_height}: GiftJarPro
                 name: source.name,
                 avatar_url: source.avatar_url,
                 hue: hue_from_id(source.user_id),
+                expires: source.expires,
+                removal: null,
                 x: BALL_RADIUS + Math.random() * Math.max(0, bounds_ref.current.width - BALL_RADIUS * 2),
                 y: BALL_RADIUS,
                 velocity_x: (Math.random() - 0.5) * 60,
@@ -309,7 +397,7 @@ const GiftJar = ({gifts, next_expiry, width, min_height, max_height}: GiftJarPro
         // jostle the balls already in the jar when something lands
         if (added_any) {
             for (const ball of existing_balls) {
-                if (existing_keys.has(ball.key)) {
+                if (existing_keys.has(ball.key) && ball.removal === null) {
                     ball.velocity_x += (Math.random() - 0.5) * ARRIVAL_SHAKE_SPEED;
                 }
             }
@@ -341,8 +429,13 @@ const GiftJar = ({gifts, next_expiry, width, min_height, max_height}: GiftJarPro
 
                 context.setTransform(pixel_ratio, 0, 0, pixel_ratio, 0, 0);
 
+                // drop balls that have finished animating out
+                if (balls_ref.current.some((ball) => removal_finished(ball, now))) {
+                    balls_ref.current = balls_ref.current.filter((ball) => !removal_finished(ball, now));
+                }
+
                 step_physics(balls_ref.current, delta_seconds, bounds);
-                draw_balls(context, balls_ref.current, images_ref.current, bounds);
+                draw_balls(context, balls_ref.current, images_ref.current, bounds, now);
             }
 
             animation_frame = requestAnimationFrame(tick);
@@ -364,7 +457,7 @@ const GiftJar = ({gifts, next_expiry, width, min_height, max_height}: GiftJarPro
     }, [next_expiry]);
 
     const poke = () => {
-        for (const ball of balls_ref.current) {
+        for (const ball of balls_ref.current.filter((jar_ball) => jar_ball.removal === null)) {
             ball.velocity_y -= POKE_SPEED * (0.6 + Math.random() * 0.6);
             ball.velocity_x += (Math.random() - 0.5) * POKE_SPEED;
         }
