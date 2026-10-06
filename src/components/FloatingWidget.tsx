@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useMemo, useRef, useState} from "react";
 
 import {CircularProgressbar} from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
@@ -176,6 +176,89 @@ const FloatingWidget = ({current_color, on_color_change, cooldown, burst, gifts,
         };
     }, [in_cooldown]);
 
+    const [force_white, setForceWhite] = useState(false);
+    const [force_rainbow, setForceRainbow] = useState(false);
+    const is_color_forced = useMemo(() => force_white || force_rainbow, [force_white, force_rainbow]);
+
+    useEffect(() => {
+        const handle_result = ({outcome_id}: {outcome_id: string;}) => {
+            if (outcome_id === "eraserhead") {
+                setForceWhite(true);
+                setTimeout(() => setForceWhite(false), 600000);
+                return;
+            } else if (outcome_id === "pride_minute") {
+                setForceRainbow(true);
+                setTimeout(() => setForceRainbow(false), 60000);
+                return;
+            }
+        };
+
+        socket.on("casino_own_result", handle_result);
+
+        return () => {
+            socket.off("casino_own_result", handle_result);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (force_white) {
+            on_color_change("#ffffff");
+        }
+    }, [force_white, on_color_change]);
+
+    const raf_ref = useRef<number | null>(null);
+    useEffect(() => {
+        if (force_rainbow) {
+            raf_ref.current = requestAnimationFrame(() => {
+                const rainbow_colors = [
+                    "#ff0000",
+                    "#ff4000",
+                    "#ff7f00",
+                    "#ffbf00",
+                    "#ffff00",
+                    "#80ff00",
+                    "#00ff00",
+                    "#008080",
+                    "#0000ff",
+                    "#2600c1",
+                    "#4b0082",
+                    "#6d00c1",
+                    "#8f00ff"
+                ];
+                const rainbow_duration_ms = 1000;
+                const start_time = Date.now();
+
+                const update_color = () => {
+                    if (!force_rainbow) {
+                        return;
+                    }
+
+                    const elapsed_ms = Date.now() - start_time;
+                    const progress = (elapsed_ms % rainbow_duration_ms) / rainbow_duration_ms;
+                    const color_index = Math.floor(progress * rainbow_colors.length);
+                    on_color_change(rainbow_colors[color_index]);
+                }
+
+                const loop = () => {
+                    update_color();
+                    raf_ref.current = requestAnimationFrame(loop);
+                };
+
+                loop();
+            });
+        } else if (raf_ref.current !== null) {
+            cancelAnimationFrame(raf_ref.current);
+            raf_ref.current = null;
+        }
+
+        return () => {
+            if (raf_ref.current !== null) {
+                cancelAnimationFrame(raf_ref.current);
+                raf_ref.current = null;
+            }
+        };
+    }, [force_rainbow, on_color_change]);
+
     return (
         <>
             {/* the panel only shows its background while it's holding the jar, otherwise it's just the two buttons */}
@@ -242,7 +325,7 @@ const FloatingWidget = ({current_color, on_color_change, cooldown, burst, gifts,
                     )}
 
                     <div className={`relative w-15 h-15 rounded-full bg-neutral-700 ${spending_gift ? "outline-1 outline-yellow-300" : ""}`}>
-                        <ColorPicker current_color={current_color} on_color_change={on_color_change} />
+                        <ColorPicker current_color={current_color} on_color_change={on_color_change} disabled={is_color_forced} />
 
                         {blocked && cooldown && <BlockedRing remaining_ms={remaining_ms} duration={cooldown.duration} />}
 

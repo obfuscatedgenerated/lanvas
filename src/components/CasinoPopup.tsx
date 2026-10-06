@@ -151,6 +151,7 @@ export const CasinoPopup = ({can_wager, casino_cooldown, ...popup_props}: Casino
                             tease_id={tease_id}
                             spin_key={spin_key}
                             on_spin_end={on_spin_end}
+                            size={350}
                         />
                     )
                     : <p className="text-neutral-400">Loading the wheel...</p>
@@ -161,7 +162,7 @@ export const CasinoPopup = ({can_wager, casino_cooldown, ...popup_props}: Casino
                 </p>
 
                 <FancyButton
-                    className="ml-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="ml-0 disabled:opacity-50 disabled:cursor-not-allowed text-lg"
                     disabled={spin_disabled}
                     onClick={spin}
                 >

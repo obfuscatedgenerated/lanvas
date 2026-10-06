@@ -4,12 +4,14 @@ import Image from "next/image";
 
 import styles from "./ColorPicker.module.css";
 import picker_icon from "@/assets/picker.svg";
+import lock_icon from "@/assets/lock.svg";
 
 type HexColor = string;
 
 export interface ColorPickerProps {
     current_color: HexColor;
     on_color_change: (color: HexColor) => void;
+    disabled?: boolean;
 }
 
 
@@ -49,6 +51,7 @@ const ColorPicker = (props: ColorPickerProps) => {
         >
             <input
                 className={styles.input}
+                disabled={props.disabled}
 
                 style={{
                     width: "100%",
@@ -60,6 +63,10 @@ const ColorPicker = (props: ColorPickerProps) => {
 
                 // update internal value every change so input updates properly
                 onChange={(e) => {
+                    if (props.disabled) {
+                        return;
+                    }
+
                     const clr = e.target.value as HexColor; // assumption made
 
                     if (clr !== internal_color) {
@@ -98,7 +105,7 @@ const ColorPicker = (props: ColorPickerProps) => {
 
                 draggable={false}
 
-                src={picker_icon}
+                src={!props.disabled ? picker_icon : lock_icon}
                 priority={true}
             />
         </div>

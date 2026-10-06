@@ -261,13 +261,6 @@ const DuckParade = () => {
         };
     }, []);
 
-    useEffect(() => {
-        (globalThis as any).spawn_duck = (summoner: string) => {
-            const duck: Duck = {id: next_id_ref.current++, summoner};
-            setDucks((previous) => previous.length >= MAX_DUCKS ? previous : [...previous, duck]);
-        };
-    }, []);
-
     const remove_duck = useCallback((duck_id: number) => {
         setDucks((previous) => previous.filter((duck) => duck.id !== duck_id));
     }, []);

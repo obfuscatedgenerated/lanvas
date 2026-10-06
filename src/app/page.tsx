@@ -27,6 +27,8 @@ import AFKHeartbeatActivity from "@/components/AFKHeartbeatActivity";
 import ClownTracker from "@/components/ClownTracker";
 import CasinoAnnouncements from "@/components/CasinoAnnouncements";
 import DuckParade from "@/components/DuckParade";
+import {AdwarePrank} from "@/components/AdwarePrank";
+import {Pranks} from "@/components/Pranks";
 
 export default function Home() {
     const [current_color, setCurrentColor] = useState("#000000");
@@ -302,6 +304,8 @@ export default function Home() {
                     }
                 />
             }
+
+            {casino_enabled && <Pranks />}
         </>
     );
 }

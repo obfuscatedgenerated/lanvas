@@ -181,6 +181,10 @@ const SEGMENTS: Omit<WheelSegment, "weight">[] = [
     {id: "double", label: "×2", color: "#16a34a"},
     {id: "clowned", label: "🤡", color: "#dc2626"},
     {id: "duck", label: "🦆", color: "#ca8a04"},
+    {id: "adware", label: "Adware", color: "#f97316"},
+    {id: "upside_down", label: "uʍop ǝpᴉsd∩", color: "#0ea5e9"},
+    {id: "pride_minute", label: "Pride minute 🏳‍🌈❤", color: "#a855f7"},
+    {id: "eraserhead", label: "Eraserhead", color: "#52525b"},
     {id: "jackpot", label: "JACKPOT", color: "#eab308"},
     {id: "nothing", label: "Nothing", color: "#404040"},
     {id: "triple", label: "×3", color: "#15803d"},
@@ -253,13 +257,48 @@ const OUTCOMES: CasinoOutcome[] = [
     {
         id: "duck",
         kind: "weird",
-        weight: 35,
+        weight: 15,
         segment_id: "duck",
         announce: "banner",
-        // the client sees outcome_id "duck" in casino_result and sends the duck waddling
+        // the client sees outcome_id "duck" in casino_result and sends the duck waddling for everyone
         apply: (context) => `🦆 ${context.spinner.name} summoned a duck`,
     },
-    // TODO: more weird outcomes
+    {
+        id: "adware",
+        kind: "weird",
+        weight: 5,
+        segment_id: "adware",
+        announce: "feed",
+        // client side popup spam for only the spinner for 1 min
+        apply: (context) => `💻 ${context.spinner.name} got adware`,
+    },
+    {
+        id: "upside_down",
+        kind: "weird",
+        weight: 5,
+        segment_id: "upside_down",
+        announce: "feed",
+        // client side flip for only the spinner for 1 min
+        apply: (context) => `🔄 ${context.spinner.name} got turned upside down`,
+    },
+    {
+        id: "pride_minute",
+        kind: "weird",
+        weight: 5,
+        segment_id: "pride_minute",
+        announce: "feed",
+        // client side randomisation of colour picker (through the hue) for only the spinner for 1 min
+        apply: (context) => `🏳️‍🌈 ${context.spinner.name} is celebrating pride minute!`,
+    },
+    {
+        id: "eraserhead",
+        kind: "weird",
+        weight: 5,
+        segment_id: "eraserhead",
+        announce: "feed",
+        // client side can only draw white pixels for only the spinner for 1 min
+        apply: (context) => `🎥 ${context.spinner.name} has become Eraserhead`,
+    },
 
     // busts: 35%
     {
