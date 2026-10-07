@@ -1260,6 +1260,29 @@ const AdminPageInteractivity = () => {
                     confirm_note="This will not affect existing timeouts."
                 />
 
+                <ConfigCheckbox
+                    config_key="cooldown_scaling_enabled"
+                    label="Scale cooldown with players"
+                    confirm_name="cooldown scaling"
+                    help="When on, the pixel timeout grows with the number of active players: base timeout + per-player amount, capped at the max below. Players just see their normal cooldown timer."
+                />
+
+                <ConfigNumberInput
+                    config_key="cooldown_per_player_ms"
+                    label="Added cooldown per active player (ms)"
+                    confirm_name="per-player cooldown"
+                    help="How much each active player adds to the base pixel timeout while scaling is on."
+                    confirm_note="This will not affect existing timeouts."
+                />
+
+                <ConfigNumberInput
+                    config_key="cooldown_max_ms"
+                    label="Max scaled cooldown (ms)"
+                    confirm_name="max cooldown"
+                    help="Upper limit on the scaled pixel timeout, so a busy canvas can't push the cooldown too high."
+                    confirm_note="This will not affect existing timeouts."
+                />
+
                 <ReadonlyToggle />
             </AdminSection>
 

@@ -1,4 +1,5 @@
 import { get_config } from "@/server/config";
+import { get_active_users } from "@/server/afk";
 
 interface TimeoutSpan {
     started: number;
@@ -151,7 +152,25 @@ export const get_calculated_casino_timeout = (user_id: string): CalculatedTimeou
 }
 
 
-export const pixel_timeout_user = (user_id: string, duration_ms: number = get_config("pixel_timeout_ms")): TimeoutSpan => {
+/**
+ * The pixel cooldown that currently applies to a new placement. When cooldown scaling is enabled this
+ * grows with the number of active players, otherwise it's just the configured base timeout.
+ * Recomputed per placement so it tracks the live player count.
+ */
+export const get_effective_pixel_timeout_ms = (): number => {
+    const base = get_config("pixel_timeout_ms");
+
+    if (!get_config("cooldown_scaling_enabled")) {
+        return base;
+    }
+
+    const active_players = get_active_users().length;
+    const scaled = base + get_config("cooldown_per_player_ms") * active_players;
+
+    return Math.min(scaled, get_config("cooldown_max_ms"));
+}
+
+export const pixel_timeout_user = (user_id: string, duration_ms: number = get_effective_pixel_timeout_ms()): TimeoutSpan => {
     const current_time = Date.now();
 
     const timeout: TimeoutSpan = {

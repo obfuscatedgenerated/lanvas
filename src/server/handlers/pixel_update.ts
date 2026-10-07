@@ -8,7 +8,7 @@ import {is_user_banned} from "@/server/banlist";
 import {get_cell, set_cell} from "@/server/grid";
 import {intercept_client} from "@/server/prometheus";
 
-import {get_calculated_pixel_timeout, is_user_in_pixel_timeout, remove_pixel_timeout, pixel_timeout_user} from "@/server/timeouts";
+import {calculate_timeout_data, get_calculated_pixel_timeout, is_user_in_pixel_timeout, remove_pixel_timeout, pixel_timeout_user} from "@/server/timeouts";
 import snowflake from "@/snowflake";
 import {increment_virtual_stat} from "@/server/stats";
 import {activity_check_in} from "@/server/afk";
@@ -97,9 +97,11 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}
         if (used_gift) {
             emit_gift_info(io, user_id);
         } else if (!god) {
-            pixel_timeout_user(user_id);
-            // TODO: could emit here to the client rather than having the client calculate it themselves,
-            //  although that makes rollback a little annoying without adding a new event or sending a 0 timeout
+            // tell the client the authoritative cooldown, which may be longer than the base timeout when
+            // player-count scaling is on, so the client's timer matches instead of guessing from the base.
+            // on a db failure below the placement is rolled back and pixel_update_rejected resets this.
+            const timeout = pixel_timeout_user(user_id);
+            socket.emit("timeout_info", calculate_timeout_data(timeout));
         }
 
         // broadcast the pixel update to all connected clients

@@ -62,4 +62,3 @@ If you wish to completely disable this, which will not allow you to toggle it du
 
 - Support mobile properly, including sizing, breakpoints, and proper use of react-zoom-pan-pinch without conflicting with tapping to draw
 - Improve stability by dealing with conflicting edits safely
-- Option to autoscale the timer based on number of connected users

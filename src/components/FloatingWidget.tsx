@@ -6,7 +6,7 @@ import {CircularProgressbar} from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 
 import colors from "tailwindcss/colors";
-import {Dices, Gift} from "lucide-react";
+import {Dices, Gift, Users} from "lucide-react";
 
 import ColorPicker from "@/components/ColorPicker";
 import GiftJar from "@/components/GiftJar";
@@ -130,6 +130,9 @@ const FloatingWidget = ({current_color, on_color_change, cooldown, burst, gifts,
     const {value: casino_value, loaded: casino_loaded} = usePublicConfigState("casino_enabled");
     const gifting_enabled = gifting_loaded && gifting_value;
     const casino_enabled = casino_loaded && casino_value;
+
+    const {value: cooldown_scaling_value, loaded: cooldown_scaling_loaded} = usePublicConfigState("cooldown_scaling_enabled");
+    const cooldown_scaling_enabled = cooldown_scaling_loaded && cooldown_scaling_value;
 
     const [gifting_popup_open, setGiftingPopupOpen] = useState(false);
     const [casino_popup_open, setCasinoPopupOpen] = useState(false);
@@ -329,6 +332,15 @@ const FloatingWidget = ({current_color, on_color_change, cooldown, burst, gifts,
                         <ColorPicker current_color={current_color} on_color_change={on_color_change} disabled={is_color_forced} />
 
                         {blocked && cooldown && <BlockedRing remaining_ms={remaining_ms} duration={cooldown.duration} />}
+
+                        {cooldown_scaling_enabled && (
+                            <span
+                                className="absolute -bottom-1 -right-1 z-10 flex items-center justify-center w-5 h-5 rounded-full bg-neutral-900 border border-neutral-500 text-neutral-300 cursor-help"
+                                title="Your cooldown changes with how many people are drawing right now, so it may be longer when it's busy."
+                            >
+                                <Users size={11} />
+                            </span>
+                        )}
 
                         {ready_flash && (
                             <span className="absolute -inset-1 rounded-full border-2 border-emerald-400 animate-ping [animation-iteration-count:1] pointer-events-none" />

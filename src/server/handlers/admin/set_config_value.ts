@@ -24,7 +24,7 @@ export const handler: SocketHandlerFunction = async ({io, socket, pool, payload}
     // visibility comes from the registry, not the client
     const is_public = is_config_key_public(key);
 
-    // update in-memory config (value validated against the registry above)
+    // update in-memory config
     await set_config(pool, key, value as ConfigValueType<ConfigKey>);
     console.log(`Config key ${key} set to ${value} by admin ${user.name} (id: ${user.sub}), public: ${is_public}`);
 
