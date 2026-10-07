@@ -3,8 +3,7 @@ import type {Server} from "socket.io";
 import type {Author, GiftInfo, HeldGift} from "@/types";
 
 import {get_config} from "@/server/config";
-import {CONFIG_KEY_GIFT_BURST_GAP_MS, CONFIG_KEY_GIFT_EXPIRY_MS} from "@/consts";
-import {DEFAULT_GIFT_EXPIRY_MS, DEFAULT_GIFT_BURST_GAP_MS} from "@/defaults";
+import {config_default} from "@/config_registry";
 import snowflake from "@/snowflake";
 
 // user id to the gifts they currently hold, soonest expiring first
@@ -64,7 +63,7 @@ export const get_gift_balance = (user_id: string): number => sum_amounts(prune_g
 export const get_gift_info = (user_id: string): GiftInfo => {
     const gifts = prune_gifts(user_id);
 
-    const burst_gap_ms = get_config(CONFIG_KEY_GIFT_BURST_GAP_MS, DEFAULT_GIFT_BURST_GAP_MS);
+    const burst_gap_ms = get_config("gift_burst_gap_ms");
     const last_use = last_gift_use.get(user_id);
 
     return {
@@ -82,7 +81,7 @@ export const give_gift = (to_id: string, from: Author, amount = 1, id = snowflak
         id,
         from,
         amount,
-        expires: Date.now() + get_config(CONFIG_KEY_GIFT_EXPIRY_MS, DEFAULT_GIFT_EXPIRY_MS),
+        expires: Date.now() + get_config("gift_expiry_ms"),
     };
 
     const gifts = prune_gifts(to_id);
@@ -108,7 +107,7 @@ export const consume_gift = (user_id: string): ConsumeGiftResult => {
     const current_time = Date.now();
     const last_use = last_gift_use.get(user_id);
 
-    if (last_use !== undefined && current_time - last_use < get_config(CONFIG_KEY_GIFT_BURST_GAP_MS, DEFAULT_GIFT_BURST_GAP_MS)) {
+    if (last_use !== undefined && current_time - last_use < get_config("gift_burst_gap_ms")) {
         return {status: "burst_gap"};
     }
 
@@ -153,7 +152,7 @@ export const cleanup_expired_gifts = (): string[] => {
 
     const current_time = Date.now();
     for (const [user_id, last_use] of last_gift_use.entries()) {
-        if (current_time - last_use >= DEFAULT_GIFT_BURST_GAP_MS) {
+        if (current_time - last_use >= config_default("gift_burst_gap_ms")) {
             last_gift_use.delete(user_id);
         }
     }

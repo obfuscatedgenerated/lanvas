@@ -2,8 +2,6 @@ import type {SocketHandlerFunction} from "@/server/types";
 import type {Author, GiftLogEntry} from "@/types";
 
 import {get_config} from "@/server/config";
-import {CONFIG_KEY_ADMIN_GOD, CONFIG_KEY_GIFTING_ENABLED, CONFIG_KEY_READONLY} from "@/consts";
-import {DEFAULT_ADMIN_GOD, DEFAULT_GIFTING_ENABLED} from "@/defaults";
 
 import {is_user_banned} from "@/server/banlist";
 import {get_calculated_pixel_timeout, is_user_in_pixel_timeout, pixel_timeout_user, remove_pixel_timeout} from "@/server/timeouts";
@@ -22,12 +20,12 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool,
         return;
     }
 
-    if (get_config(CONFIG_KEY_READONLY, false)) {
+    if (get_config("readonly")) {
         socket.emit("gift_rejected", {reason: "readonly"});
         return;
     }
 
-    if (!get_config(CONFIG_KEY_GIFTING_ENABLED, DEFAULT_GIFTING_ENABLED)) {
+    if (!get_config("gifting_enabled")) {
         socket.emit("gift_rejected", {reason: "disabled"});
         return;
     }
@@ -81,7 +79,7 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool,
     }
 
     const is_admin = user_id === process.env.DISCORD_ADMIN_USER_ID;
-    const god = is_admin && get_config(CONFIG_KEY_ADMIN_GOD, DEFAULT_ADMIN_GOD);
+    const god = is_admin && get_config("admin_god");
 
     // gifting costs your ready pixel
     if (!god && is_user_in_pixel_timeout(user_id)) {

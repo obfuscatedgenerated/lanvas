@@ -3,8 +3,6 @@ import type {OnlineUser} from "@/types";
 
 import {is_user_active} from "@/server/afk";
 import {get_config} from "@/server/config";
-import {CONFIG_KEY_GIFTING_ENABLED} from "@/consts";
-import {DEFAULT_GIFTING_ENABLED} from "@/defaults";
 
 // send the requester a deduplicated list of other users currently on the canvas, and subscribe them to activity changes
 export const handler: SocketHandlerFunction = ({socket, connected_users}) => {
@@ -13,7 +11,7 @@ export const handler: SocketHandlerFunction = ({socket, connected_users}) => {
         return;
     }
 
-    if (!get_config(CONFIG_KEY_GIFTING_ENABLED, DEFAULT_GIFTING_ENABLED)) {
+    if (!get_config("gifting_enabled")) {
         socket.emit("online_users", []);
         return;
     }

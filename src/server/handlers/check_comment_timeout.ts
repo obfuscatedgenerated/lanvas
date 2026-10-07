@@ -2,9 +2,6 @@ import type { SocketHandlerFunction } from "@/server/types";
 import {get_calculated_comment_timeout} from "@/server/timeouts";
 import {get_config} from "@/server/config";
 
-import {CONFIG_KEY_ADMIN_GOD} from "@/consts";
-import {DEFAULT_ADMIN_GOD} from "@/defaults";
-
 export const handler: SocketHandlerFunction = ({socket}) => {
     const user = socket.user;
     if (!user || !user.sub) {
@@ -12,7 +9,7 @@ export const handler: SocketHandlerFunction = ({socket}) => {
     }
 
     const is_admin = user.sub === process.env.DISCORD_ADMIN_USER_ID;
-    const god = is_admin && get_config(CONFIG_KEY_ADMIN_GOD, DEFAULT_ADMIN_GOD);
+    const god = is_admin && get_config("admin_god");
 
     if (god) {
         // admins in god mode do not have timeouts

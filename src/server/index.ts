@@ -21,11 +21,6 @@ import {
 } from "@/server/types";
 
 import {
-    CONFIG_KEY_GRID_HEIGHT,
-    CONFIG_KEY_GRID_WIDTH,
-} from "@/consts";
-
-import {
     get_config,
     load_config,
 } from "@/server/config";
@@ -131,7 +126,7 @@ const main = async () => {
     const conf_key_count = await load_config(pool);
     console.log(`Loaded ${conf_key_count} config entries from database.`);
 
-    console.log("Grid size:", get_config(CONFIG_KEY_GRID_WIDTH, 100), "x", get_config(CONFIG_KEY_GRID_HEIGHT, 100));
+    console.log("Grid size:", get_config("grid_width"), "x", get_config("grid_height"));
 
     // load banned users from database
     const ban_count = await load_banned_users(pool);

@@ -1,8 +1,7 @@
 import type {Author} from "@/types";
 import type {Pool} from "pg";
 
-import {CONFIG_KEY_GRID_HEIGHT, CONFIG_KEY_GRID_WIDTH} from "@/consts";
-import {DEFAULT_GRID_COLOR, DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH} from "@/defaults";
+import {DEFAULT_GRID_COLOR} from "@/defaults";
 import {get_config} from "@/server/config";
 
 const initialise_grid_data = (height: number, width: number) => Array.from({length: height}, () => Array(width).fill(DEFAULT_GRID_COLOR));
@@ -17,8 +16,8 @@ let author_data: (Author | null)[][] = [];
 // TODO: could reduce redundancy further by storing user ids only in author_data and having a separate user map
 
 export const load_pixels = async (pool: Pool): Promise<number> => {
-    const grid_height = get_config(CONFIG_KEY_GRID_HEIGHT, DEFAULT_GRID_HEIGHT);
-    const grid_width = get_config(CONFIG_KEY_GRID_WIDTH, DEFAULT_GRID_WIDTH);
+    const grid_height = get_config("grid_height");
+    const grid_width = get_config("grid_width");
 
     grid_data = initialise_grid_data(grid_height, grid_width);
     author_data = initialise_author_data(grid_height, grid_width);

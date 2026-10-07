@@ -5,12 +5,10 @@ import type {Author, GiftLogEntry, WheelSegment} from "@/types";
 import type {ConnectedUserDetails} from "@/server/types";
 
 import {get_config, set_config} from "@/server/config";
-import {CONFIG_KEY_CASINO_POT, CONFIG_KEY_CASINO_POT_SEED} from "@/consts";
 
 import {get_active_users} from "@/server/afk";
 import {emit_gift_info, give_gift, user_room} from "@/server/gifts";
 import snowflake from "@/snowflake";
-import {DEFAULT_CASINO_POT_SEED} from "@/defaults";
 import {increment_virtual_stat} from "@/server/stats";
 import {get_visible_stats} from "@/server/feature_stats";
 
@@ -55,15 +53,15 @@ export interface CasinoOutcome {
     apply: (context: CasinoContext) => Promise<string> | string;
 }
 
-export const get_pot_seed = (): number => get_config(CONFIG_KEY_CASINO_POT_SEED, DEFAULT_CASINO_POT_SEED);
-export const get_pot = (): number => get_config(CONFIG_KEY_CASINO_POT, get_pot_seed());
+export const get_pot_seed = (): number => get_config("casino_pot_seed");
+export const get_pot = (): number => get_config("casino_pot", get_pot_seed());
 
 // in-memory value updates immediately and the db write is best effort, then everyone watching is told
 const set_pot = (io: Server, pool: Pool, value: number): void => {
-    void set_config(pool, CONFIG_KEY_CASINO_POT, value, false);
+    void set_config(pool, "casino_pot", value);
 
     // keeps the admin page's pot input from going stale
-    io.to("admin").emit("config_value", {key: CONFIG_KEY_CASINO_POT, value});
+    io.to("admin").emit("config_value", {key: "casino_pot", value});
 
     // lets the casino popup show the pot live
     io.emit("casino_pot", value);

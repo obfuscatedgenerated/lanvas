@@ -10,38 +10,8 @@ import PrometheusTable from "@/components/PrometheusTable";
 
 import {X} from "lucide-react";
 
-import {
-    DEFAULT_ADMIN_ANONYMOUS,
-    DEFAULT_ADMIN_GOD,
-    DEFAULT_AUTOMOD_ENABLED, DEFAULT_CASINO_ENABLED, DEFAULT_CASINO_POT_SEED, DEFAULT_CASINO_TIMEOUT_MS,
-    DEFAULT_CENSOR_ENABLED,
-    DEFAULT_COMMENT_TIMEOUT_MS,
-    DEFAULT_COMMENTS_ENABLED,
-    DEFAULT_GIFT_BURST_GAP_MS,
-    DEFAULT_GIFT_EXPIRY_MS,
-    DEFAULT_GIFTING_ENABLED,
-    DEFAULT_GRID_HEIGHT,
-    DEFAULT_GRID_WIDTH,
-    DEFAULT_PIXEL_TIMEOUT_MS,
-    DEFAULT_READONLY
-} from "@/defaults";
-import {
-    CONFIG_KEY_ADMIN_ANONYMOUS,
-    CONFIG_KEY_ADMIN_GOD,
-    CONFIG_KEY_AUTOMOD_ENABLED, CONFIG_KEY_CASINO_ENABLED,
-    CONFIG_KEY_CASINO_POT, CONFIG_KEY_CASINO_POT_SEED, CONFIG_KEY_CASINO_TIMEOUT_MS,
-    CONFIG_KEY_CENSOR_ENABLED,
-    CONFIG_KEY_COMMENT_TIMEOUT_MS,
-    CONFIG_KEY_COMMENTS_ENABLED,
-    CONFIG_KEY_GIFT_BURST_GAP_MS,
-    CONFIG_KEY_GIFT_EXPIRY_MS,
-    CONFIG_KEY_GIFTING_ENABLED,
-    CONFIG_KEY_GRID_HEIGHT,
-    CONFIG_KEY_GRID_WIDTH,
-    CONFIG_KEY_PIXEL_TIMEOUT_MS,
-    CONFIG_KEY_READONLY,
-    LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER
-} from "@/consts";
+import {LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@/consts";
+import {CONFIG, config_default, type ConfigDefinition, type ConfigKey} from "@/config_registry";
 import {GiftLogEntry} from "@/types";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -55,12 +25,16 @@ interface ConfigValueMessage {
     value: unknown;
 }
 
-const save_config_value = (config_key: string, value: unknown, is_public: boolean) => {
-    socket.emit("admin_set_config_value", {key: config_key, value, is_public});
+// visibility is derived from the registry server-side, so the client only sends the key and value
+const save_config_value = (config_key: ConfigKey, value: unknown) => {
+    socket.emit("admin_set_config_value", {key: config_key, value});
 };
 
-// requests a config key and stays in sync with it, including the server's parrot back after a save
-const useAdminConfigValue = <ValueType,>(config_key: string, default_value: ValueType, on_value?: (value: ValueType) => void): ValueType => {
+// requests a config key and stays in sync with it, including the server's parrot back after a save.
+// the default comes from the registry; ValueType is the caller's narrowed value type for the key.
+const useAdminConfigValue = <ValueType,>(config_key: ConfigKey, on_value?: (value: ValueType) => void): ValueType => {
+    const default_value = config_default(config_key) as ValueType;
+
     const [value, setValue] = useState<ValueType>(default_value);
 
     const on_value_ref = useRef(on_value);
@@ -120,9 +94,7 @@ const AdminSection = ({title, children, row = false}: AdminSectionProps) => (
 );
 
 interface ConfigCheckboxProps {
-    config_key: string;
-    default_value: boolean;
-    is_public: boolean;
+    config_key: ConfigKey;
     label: string;
     confirm_name: string; // used as "Are you sure want to turn on <confirm_name>?"
     help?: string;
@@ -131,8 +103,8 @@ interface ConfigCheckboxProps {
     on_value?: (value: boolean) => void;
 }
 
-const ConfigCheckbox = ({config_key, default_value, is_public, label, confirm_name, help, disabled = false, disabled_reason, on_value}: ConfigCheckboxProps) => {
-    const value = !!useAdminConfigValue<boolean>(config_key, default_value, on_value);
+const ConfigCheckbox = ({config_key, label, confirm_name, help, disabled = false, disabled_reason, on_value}: ConfigCheckboxProps) => {
+    const value = !!useAdminConfigValue<boolean>(config_key, on_value);
 
     const on_change = (event: ChangeEvent<HTMLInputElement>) => {
         const new_value = event.target.checked;
@@ -143,7 +115,7 @@ const ConfigCheckbox = ({config_key, default_value, is_public, label, confirm_na
         }
 
         // checked state follows the server's parrot back, so there's nothing to revert on cancel
-        save_config_value(config_key, new_value, is_public);
+        save_config_value(config_key, new_value);
     };
 
     return (
@@ -163,20 +135,19 @@ const ConfigCheckbox = ({config_key, default_value, is_public, label, confirm_na
 };
 
 interface ConfigNumberInputProps {
-    config_key: string;
-    default_value: number;
-    is_public: boolean;
+    config_key: ConfigKey;
     label: string;
     confirm_name: string; // used as "Are you sure want to change <confirm_name> to ...?"
     help?: string;
     unit?: string;
-    min?: number;
+    min?: number; // overrides the registry's lower bound for the input (e.g. a stricter UI minimum)
     confirm_note?: string;
     width_class?: string;
 }
 
-const ConfigNumberInput = ({config_key, default_value, is_public, label, confirm_name, help, unit = "ms", min = 0, confirm_note, width_class = "w-32"}: ConfigNumberInputProps) => {
-    const server_value = useAdminConfigValue<number>(config_key, default_value);
+const ConfigNumberInput = ({config_key, label, confirm_name, help, unit = "ms", min, confirm_note, width_class = "w-32"}: ConfigNumberInputProps) => {
+    const effective_min = min ?? (CONFIG[config_key] as ConfigDefinition).min ?? 0;
+    const server_value = useAdminConfigValue<number>(config_key);
     const [input_value, setInputValue] = useState(String(server_value));
 
     useEffect(() => {
@@ -191,8 +162,8 @@ const ConfigNumberInput = ({config_key, default_value, is_public, label, confirm
             return;
         }
 
-        if (isNaN(parsed) || parsed < min) {
-            alert(`Invalid ${confirm_name}: ${input_value} (minimum ${min}${unit})`);
+        if (isNaN(parsed) || parsed < effective_min) {
+            alert(`Invalid ${confirm_name}: ${input_value} (minimum ${effective_min}${unit})`);
             setInputValue(String(server_value));
             return;
         }
@@ -203,7 +174,7 @@ const ConfigNumberInput = ({config_key, default_value, is_public, label, confirm
             return;
         }
 
-        save_config_value(config_key, parsed, is_public);
+        save_config_value(config_key, parsed);
     };
 
     return (
@@ -214,7 +185,7 @@ const ConfigNumberInput = ({config_key, default_value, is_public, label, confirm
                 type="number"
                 className={`${INPUT_CLASS} mx-2 ${width_class}`}
                 value={input_value}
-                min={min}
+                min={effective_min}
                 onChange={(event) => setInputValue(event.target.value)}
                 onBlur={on_blur}
             />
@@ -477,8 +448,8 @@ const PollOptionsList = ({options, editable, on_options_edited, counts}: {option
 // ---------------------------------------------------------------------------------------------------------------------
 
 const GridSizeForm = () => {
-    const server_width = useAdminConfigValue<number>(CONFIG_KEY_GRID_WIDTH, DEFAULT_GRID_WIDTH);
-    const server_height = useAdminConfigValue<number>(CONFIG_KEY_GRID_HEIGHT, DEFAULT_GRID_HEIGHT);
+    const server_width = useAdminConfigValue<number>("grid_width");
+    const server_height = useAdminConfigValue<number>("grid_height");
 
     const [width_input, setWidthInput] = useState(String(server_width));
     const [height_input, setHeightInput] = useState(String(server_height));
@@ -543,8 +514,9 @@ const GridSizeForm = () => {
 
 // readonly has its own event rather than going through set_config_value, so it shows a pending state until the server confirms
 const ReadonlyToggle = () => {
-    const [is_readonly, setIsReadonly] = useState(DEFAULT_READONLY);
-    const [readonly_checkbox, setReadonlyCheckbox] = useState(DEFAULT_READONLY);
+    const readonly_default = config_default("readonly");
+    const [is_readonly, setIsReadonly] = useState(readonly_default);
+    const [readonly_checkbox, setReadonlyCheckbox] = useState(readonly_default);
 
     useEffect(() => {
         setReadonlyCheckbox(is_readonly);
@@ -554,8 +526,8 @@ const ReadonlyToggle = () => {
         const handle_readonly = (value: boolean) => setIsReadonly(!!value);
 
         const handle_config_value = ({key, value}: ConfigValueMessage) => {
-            if (key === CONFIG_KEY_READONLY) {
-                setIsReadonly(value !== undefined ? !!value : DEFAULT_READONLY);
+            if (key === "readonly") {
+                setIsReadonly(value !== undefined ? !!value : readonly_default);
             }
         };
 
@@ -567,7 +539,7 @@ const ReadonlyToggle = () => {
             socket.off("readonly", handle_readonly);
             socket.off("config_value", handle_config_value);
         };
-    }, []);
+    }, [readonly_default]);
 
     return (
         <label>
@@ -615,9 +587,7 @@ const AutomodCheckbox = () => {
 
     return (
         <ConfigCheckbox
-            config_key={CONFIG_KEY_AUTOMOD_ENABLED}
-            default_value={DEFAULT_AUTOMOD_ENABLED}
-            is_public={false}
+            config_key="automod_enabled"
             label="AutoMod"
             confirm_name="automod"
             help="Uses a local AI model on the server to filter extreme and toxic messages. Note that this does not cover profanity, it is instead primarily sentiment based."
@@ -1284,9 +1254,7 @@ const AdminPageInteractivity = () => {
                 <GridSizeForm />
 
                 <ConfigNumberInput
-                    config_key={CONFIG_KEY_PIXEL_TIMEOUT_MS}
-                    default_value={DEFAULT_PIXEL_TIMEOUT_MS}
-                    is_public={true}
+                    config_key="pixel_timeout_ms"
                     label="Timeout per pixel (ms)"
                     confirm_name="pixel timeout"
                     confirm_note="This will not affect existing timeouts."
@@ -1297,9 +1265,7 @@ const AdminPageInteractivity = () => {
 
             <AdminSection title="Admin tools & cheats" row>
                 <ConfigCheckbox
-                    config_key={CONFIG_KEY_ADMIN_GOD}
-                    default_value={DEFAULT_ADMIN_GOD}
-                    is_public={false}
+                    config_key="admin_god"
                     label="God mode"
                     confirm_name="god mode"
                     help="No timeouts for the admin!"
@@ -1307,9 +1273,7 @@ const AdminPageInteractivity = () => {
                 />
 
                 <ConfigCheckbox
-                    config_key={CONFIG_KEY_ADMIN_ANONYMOUS}
-                    default_value={DEFAULT_ADMIN_ANONYMOUS}
-                    is_public={false}
+                    config_key="admin_anonymous"
                     label="Anonymous mode"
                     confirm_name="anonymous mode"
                     help="Hide admin identity when placing pixels."
@@ -1318,17 +1282,13 @@ const AdminPageInteractivity = () => {
 
             <AdminSection title="Commenting settings" row>
                 <ConfigCheckbox
-                    config_key={CONFIG_KEY_COMMENTS_ENABLED}
-                    default_value={DEFAULT_COMMENTS_ENABLED}
-                    is_public={true}
+                    config_key="comments_enabled"
                     label="Comments enabled"
                     confirm_name="comments"
                 />
 
                 <ConfigCheckbox
-                    config_key={CONFIG_KEY_CENSOR_ENABLED}
-                    default_value={DEFAULT_CENSOR_ENABLED}
-                    is_public={false}
+                    config_key="censor_enabled"
                     label="Censors"
                     confirm_name="censors"
                     help="Replaces profanity to hearts ♥. Please note that this censoring ranges from mild swears, to slurs and sexually explicit language."
@@ -1337,9 +1297,7 @@ const AdminPageInteractivity = () => {
                 <AutomodCheckbox />
 
                 <ConfigNumberInput
-                    config_key={CONFIG_KEY_COMMENT_TIMEOUT_MS}
-                    default_value={DEFAULT_COMMENT_TIMEOUT_MS}
-                    is_public={true}
+                    config_key="comment_timeout_ms"
                     label="Timeout per message (ms)"
                     confirm_name="chat timeout"
                     confirm_note="This will not affect existing timeouts."
@@ -1348,17 +1306,13 @@ const AdminPageInteractivity = () => {
 
             <AdminSection title="Gifting settings" row>
                 <ConfigCheckbox
-                    config_key={CONFIG_KEY_GIFTING_ENABLED}
-                    default_value={DEFAULT_GIFTING_ENABLED}
-                    is_public={true}
+                    config_key="gifting_enabled"
                     label="Gifting enabled"
                     confirm_name="gifting"
                 />
 
                 <ConfigNumberInput
-                    config_key={CONFIG_KEY_GIFT_EXPIRY_MS}
-                    default_value={DEFAULT_GIFT_EXPIRY_MS}
-                    is_public={false}
+                    config_key="gift_expiry_ms"
                     label="Gift expiry (ms)"
                     confirm_name="gift expiry"
                     help="How long a received gift can be held before it expires."
@@ -1367,9 +1321,7 @@ const AdminPageInteractivity = () => {
                 />
 
                 <ConfigNumberInput
-                    config_key={CONFIG_KEY_GIFT_BURST_GAP_MS}
-                    default_value={DEFAULT_GIFT_BURST_GAP_MS}
-                    is_public={false}
+                    config_key="gift_burst_gap_ms"
                     label="Burst gap (ms)"
                     confirm_name="gift burst gap"
                     help="Minimum time between placements when spending held gifts, so a stack can't be dumped instantly."
@@ -1378,34 +1330,26 @@ const AdminPageInteractivity = () => {
 
             <AdminSection title="Casino settings" row>
                 <ConfigCheckbox
-                    config_key={CONFIG_KEY_CASINO_ENABLED}
-                    default_value={DEFAULT_CASINO_ENABLED}
-                    is_public={true}
+                    config_key="casino_enabled"
                     label="Casino enabled"
                     confirm_name="casino"
                 />
 
                 <ConfigNumberInput
-                    config_key={CONFIG_KEY_CASINO_TIMEOUT_MS}
-                    default_value={DEFAULT_CASINO_TIMEOUT_MS}
-                    is_public={true}
+                    config_key="casino_timeout_ms"
                     label="Spin timeout (ms)"
                     confirm_name="spin timeout"
                 />
 
                 <ConfigNumberInput
-                    config_key={CONFIG_KEY_CASINO_POT_SEED}
-                    default_value={DEFAULT_CASINO_POT_SEED}
-                    is_public={false}
+                    config_key="casino_pot_seed"
                     label="Pot seed"
                     confirm_name="pot seed"
                     help="The pot starts at this value, and grows with each spin. The pot is reset to this value when a user wins."
                 />
 
                 <ConfigNumberInput
-                    config_key={CONFIG_KEY_CASINO_POT}
-                    default_value={DEFAULT_CASINO_POT_SEED}
-                    is_public={false}
+                    config_key="casino_pot"
                     label="Live pot"
                     confirm_name="pot"
                     help="The current pot value. This it automatically filled by expired gifts etc, so only edit manually if you know what you're doing."

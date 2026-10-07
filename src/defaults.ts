@@ -1,17 +1,1 @@
 export const DEFAULT_GRID_COLOR = "#FFFFFF";
-export const DEFAULT_GRID_WIDTH = 100;
-export const DEFAULT_GRID_HEIGHT = 100;
-export const DEFAULT_READONLY = false;
-export const DEFAULT_PIXEL_TIMEOUT_MS = 30000;
-export const DEFAULT_ADMIN_GOD = false;
-export const DEFAULT_ADMIN_ANONYMOUS = false;
-export const DEFAULT_COMMENT_TIMEOUT_MS = 5000;
-export const DEFAULT_AUTOMOD_ENABLED = true;
-export const DEFAULT_CENSOR_ENABLED = true;
-export const DEFAULT_COMMENTS_ENABLED = true;
-export const DEFAULT_GIFT_EXPIRY_MS = 5 * 60 * 1000;
-export const DEFAULT_GIFT_BURST_GAP_MS = 500;
-export const DEFAULT_GIFTING_ENABLED = true;
-export const DEFAULT_CASINO_ENABLED = false;
-export const DEFAULT_CASINO_TIMEOUT_MS = 5 * 60 * 1000;
-export const DEFAULT_CASINO_POT_SEED = 20;

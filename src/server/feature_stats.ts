@@ -2,15 +2,13 @@ import type {Feature} from "@/types";
 
 import {get_config} from "@/server/config";
 import {get_all_stats} from "@/server/stats";
-import {CONFIG_KEY_CASINO_ENABLED, CONFIG_KEY_GIFTING_ENABLED} from "@/consts";
-import {DEFAULT_CASINO_ENABLED, DEFAULT_GIFTING_ENABLED} from "@/defaults";
 
 // config keys that reveal a feature, so the stats page can refresh the moment one is flipped
-export const FEATURE_TOGGLE_KEYS: string[] = [CONFIG_KEY_GIFTING_ENABLED, CONFIG_KEY_CASINO_ENABLED];
+export const FEATURE_TOGGLE_KEYS: string[] = ["gifting_enabled", "casino_enabled"];
 
 export const is_feature_enabled = (feature: Feature): boolean => feature === "gifting"
-    ? get_config(CONFIG_KEY_GIFTING_ENABLED, DEFAULT_GIFTING_ENABLED)
-    : get_config(CONFIG_KEY_CASINO_ENABLED, DEFAULT_CASINO_ENABLED);
+    ? get_config("gifting_enabled")
+    : get_config("casino_enabled");
 
 // stats belonging to a feature, never sent to players while that feature is turned off
 const STAT_FEATURES: Record<string, Feature> = {

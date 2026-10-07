@@ -7,13 +7,6 @@ import {apply_basic_censor, AutoModStatus, check_text} from "@/server/automod";
 import {comment_timeout_user, get_calculated_comment_timeout, remove_comment_timeout} from "@/server/timeouts";
 
 import {get_config} from "@/server/config";
-import {
-    CONFIG_KEY_ADMIN_GOD,
-    CONFIG_KEY_AUTOMOD_ENABLED,
-    CONFIG_KEY_CENSOR_ENABLED,
-    CONFIG_KEY_COMMENTS_ENABLED
-} from "@/consts";
-import {DEFAULT_ADMIN_GOD, DEFAULT_AUTOMOD_ENABLED, DEFAULT_CENSOR_ENABLED, DEFAULT_COMMENTS_ENABLED} from "@/defaults";
 
 export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
     const user = socket.user!;
@@ -39,7 +32,7 @@ export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
     }
 
     // check if comments are enabled
-    const comments_enabled = get_config(CONFIG_KEY_COMMENTS_ENABLED, DEFAULT_COMMENTS_ENABLED);
+    const comments_enabled = get_config("comments_enabled");
     if (!comments_enabled) {
         socket.emit("comment_rejected", {reason: "disabled"});
         return;
@@ -52,7 +45,7 @@ export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
     }
 
     const is_admin = user.sub === process.env.DISCORD_ADMIN_USER_ID;
-    const god = is_admin && get_config(CONFIG_KEY_ADMIN_GOD, DEFAULT_ADMIN_GOD);
+    const god = is_admin && get_config("admin_god");
 
     // check if rate limited
     if (!god) {
@@ -65,13 +58,13 @@ export const handler: SocketHandlerFunction = async ({io, payload, socket}) => {
 
     comment_timeout_user(user.sub!);
 
-    const censor_enabled = get_config(CONFIG_KEY_CENSOR_ENABLED, DEFAULT_CENSOR_ENABLED);
+    const censor_enabled = get_config("censor_enabled");
     let censored_comment = comment;
     if (censor_enabled) {
         censored_comment = apply_basic_censor(comment);
     }
 
-    const automod_enabled = get_config(CONFIG_KEY_AUTOMOD_ENABLED, DEFAULT_AUTOMOD_ENABLED);
+    const automod_enabled = get_config("automod_enabled");
     if (automod_enabled) {
         // pass in the uncensored comment for automod checking to give the best chance of catching bad content
         const text_check = await check_text(comment);

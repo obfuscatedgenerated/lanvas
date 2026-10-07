@@ -3,8 +3,6 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 
 import usePublicConfigValue from "@/hooks/usePublicConfigValue";
-import {CONFIG_KEY_GRID_WIDTH} from "@/consts";
-import {DEFAULT_GRID_WIDTH} from "@/defaults";
 
 import {
     cells_to_data_url,
@@ -56,7 +54,7 @@ const carried_display = (previous: TemplateSettings | null) => ({
 
 // owns the template's settings, its decoded image and the sampled cells, saving settings as they change
 const useTemplate = (): TemplateController => {
-    const max_width = Math.max(MIN_TEMPLATE_WIDTH, usePublicConfigValue(CONFIG_KEY_GRID_WIDTH, DEFAULT_GRID_WIDTH));
+    const max_width = Math.max(MIN_TEMPLATE_WIDTH, usePublicConfigValue("grid_width"));
 
     const [settings, setSettings] = useState<TemplateSettings | null>(null);
     const [image, setImage] = useState<HTMLImageElement | null>(null);

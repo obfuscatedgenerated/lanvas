@@ -2,8 +2,7 @@ import {Client} from "pg";
 
 import {createCanvas, type Canvas} from "canvas";
 
-import {CONFIG_KEY_GRID_HEIGHT, CONFIG_KEY_GRID_WIDTH} from "@/consts";
-import {DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH} from "@/defaults";
+import {CONFIG} from "@/config_registry";
 
 export const revalidate = 60; // cache the image for 60 seconds
 export const runtime = "nodejs"; // ensure we use the nodejs runtime so that we can use the 'canvas' package
@@ -26,15 +25,15 @@ const draw_pixels = async () => {
     await client.connect();
 
     // get width and size from config
-    const res_config = await client.query("SELECT key, value FROM config WHERE key IN ($1, $2)", [CONFIG_KEY_GRID_WIDTH, CONFIG_KEY_GRID_HEIGHT]);
+    const res_config = await client.query("SELECT key, value FROM config WHERE key IN ($1, $2)", ["grid_width", "grid_height"]);
 
-    let grid_width = DEFAULT_GRID_WIDTH;
-    let grid_height = DEFAULT_GRID_HEIGHT;
+    let grid_width: number = CONFIG.grid_width.default;
+    let grid_height: number = CONFIG.grid_height.default;
     for (const row of res_config.rows) {
         const {key, value} = row;
-        if (key === CONFIG_KEY_GRID_WIDTH) {
+        if (key === "grid_width") {
             grid_width = parseInt(value, 10);
-        } else if (key === CONFIG_KEY_GRID_HEIGHT) {
+        } else if (key === "grid_height") {
             grid_height = parseInt(value, 10);
         }
     }

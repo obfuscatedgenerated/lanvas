@@ -14,13 +14,9 @@ import AutomodPopup from "@/components/AutomodPopup";
 import KeyBindings from "@/components/KeyBindings";
 
 import {socket} from "@/socket";
-import {DEFAULT_CASINO_ENABLED, DEFAULT_GIFTING_ENABLED, DEFAULT_PIXEL_TIMEOUT_MS} from "@/defaults";
-import {
-    CONFIG_KEY_CASINO_ENABLED,
-    CONFIG_KEY_GIFTING_ENABLED, CONFIG_KEY_PIXEL_TIMEOUT_MS, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER
-} from "@/consts";
+import {LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@/consts";
 import type {GiftInfo} from "@/types";
-import usePublicConfigValue from "@/hooks/usePublicConfigValue";
+import usePublicConfigValue, {usePublicConfigState} from "@/hooks/usePublicConfigValue";
 import GiftedBanner from "@/components/GiftedBanner";
 import {AFKWarning} from "@/components/AFKWarning";
 import AFKHeartbeatActivity from "@/components/AFKHeartbeatActivity";
@@ -40,7 +36,7 @@ export default function Home() {
     const [timeout_end_time, setTimeoutEndTime] = useState<number | null>(null);
 
     const [is_readonly, setIsReadonly] = useState(false);
-    const pixel_timeout_ms = usePublicConfigValue(CONFIG_KEY_PIXEL_TIMEOUT_MS, DEFAULT_PIXEL_TIMEOUT_MS);
+    const pixel_timeout_ms = usePublicConfigValue("pixel_timeout_ms");
 
     const pixel_grid_ref = useRef<PixelGridRef | null>(null);
 
@@ -220,8 +216,10 @@ export default function Home() {
         []
     );
 
-    const gifting_enabled = usePublicConfigValue(CONFIG_KEY_GIFTING_ENABLED, DEFAULT_GIFTING_ENABLED);
-    const casino_enabled = usePublicConfigValue(CONFIG_KEY_CASINO_ENABLED, DEFAULT_CASINO_ENABLED);
+    const {value: gifting_value, loaded: gifting_loaded} = usePublicConfigState("gifting_enabled");
+    const {value: casino_value, loaded: casino_loaded} = usePublicConfigState("casino_enabled");
+    const gifting_enabled = gifting_loaded && gifting_value;
+    const casino_enabled = casino_loaded && casino_value;
 
     return (
         <>

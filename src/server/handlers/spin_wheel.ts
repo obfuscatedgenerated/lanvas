@@ -2,13 +2,6 @@ import type {SocketHandlerFunction} from "@/server/types";
 import type {Author} from "@/types";
 
 import {get_config} from "@/server/config";
-import {
-    CONFIG_KEY_ADMIN_GOD,
-    CONFIG_KEY_CASINO_ENABLED,
-    CONFIG_KEY_CASINO_TIMEOUT_MS,
-    CONFIG_KEY_READONLY
-} from "@/consts";
-import {DEFAULT_ADMIN_GOD, DEFAULT_CASINO_ENABLED, DEFAULT_CASINO_TIMEOUT_MS} from "@/defaults";
 
 import {is_user_banned} from "@/server/banlist";
 import {activity_check_in} from "@/server/afk";
@@ -27,12 +20,12 @@ import {spin} from "@/server/casino";
 // wager a pixel on the wheel: checks, wager and timeout all happen synchronously before spinning, so double clicks can't both get through
 
 export const handler: SocketHandlerFunction = ({socket, io, pool, connected_users}) => {
-    if (!get_config(CONFIG_KEY_CASINO_ENABLED, DEFAULT_CASINO_ENABLED)) {
+    if (!get_config("casino_enabled")) {
         socket.emit("spin_rejected", {reason: "disabled"});
         return;
     }
 
-    if (get_config(CONFIG_KEY_READONLY, false)) {
+    if (get_config("readonly")) {
         socket.emit("spin_rejected", {reason: "readonly"});
         return;
     }
@@ -52,7 +45,7 @@ export const handler: SocketHandlerFunction = ({socket, io, pool, connected_user
     activity_check_in(user_id);
 
     const is_admin = user_id === process.env.DISCORD_ADMIN_USER_ID;
-    const god = is_admin && get_config(CONFIG_KEY_ADMIN_GOD, DEFAULT_ADMIN_GOD);
+    const god = is_admin && get_config("admin_god");
 
     if (!god && is_user_in_casino_timeout(user_id)) {
         socket.emit("spin_rejected", {reason: "spin_timeout", timeout: get_calculated_casino_timeout(user_id)});
@@ -80,7 +73,7 @@ export const handler: SocketHandlerFunction = ({socket, io, pool, connected_user
             emit_gift_info(io, user_id);
         }
 
-        const uncomp_timeout = casino_timeout_user(user_id, get_config(CONFIG_KEY_CASINO_TIMEOUT_MS, DEFAULT_CASINO_TIMEOUT_MS));
+        const uncomp_timeout = casino_timeout_user(user_id, get_config("casino_timeout_ms"));
         const timeout = calculate_timeout_data(uncomp_timeout);
         socket.emit("casino_timeout_info", {
             remaining_ms: timeout ? timeout.remaining : 0,

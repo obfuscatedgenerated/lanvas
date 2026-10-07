@@ -5,8 +5,7 @@ import {Send, X} from "lucide-react";
 import CommentBaseTooltip from "@/components/CommentBaseTooltip";
 
 import {socket} from "@/socket";
-import {DEFAULT_COMMENT_TIMEOUT_MS, DEFAULT_COMMENTS_ENABLED} from "@/defaults";
-import {CONFIG_KEY_COMMENT_TIMEOUT_MS, CONFIG_KEY_COMMENTS_ENABLED, LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@/consts";
+import {LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER} from "@/consts";
 import usePublicConfigValue from "@/hooks/usePublicConfigValue";
 
 export interface CommentComposerPosition {
@@ -49,8 +48,8 @@ const TimeoutStatus = ({start, until}: {start: number; until: number}) => {
 const CommentComposer = ({position, on_submitted, on_cancel, className = ""}: CommentComposerProps) => {
     const [input_value, setInputValue] = useState("");
 
-    const comments_enabled = usePublicConfigValue(CONFIG_KEY_COMMENTS_ENABLED, DEFAULT_COMMENTS_ENABLED);
-    const comment_timeout_ms = usePublicConfigValue(CONFIG_KEY_COMMENT_TIMEOUT_MS, DEFAULT_COMMENT_TIMEOUT_MS);
+    const comments_enabled = usePublicConfigValue("comments_enabled");
+    const comment_timeout_ms = usePublicConfigValue("comment_timeout_ms");
 
     const self_hide_timeout_ref = useRef<NodeJS.Timeout | null>(null);
 
@@ -100,8 +99,8 @@ const CommentComposer = ({position, on_submitted, on_cancel, className = ""}: Co
         });
 
         // request initial config values
-        socket.emit("get_public_config_value", CONFIG_KEY_COMMENT_TIMEOUT_MS);
-        socket.emit("get_public_config_value", CONFIG_KEY_COMMENTS_ENABLED);
+        socket.emit("get_public_config_value", "comment_timeout_ms");
+        socket.emit("get_public_config_value", "comments_enabled");
 
         // check for existing timeout
         socket.emit("check_comment_timeout");

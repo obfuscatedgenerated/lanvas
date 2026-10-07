@@ -1,8 +1,5 @@
 import { get_config } from "@/server/config";
 
-import { CONFIG_KEY_PIXEL_TIMEOUT_MS, CONFIG_KEY_COMMENT_TIMEOUT_MS } from "@/consts";
-import { DEFAULT_PIXEL_TIMEOUT_MS, DEFAULT_COMMENT_TIMEOUT_MS } from "@/defaults";
-
 interface TimeoutSpan {
     started: number;
     ends: number;
@@ -154,7 +151,7 @@ export const get_calculated_casino_timeout = (user_id: string): CalculatedTimeou
 }
 
 
-export const pixel_timeout_user = (user_id: string, duration_ms: number = get_config(CONFIG_KEY_PIXEL_TIMEOUT_MS, DEFAULT_PIXEL_TIMEOUT_MS)): TimeoutSpan => {
+export const pixel_timeout_user = (user_id: string, duration_ms: number = get_config("pixel_timeout_ms")): TimeoutSpan => {
     const current_time = Date.now();
 
     const timeout: TimeoutSpan = {
@@ -166,7 +163,7 @@ export const pixel_timeout_user = (user_id: string, duration_ms: number = get_co
     return timeout;
 }
 
-export const comment_timeout_user = (user_id: string, duration_ms: number = get_config(CONFIG_KEY_COMMENT_TIMEOUT_MS, DEFAULT_COMMENT_TIMEOUT_MS)): TimeoutSpan => {
+export const comment_timeout_user = (user_id: string, duration_ms: number = get_config("comment_timeout_ms")): TimeoutSpan => {
     const current_time = Date.now();
 
     const timeout: TimeoutSpan = {

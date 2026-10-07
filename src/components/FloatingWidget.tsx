@@ -12,10 +12,8 @@ import ColorPicker from "@/components/ColorPicker";
 import GiftJar from "@/components/GiftJar";
 import {GiftingPopup} from "@/components/GiftingPopup";
 
-import usePublicConfigValue from "@/hooks/usePublicConfigValue";
+import {usePublicConfigState} from "@/hooks/usePublicConfigValue";
 import useRemainingMs from "@/hooks/useRemainingMs";
-import {CONFIG_KEY_CASINO_ENABLED, CONFIG_KEY_GIFTING_ENABLED} from "@/consts";
-import {DEFAULT_CASINO_ENABLED, DEFAULT_GIFTING_ENABLED} from "@/defaults";
 
 import type {Cooldown, HeldGift} from "@/types";
 import {useElementWidth} from "@/hooks/useElementWidth";
@@ -127,8 +125,11 @@ const useCasinoCooldown = (): Cooldown | null => {
 };
 
 const FloatingWidget = ({current_color, on_color_change, cooldown, burst, gifts, next_gift_expiry, grid_lines_enabled, set_grid_lines_enabled}: FloatingWidgetProps) => {
-    const gifting_enabled = usePublicConfigValue(CONFIG_KEY_GIFTING_ENABLED, DEFAULT_GIFTING_ENABLED);
-    const casino_enabled = usePublicConfigValue(CONFIG_KEY_CASINO_ENABLED, DEFAULT_CASINO_ENABLED);
+    // keep features hidden until the server confirms, so a secret toggle never flashes on the default
+    const {value: gifting_value, loaded: gifting_loaded} = usePublicConfigState("gifting_enabled");
+    const {value: casino_value, loaded: casino_loaded} = usePublicConfigState("casino_enabled");
+    const gifting_enabled = gifting_loaded && gifting_value;
+    const casino_enabled = casino_loaded && casino_value;
 
     const [gifting_popup_open, setGiftingPopupOpen] = useState(false);
     const [casino_popup_open, setCasinoPopupOpen] = useState(false);

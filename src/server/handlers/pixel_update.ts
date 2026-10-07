@@ -4,15 +4,6 @@ import type {PoolClient} from "pg";
 
 import {get_config} from "@/server/config";
 
-import {
-    CONFIG_KEY_ADMIN_ANONYMOUS,
-    CONFIG_KEY_ADMIN_GOD,
-    CONFIG_KEY_GRID_HEIGHT,
-    CONFIG_KEY_GRID_WIDTH,
-    CONFIG_KEY_READONLY
-} from "@/consts";
-import {DEFAULT_ADMIN_ANONYMOUS, DEFAULT_ADMIN_GOD, DEFAULT_GRID_HEIGHT, DEFAULT_GRID_WIDTH} from "@/defaults";
-
 import {is_user_banned} from "@/server/banlist";
 import {get_cell, set_cell} from "@/server/grid";
 import {intercept_client} from "@/server/prometheus";
@@ -38,15 +29,15 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}
         // basic validation of incoming data
         if (
             !(
-                typeof x === "number" && x >= 0 && x < get_config(CONFIG_KEY_GRID_WIDTH, DEFAULT_GRID_WIDTH) &&
-                typeof y === "number" && y >= 0 && y < get_config(CONFIG_KEY_GRID_HEIGHT, DEFAULT_GRID_HEIGHT) &&
+                typeof x === "number" && x >= 0 && x < get_config("grid_width") &&
+                typeof y === "number" && y >= 0 && y < get_config("grid_height") &&
                 typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color)
             )
         ) {
             return;
         }
 
-        if (get_config(CONFIG_KEY_READONLY, false)) {
+        if (get_config("readonly")) {
             socket.emit("pixel_update_rejected", {reason: "readonly"});
             return;
         }
@@ -66,8 +57,8 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}
         activity_check_in(user_id);
 
         const is_admin = socket.user.sub === process.env.DISCORD_ADMIN_USER_ID;
-        const god = is_admin && get_config(CONFIG_KEY_ADMIN_GOD, DEFAULT_ADMIN_GOD);
-        const anonymous = is_admin && get_config(CONFIG_KEY_ADMIN_ANONYMOUS, DEFAULT_ADMIN_ANONYMOUS);
+        const god = is_admin && get_config("admin_god");
+        const anonymous = is_admin && get_config("admin_anonymous");
 
         // check user isn't in timeout period, spending a held gift instead if they have one
         let used_gift: HeldGift | null = null;
