@@ -226,3 +226,21 @@ ALTER TABLE public.gift_log OWNER TO postgres;
 
 ALTER TABLE public.pixels ADD COLUMN gift_snowflake bigint;
 
+CREATE TABLE public.casino_log (
+    snowflake bigint NOT NULL,
+    user_id bigint NOT NULL,
+    outcome_id character varying(32) NOT NULL,
+    kind character varying(8) NOT NULL,
+    payout integer NOT NULL DEFAULT 0,
+    CONSTRAINT casino_log_pkey PRIMARY KEY (snowflake)
+);
+
+CREATE INDEX casino_log_user_idx ON public.casino_log (user_id);
+
+ALTER TABLE public.casino_log OWNER TO postgres;
+
+-- separates real generosity from casino payouts, gift bombs and the taxman, so leaderboards only count people being nice
+ALTER TABLE public.gift_log ADD COLUMN source character varying(8) NOT NULL DEFAULT 'gift';
+
+CREATE INDEX pixels_author_idx ON public.pixels (author_id);
+

@@ -19,11 +19,12 @@ import {intercept_client} from "@/server/prometheus";
 
 import {get_calculated_pixel_timeout, is_user_in_pixel_timeout, remove_pixel_timeout, pixel_timeout_user} from "@/server/timeouts";
 import snowflake from "@/snowflake";
-import {get_all_stats, increment_virtual_stat} from "@/server/stats";
+import {increment_virtual_stat} from "@/server/stats";
 import {activity_check_in} from "@/server/afk";
 import {consume_gift, emit_gift_info, refund_gift} from "@/server/gifts";
 
 import type {HeldGift} from "@/types";
+import {get_visible_stats} from "@/server/feature_stats";
 
 // handle pixel updates from clients
 
@@ -155,7 +156,7 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}
             increment_virtual_stat("total_pixels_placed");
 
             // emit updated stats to all clients in stats room
-            io.to("stats").emit("stats", Object.fromEntries(get_all_stats()));
+            io.to("stats").emit("stats", get_visible_stats());
         } catch (db_error) {
             console.error("Database error during pixel update:", db_error);
 

@@ -10,12 +10,26 @@ const known_stat_labels: { [key: string]: string } = {
     total_pixels_placed: "Total pixels placed",
     connected_unique_users: "Connected users",
     active_users: "Active users",
+    pixels_gifted: "Pixels gifted",
+    casino_spins: "Wheel spins",
+    casino_pixels_won: "Pixels won on the wheel",
+    casino_jackpots: "Jackpots",
+    ducks_summoned: "Ducks summoned",
+    clownings: "Clownings",
+    taxman_collections: "Taxman visits",
 };
 
 const stats_order = [
     "total_pixels_placed",
     "connected_unique_users",
     "active_users",
+    "pixels_gifted",
+    "casino_spins",
+    "casino_pixels_won",
+    "casino_jackpots",
+    "ducks_summoned",
+    "clownings",
+    "taxman_collections",
 ];
 
 const StatEntry = ({ stat_key, stats, className = "" }: { stat_key: string; stats: StatsData; className?: string }) => (

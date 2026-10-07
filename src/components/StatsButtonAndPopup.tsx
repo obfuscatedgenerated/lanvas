@@ -9,6 +9,8 @@ import StatsList, {StatsData} from "@/components/StatsList";
 
 import {ChartNoAxesCombined, SquareArrowOutUpRight} from "lucide-react";
 import Popup from "@/components/Popup";
+import {Leaderboard} from "@/types";
+import {LeaderboardSummary} from "@/components/Leaderboards";
 
 interface StatsPopupProps {
     open: boolean;
@@ -19,11 +21,12 @@ const StatsPopup = ({ open, on_close }: StatsPopupProps) => {
     const [stats, setStats] = useState<StatsData | null>(null);
     const [prev_open, setPrevOpen] = useState(open);
 
+    const [leaderboards, setLeaderboards] = useState<Leaderboard[]>([]);
+
     // register socket listener
     useEffect(() => {
-        socket.on("stats", (data) => {
-            setStats(data);
-        });
+        socket.on("stats", setStats);
+        socket.on("leaderboards", setLeaderboards);
     }, []);
 
     // when the popup is opened for the first time, join the stats room
@@ -49,7 +52,15 @@ const StatsPopup = ({ open, on_close }: StatsPopupProps) => {
                 </a>
             }
         >
-                {stats ? <StatsList stats={stats} /> : <p className="text-lg text-center">Loading stats...</p>}
+            {stats
+                ? (
+                    <div className="flex flex-col gap-6">
+                        <StatsList stats={stats} />
+                        <LeaderboardSummary leaderboards={leaderboards} />
+                    </div>
+                )
+                : <p className="text-lg text-center">Loading stats...</p>
+            }
         </Popup>
     )
 }

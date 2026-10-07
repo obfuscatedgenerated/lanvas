@@ -52,3 +52,20 @@ export interface WheelSegment {
     color: string;
     weight?: number; // relative slice size, defaults to 1
 }
+
+export interface LeaderboardEntry {
+    name: string;
+    avatar_url: string | null;
+    value: number;
+}
+
+export type Feature = "gifting" | "casino";
+
+export interface Leaderboard {
+    key: string;
+    title: string;
+    unit: string;
+    entries: LeaderboardEntry[];
+    feature: Feature | null;
+}
+

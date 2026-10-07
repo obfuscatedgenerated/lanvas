@@ -50,6 +50,8 @@ import {activity_check_in, activity_check_out, on_activity_change} from "@/serve
 import {cleanup_expired_gifts, emit_gift_info, take_expired_pixels, user_room} from "@/server/gifts";
 import {forget_activity_ping} from "@/server/handlers/activity_ping";
 import {add_to_pot} from "@/server/casino";
+import {LEADERBOARD_REFRESH_INTERVAL_MS, load_counter_stats, refresh_leaderboards} from "@/server/leaderboards";
+import {get_visible_stats} from "@/server/feature_stats";
 
 const dev = process.env.NODE_ENV !== "production";
 
@@ -163,6 +165,9 @@ const main = async () => {
     // initialise virtual stats
     await init_virtual_stats();
 
+    // gifting and casino counters, recounted from their logs
+    await load_counter_stats(pool, (key, value) => set_virtual_stat(key, value, true));
+
     const http_server = createServer(req_handler);
 
     // ensure admin ui can access the socket in dev mode
@@ -174,6 +179,10 @@ const main = async () => {
     } : {};
 
     const io = new Server(http_server, io_opts);
+
+    // leaderboards are aggregate queries, so they refresh on a timer and only broadcast when they change
+    void refresh_leaderboards(pool, io);
+    setInterval(() => void refresh_leaderboards(pool, io), LEADERBOARD_REFRESH_INTERVAL_MS);
 
     // expire held gifts and tell affected users
     setInterval(() => {
@@ -276,7 +285,7 @@ const main = async () => {
         set_virtual_stat("connected_unique_users", unique_connected_user_ids.size);
 
         // emit updated stats to all clients in stats room
-        io.to("stats").emit("stats", Object.fromEntries(get_all_stats()));
+        io.to("stats").emit("stats", get_visible_stats());
 
         socket.on("disconnect", () => {
             console.log(`Client disconnected: ${socket.id}`);
@@ -309,7 +318,7 @@ const main = async () => {
                 set_virtual_stat("connected_unique_users", unique_connected_user_ids.size);
 
                 // emit updated stats to all clients in stats room
-                io.to("stats").emit("stats", Object.fromEntries(get_all_stats()));
+                io.to("stats").emit("stats", get_visible_stats());
 
                 // check out to remove from afk table
                 activity_check_out(socket.user.sub);
@@ -370,7 +379,7 @@ const main = async () => {
 
         // tell the stats room
         // TODO: create a stat update listener which handles this automatically, instead of doing it in each location
-        io.to("stats").emit("stats", Object.fromEntries(get_all_stats()));
+        io.to("stats").emit("stats", get_visible_stats());
 
         // tell anyone with the gifting ui open
         io.to("online_users").emit("online_user_activity", {user_id, is_active});

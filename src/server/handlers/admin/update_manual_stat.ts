@@ -1,5 +1,6 @@
 import type {SocketHandlerFlags, SocketHandlerFunction} from "@/server/types";
-import {get_all_stats, get_all_stats_of_type, get_stat_type, set_db_stat, StatKeyType} from "@/server/stats";
+import {get_all_stats_of_type, get_stat_type, set_db_stat, StatKeyType} from "@/server/stats";
+import {get_visible_stats} from "@/server/feature_stats";
 
 export const handler: SocketHandlerFunction = async ({pool, payload, io}) => {
     const {key, value} = payload;
@@ -30,7 +31,7 @@ export const handler: SocketHandlerFunction = async ({pool, payload, io}) => {
         await set_db_stat(pool, key, value, { create: true });
 
         // emit updated stats to all clients in stats room
-        io.to("stats").emit("stats", Object.fromEntries(get_all_stats()));
+        io.to("stats").emit("stats", get_visible_stats());
 
         // emit updated manual stats to admin clients
         io.to("admin").emit("manual_stats", Object.fromEntries(get_all_stats_of_type(StatKeyType.MANUAL)));

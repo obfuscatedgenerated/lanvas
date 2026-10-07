@@ -10,6 +10,8 @@ import {get_calculated_pixel_timeout, is_user_in_pixel_timeout, pixel_timeout_us
 import {emit_gift_info, give_gift, user_room} from "@/server/gifts";
 import {activity_check_in, is_user_active} from "@/server/afk";
 import snowflake from "@/snowflake";
+import {increment_virtual_stat} from "@/server/stats";
+import {get_visible_stats} from "@/server/feature_stats";
 
 // gift your ready pixel to another online user
 
@@ -139,6 +141,9 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool,
     }
 
     give_gift(recipient.user_id, sender, 1, gift_snowflake.toString());
+
+    increment_virtual_stat("pixels_gifted", 1, true);
+    io.to("stats").emit("stats", get_visible_stats());
 
     emit_gift_info(io, recipient.user_id);
     io.to(user_room(recipient.user_id)).emit("gift_received", {from: sender});

@@ -11,6 +11,8 @@ import {get_active_users} from "@/server/afk";
 import {emit_gift_info, give_gift, user_room} from "@/server/gifts";
 import snowflake from "@/snowflake";
 import {DEFAULT_CASINO_POT_SEED} from "@/defaults";
+import {increment_virtual_stat} from "@/server/stats";
+import {get_visible_stats} from "@/server/feature_stats";
 
 // must match the client wheel's spin duration, so nobody hears the result before the spinner's wheel stops
 const REVEAL_DELAY_MS = 4500;
@@ -30,6 +32,7 @@ export interface CasinoContext {
     pool: Pool;
     spinner: Author;
     connected_users: Set<ConnectedUserDetails>;
+    payout: number;
 }
 
 export type CasinoOutcomeKind = "win" | "weird" | "bust";
@@ -124,7 +127,7 @@ const give_pixels = async (context: CasinoContext, from: Author, to: Author, amo
         }
 
         await context.pool.query(
-            "INSERT INTO gift_log (snowflake, from_id, to_id, amount) VALUES ($1, $2, $3, $4)",
+            "INSERT INTO gift_log (snowflake, from_id, to_id, amount, source) VALUES ($1, $2, $3, $4, 'casino')",
             [gift_snowflake, from.user_id, to.user_id, amount]
         );
     } catch (db_error) {
@@ -133,6 +136,10 @@ const give_pixels = async (context: CasinoContext, from: Author, to: Author, amo
     }
 
     give_gift(to.user_id, from, amount, gift_snowflake.toString());
+
+    if (from.user_id === HOUSE_AUTHOR.user_id && to.user_id === context.spinner.user_id) {
+        context.payout += amount;
+    }
 
     emit_gift_info(context.io, to.user_id);
     context.io.to(user_room(to.user_id)).emit("gift_received", {from, amount});
@@ -381,12 +388,47 @@ const roll = (): CasinoOutcome => {
     return OUTCOMES[OUTCOMES.length - 1];
 };
 
-export const spin = (context: CasinoContext): CasinoOutcome => {
+// outcomes with their own counter on the stats page, created the first time each happens so nothing is spoiled early
+const OUTCOME_STAT_KEYS: Record<string, string> = {
+    jackpot: "casino_jackpots",
+    duck: "ducks_summoned",
+    clowned: "clownings",
+    taxman: "taxman_collections",
+};
+
+// best effort, a spin still counts for the player even if its stats row can't be written
+const record_spin = async (context: CasinoContext, outcome: CasinoOutcome): Promise<void> => {
+    increment_virtual_stat("casino_spins", 1, true);
+
+    const outcome_stat_key = OUTCOME_STAT_KEYS[outcome.id];
+    if (outcome_stat_key) {
+        increment_virtual_stat(outcome_stat_key, 1, true);
+    }
+
+    if (context.payout > 0) {
+        increment_virtual_stat("casino_pixels_won", context.payout, true);
+    }
+
+    context.io.to("stats").emit("stats", get_visible_stats());
+
+    try {
+        await context.pool.query(
+            "INSERT INTO casino_log (snowflake, user_id, outcome_id, kind, payout) VALUES ($1, $2, $3, $4, $5)",
+            [snowflake.generate(), context.spinner.user_id, outcome.id, outcome.kind, context.payout]
+        );
+    } catch (db_error) {
+        console.error("Failed to log casino spin:", db_error);
+    }
+};
+
+export const spin = (base_context: Omit<CasinoContext, "payout">): CasinoOutcome => {
     const outcome = roll();
+    const context: CasinoContext = {...base_context, payout: 0};
 
     setTimeout(async () => {
         try {
             const message = await outcome.apply(context);
+            await record_spin(context, outcome);
 
             context.io.emit("casino_result", {
                 outcome_id: outcome.id,

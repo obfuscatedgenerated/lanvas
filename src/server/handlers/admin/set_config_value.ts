@@ -1,6 +1,8 @@
 import type {SocketHandlerFunction, SocketHandlerFlags} from "@/server/types";
 
 import {set_config} from "@/server/config";
+import {get_visible_leaderboards} from "@/server/leaderboards";
+import {FEATURE_TOGGLE_KEYS, get_visible_stats} from "@/server/feature_stats";
 
 export const handler: SocketHandlerFunction = async ({io, socket, pool, payload}) => {
     const user = socket.user!;
@@ -21,6 +23,12 @@ export const handler: SocketHandlerFunction = async ({io, socket, pool, payload}
     } else {
         // otherwise only send to admin room
         io.to("admin").emit("config_value", {key, value});
+    }
+
+    // revealing or hiding a feature shows or hides its stats straight away, rather than at the next gift or spin
+    if (FEATURE_TOGGLE_KEYS.includes(key)) {
+        io.to("stats").emit("stats", get_visible_stats());
+        io.to("stats").emit("leaderboards", get_visible_leaderboards());
     }
 }
 
