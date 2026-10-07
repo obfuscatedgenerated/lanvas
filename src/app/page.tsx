@@ -95,9 +95,9 @@ export default function Home() {
 
     // use socket to check timeout
     useEffect(() => {
-        socket.on("connect", () => console.log("Connected!", socket.id));
+        const handle_connect = () => console.log("Connected!", socket.id);
 
-        socket.on("timeout_info", (info) => {
+        const handle_timeout_info = (info: {started: number; ends: number}) => {
             if (localStorage.getItem(LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER) === "true") {
                 return;
             }
@@ -115,33 +115,40 @@ export default function Home() {
                 setTimeoutStartTime(null);
                 setTimeoutEndTime(null);
             }, true_remaining);
-        });
+        };
 
-        socket.on("readonly", (readonly) => {
+        const handle_readonly = (readonly: boolean) => {
             setIsReadonly(readonly);
             if (readonly) {
                 alert("The canvas is now in read only mode. You cannot place pixels at this time.");
             }
-        });
+        };
 
-        socket.on("gift_info", (info: GiftInfo) => {
+        const handle_gift_info = (info: GiftInfo) => {
             setGiftInfo(info);
             setBurstEndsAt(info.burst_remaining_ms > 0 ? Date.now() + info.burst_remaining_ms : null);
-        });
+        };
 
-        socket.on("reload", () => {
+        const handle_reload = () => {
             console.log("Received reload command from server, reloading page...");
             window.location.reload();
-        });
+        };
 
-        socket.on("comment_rejected", ({reason, labels, cache_hit}) => {
+        const handle_comment_rejected = ({reason, labels, cache_hit}: {reason?: string; labels: string[]; cache_hit: boolean}) => {
            // we only care about automod rejections here
             if (!reason || reason !== "automod") {
                 return;
             }
 
             setAutomodToShow({violating_labels: labels, cache_hit});
-        });
+        };
+
+        socket.on("connect", handle_connect);
+        socket.on("timeout_info", handle_timeout_info);
+        socket.on("readonly", handle_readonly);
+        socket.on("gift_info", handle_gift_info);
+        socket.on("reload", handle_reload);
+        socket.on("comment_rejected", handle_comment_rejected);
 
         // check for any timeouts on page load
         socket.emit("check_timeout");
@@ -152,8 +159,14 @@ export default function Home() {
         // check if the canvas is in readonly mode
         socket.emit("check_readonly");
 
+        // only remove our own listeners; the socket is a shared singleton and must stay connected
         return () => {
-            socket.disconnect();
+            socket.off("connect", handle_connect);
+            socket.off("timeout_info", handle_timeout_info);
+            socket.off("readonly", handle_readonly);
+            socket.off("gift_info", handle_gift_info);
+            socket.off("reload", handle_reload);
+            socket.off("comment_rejected", handle_comment_rejected);
         }
     }, []);
 
@@ -203,7 +216,13 @@ export default function Home() {
         [comment_composer_coords]
     );
     // TODO: just move the overlay handling to be inside the transformwrapper instead of doing all this. only consideration is getting the state there but ig can use context or prop drill
-    // TODO: do we also need to update pos on screen resize?
+
+    // the composer lives in screen space, so a viewport resize moves the canvas rect under it without
+    // firing a transform. re-run the same reposition on resize so it stays pinned to its pixel.
+    useEffect(() => {
+        window.addEventListener("resize", on_transform);
+        return () => window.removeEventListener("resize", on_transform);
+    }, [on_transform]);
 
     const fade_out_comment_compose = useCallback(
         () => {

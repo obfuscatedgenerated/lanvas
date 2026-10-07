@@ -1243,8 +1243,8 @@ const AdminPageInteractivity = () => {
         socket.on("connect", handle_connect);
 
         return () => {
+            // the socket is a shared app-wide singleton; only drop our own listener, never disconnect it
             socket.off("connect", handle_connect);
-            socket.disconnect();
         }
     }, []);
 

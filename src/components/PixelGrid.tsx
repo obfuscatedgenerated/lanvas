@@ -182,6 +182,10 @@ const PixelGrid = ({
     const [grid_data, setGridData] = useState(create_empty_grid(grid_height, grid_width));
     const author_data = useRef<AuthorData>([]);
 
+    // keep the latest reject callback without re-running the socket effect when the prop identity changes
+    const on_pixel_update_rejected_ref = useRef(on_pixel_update_rejected);
+    on_pixel_update_rejected_ref.current = on_pixel_update_rejected;
+
     const grid_canvas_ref = useRef<GridCanvasRef>(null);
     const transform_wrapper_ref = useRef<ReactZoomPanPinchContentRef>(null);
 
@@ -200,11 +204,12 @@ const PixelGrid = ({
         }, 10);
     }, [grid_width, grid_height]);
 
-    // setup socket listeners
+    // setup socket listeners. runs once: named handlers are removed individually on unmount so they
+    // don't pile up across remounts/hot reloads, and we never disconnect the shared singleton socket
     useEffect(() => {
-        socket.on("connect", () => console.log("Connected!", socket.id));
+        const handle_connect = () => console.log("Connected!", socket.id);
 
-        socket.on("full_grid", (initial_grid) => {
+        const handle_full_grid = (initial_grid: string[][]) => {
             // determine grid size
             setGridHeight(initial_grid.length);
             setGridWidth(initial_grid[0].length);
@@ -213,14 +218,14 @@ const PixelGrid = ({
 
             setGridData(initial_grid);
             console.log("Initial grid received");
-        });
+        };
 
-        socket.on("full_author_data", (data) => {
+        const handle_full_author_data = (data: AuthorData) => {
             author_data.current = data;
             console.log("Initial author data received");
-        });
+        };
 
-        socket.on("pixel_update", ({ x, y, color, author }) => {
+        const handle_pixel_update = ({ x, y, color, author }: { x: number; y: number; color: string; author: Author | null }) => {
             setGridData(prev => {
                 // update only the changed pixel
                 const new_grid = prev.map(row => row.slice());
@@ -235,9 +240,9 @@ const PixelGrid = ({
             }
 
             author_data.current[y][x] = author;
-        });
+        };
 
-        socket.on("pixel_update_rejected", (data) => {
+        const handle_pixel_update_rejected = (data: { reason: string }) => {
             console.log("Pixel update rejected", data);
 
             if (data.reason === "timeout" || data.reason === "burst_gap") {
@@ -246,19 +251,27 @@ const PixelGrid = ({
             }
 
             alert(`Pixel update rejected! Reason: ${data.reason}`);
-            if (on_pixel_update_rejected) {
-                on_pixel_update_rejected(data);
-            }
-        });
+            on_pixel_update_rejected_ref.current?.(data.reason);
+        };
+
+        socket.on("connect", handle_connect);
+        socket.on("full_grid", handle_full_grid);
+        socket.on("full_author_data", handle_full_author_data);
+        socket.on("pixel_update", handle_pixel_update);
+        socket.on("pixel_update_rejected", handle_pixel_update_rejected);
 
         // request initial grid and author data
         socket.emit("request_full_grid");
         socket.emit("request_full_author_data");
 
         return () => {
-            socket.disconnect();
+            socket.off("connect", handle_connect);
+            socket.off("full_grid", handle_full_grid);
+            socket.off("full_author_data", handle_full_author_data);
+            socket.off("pixel_update", handle_pixel_update);
+            socket.off("pixel_update_rejected", handle_pixel_update_rejected);
         }
-    }, [on_pixel_update_rejected]);
+    }, []);
 
     const resolve_pixel = useCallback((screen_x: number, screen_y: number): ResolvedPixel | null => {
         if (!grid_canvas_ref.current) return null;

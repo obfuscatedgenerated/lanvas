@@ -153,12 +153,21 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}
         } catch (db_error) {
             console.error("Database error during pixel update:", db_error);
 
-            // revert in-memory state
-            // TODO: dealing with conflicting edits could be improved here to avoid race condition if one is reverted but another edit has happened since
-            set_cell(x, y, old_color, old_author);
+            // revert in-memory state, but only if the cell still holds our optimistic write. if another
+            // placement landed here in between, reverting would clobber that newer (valid) pixel, so leave it.
+            const current = get_cell(x, y);
+            const still_ours = current !== undefined
+                && current.color === color
+                && (current.author?.user_id ?? null) === (author?.user_id ?? null);
 
-            // notify clients to revert the pixel
-            io.emit("pixel_update", {x, y, color: old_color, author: old_author});
+            if (still_ours) {
+                set_cell(x, y, old_color, old_author);
+
+                // notify clients to revert the pixel
+                io.emit("pixel_update", {x, y, color: old_color, author: old_author});
+            } else {
+                console.warn(`Skipping pixel revert at (${x}, ${y}): cell changed since our optimistic update`);
+            }
 
             // give back whatever the placement cost since the update failed
             if (used_gift) {

@@ -2,14 +2,22 @@
 
 import { io } from "socket.io-client";
 
-// TODO: dont let this run on server side
+// this module is a client component, but Next still executes it during SSR when rendering the initial
+// HTML. autoConnect is therefore gated on the browser so the server never opens a stray connection;
+// we connect explicitly below once we know we're client side.
+const is_browser = typeof window !== "undefined";
 
 export const socket = io({
+    autoConnect: false,
     withCredentials: true,
     query: {
-        context: typeof window !== "undefined" ? window.location.pathname : "SSR"
+        context: is_browser ? window.location.pathname : "SSR"
     }
 });
+
+if (is_browser) {
+    socket.connect();
+}
 
 // TODO: make this work between page changes somehow so <Link /> can be used for navigation
 //  (saving jwt reloading by keeping login state in client but letting page changes happen)
