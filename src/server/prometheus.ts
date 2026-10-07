@@ -1,4 +1,4 @@
-import { Registry, collectDefaultMetrics, Counter, Gauge, Histogram } from "prom-client"
+import { Registry, collectDefaultMetrics, Counter, Gauge, Histogram } from "@prometheus-io/client";
 import type { Pool, PoolClient, Result } from "pg";
 
 const register = new Registry();
