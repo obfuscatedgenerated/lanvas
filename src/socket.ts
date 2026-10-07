@@ -1,5 +1,7 @@
 "use client";
 
+import {add_debug_instrument} from "@/lib/debug_instrument";
+
 import { io } from "socket.io-client";
 
 // this module is a client component, but Next still executes it during SSR when rendering the initial
@@ -17,6 +19,14 @@ export const socket = io({
 
 if (is_browser) {
     socket.connect();
+    add_debug_instrument("socket", socket);
+    add_debug_instrument("simulate_recv", (event: string, data: unknown) => {
+        (socket as any).onpacket({
+            type: 2,
+            data: [event, data],
+            nsp: "/"
+        });
+    });
 }
 
 // TODO: make this work between page changes somehow so <Link /> can be used for navigation
