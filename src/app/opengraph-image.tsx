@@ -1,6 +1,6 @@
 import {Client} from "pg";
 
-import {createCanvas, type Canvas} from "canvas";
+import {createCanvas, type Canvas} from "@napi-rs/canvas";
 
 import {CONFIG} from "@/config_registry";
 

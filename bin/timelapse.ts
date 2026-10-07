@@ -1,7 +1,7 @@
 import "dotenv/config";
 import {Client} from "pg";
 
-import {createCanvas} from "canvas";
+import {createCanvas} from "@napi-rs/canvas";
 
 import * as fs from "fs";
 import * as path from "path";
