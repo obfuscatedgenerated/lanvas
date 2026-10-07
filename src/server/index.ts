@@ -45,6 +45,7 @@ import {activity_check_in, activity_check_out, on_activity_change} from "@/serve
 import {cleanup_expired_gifts, emit_gift_info, take_expired_pixels, user_room} from "@/server/gifts";
 import {forget_activity_ping} from "@/server/handlers/activity_ping";
 import {add_to_pot} from "@/server/casino";
+import {sync_chaos} from "@/server/chaos";
 import {LEADERBOARD_REFRESH_INTERVAL_MS, load_counter_stats, refresh_leaderboards} from "@/server/leaderboards";
 import {get_visible_stats} from "@/server/feature_stats";
 
@@ -178,6 +179,9 @@ const main = async () => {
     // leaderboards are aggregate queries, so they refresh on a timer and only broadcast when they change
     void refresh_leaderboards(pool, io);
     setInterval(() => void refresh_leaderboards(pool, io), LEADERBOARD_REFRESH_INTERVAL_MS);
+
+    // start the chaos scheduler if it was left enabled (the enabled flag persists, live effects never do)
+    sync_chaos({io, pool});
 
     // expire held gifts and tell affected users
     setInterval(() => {

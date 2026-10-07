@@ -1,12 +1,19 @@
+export type PollSource = "admin" | "chaos";
+
 let question: string | null = null;
 let options: string[] | null = null;
 let votes: Map<string, number> | null = null; // user id to option index
+let source: PollSource | null = null; // who started the active poll, so chaos and admin polls don't clobber each other
 
-export const start_poll = (question_text: string, option_list: string[]) => {
+export const start_poll = (question_text: string, option_list: string[], poll_source: PollSource = "admin") => {
     question = question_text;
     options = option_list;
     votes = new Map();
+    source = poll_source;
 }
+
+// null when no poll is active, otherwise who started it
+export const get_poll_source = (): PollSource | null => source;
 
 export const get_poll_question = () => {
     return question;
@@ -45,6 +52,7 @@ export const end_poll = () => {
     question = null;
     options = null;
     votes = null;
+    source = null;
 
     return counts;
 }

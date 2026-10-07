@@ -4,6 +4,7 @@ import type {ConfigKey, ConfigValueType} from "@/config_registry";
 import {set_config, is_config_key, is_config_key_public, validate_config_value} from "@/server/config";
 import {get_visible_leaderboards} from "@/server/leaderboards";
 import {FEATURE_TOGGLE_KEYS, get_visible_stats} from "@/server/feature_stats";
+import {sync_chaos} from "@/server/chaos";
 
 export const handler: SocketHandlerFunction = async ({io, socket, pool, payload}) => {
     const user = socket.user!;
@@ -40,6 +41,11 @@ export const handler: SocketHandlerFunction = async ({io, socket, pool, payload}
     if (FEATURE_TOGGLE_KEYS.includes(key)) {
         io.to("stats").emit("stats", get_visible_stats());
         io.to("stats").emit("leaderboards", get_visible_leaderboards());
+    }
+
+    // start or stop the chaos scheduler the moment it's toggled, and revert live effects when turned off
+    if (key === "chaos_enabled") {
+        sync_chaos({io, pool});
     }
 }
 

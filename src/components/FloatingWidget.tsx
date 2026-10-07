@@ -184,23 +184,52 @@ const FloatingWidget = ({current_color, on_color_change, cooldown, burst, gifts,
     const [force_rainbow, setForceRainbow] = useState(false);
     const is_color_forced = useMemo(() => force_white || force_rainbow, [force_white, force_rainbow]);
 
+    const white_timer = useRef<NodeJS.Timeout | null>(null);
+    const rainbow_timer = useRef<NodeJS.Timeout | null>(null);
+
     useEffect(() => {
-        const handle_result = ({outcome_id}: {outcome_id: string;}) => {
-            if (outcome_id === "eraserhead") {
+        // server-authoritative pranks (remaining_ms <= 0 cancels), so a reload or late join can't dodge one
+        const apply = ({prank, remaining_ms}: {prank: string; remaining_ms: number}) => {
+            if (prank === "eraserhead") {
+                if (white_timer.current) {
+                    clearTimeout(white_timer.current);
+                    white_timer.current = null;
+                }
+
+                if (remaining_ms <= 0) {
+                    setForceWhite(false);
+                    return;
+                }
+
                 setForceWhite(true);
-                setTimeout(() => setForceWhite(false), 600000);
-                return;
-            } else if (outcome_id === "rainbow") {
+                white_timer.current = setTimeout(() => setForceWhite(false), remaining_ms);
+            } else if (prank === "rainbow") {
+                if (rainbow_timer.current) {
+                    clearTimeout(rainbow_timer.current);
+                    rainbow_timer.current = null;
+                }
+
+                if (remaining_ms <= 0) {
+                    setForceRainbow(false);
+                    return;
+                }
+
                 setForceRainbow(true);
-                setTimeout(() => setForceRainbow(false), 60000);
-                return;
+                rainbow_timer.current = setTimeout(() => setForceRainbow(false), remaining_ms);
             }
         };
 
-        socket.on("casino_own_result", handle_result);
+        const handle_prank = (message: {prank: string; remaining_ms: number}) => apply(message);
+        const handle_pranks = (list: {prank: string; remaining_ms: number}[]) => list.forEach(apply);
+
+        socket.on("prank", handle_prank);
+        socket.on("pranks", handle_pranks);
+
+        socket.emit("check_pranks");
 
         return () => {
-            socket.off("casino_own_result", handle_result);
+            socket.off("prank", handle_prank);
+            socket.off("pranks", handle_pranks);
         };
     }, []);
 

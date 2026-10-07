@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { socket } from "@/socket";
 import {X} from "lucide-react";
+import useRemainingMs from "@/hooks/useRemainingMs";
 
 enum PollState {
     HIDDEN,
@@ -20,11 +21,16 @@ const FloatingPoll = () => {
     const [winners, setWinners] = useState<string[] | null>(null);
 
     const [chosen_option_index, setChosenOptionIndex] = useState<number | null>(null);
+
+    const [is_chaos, setIsChaos] = useState<boolean>(false);
+    const [ends_at, setEndsAt] = useState<number | null>(null);
+    const [winners_count, setWinnersCount] = useState<number>(1);
+
     const hide_timeout = useRef<NodeJS.Timeout | null>(null);
 
     // setup socket listeners
     useEffect(() => {
-        socket.on("poll", ({ question: new_question, options: new_options, counts: new_counts }: { question: string; options: string[]; counts: number[] }) => {
+        socket.on("poll", ({ question: new_question, options: new_options, counts: new_counts, chaos, ends_at: new_ends_at, winners_count: new_winners_count }: { question: string; options: string[]; counts: number[]; chaos?: boolean; ends_at?: number; winners_count?: number }) => {
             // cancel any hide timeout
             if (hide_timeout.current) {
                 clearTimeout(hide_timeout.current);
@@ -33,6 +39,10 @@ const FloatingPoll = () => {
             setQuestion(new_question);
             setOptions(new_options);
             setCounts(new_counts);
+
+            setIsChaos(!!chaos);
+            setEndsAt(new_ends_at ?? null);
+            setWinnersCount(new_winners_count ?? 1);
 
             setWinners(null);
             setChosenOptionIndex(null);
@@ -73,8 +83,25 @@ const FloatingPoll = () => {
     const total_votes = counts ? counts.reduce((a, b) => a + b, 0) : 0;
     const hidden = poll_state === PollState.HIDDEN || user_hiding;
 
+    // live countdown for chaos polls; useRemainingMs with a zero duration just counts down to ends_at
+    const remaining_ms = useRemainingMs(ends_at, 0);
+    const show_countdown = is_chaos && poll_state === PollState.ACTIVE && ends_at !== null;
+
     return (
-        <div className={`z-9999 font-sans fixed right-[50vw] translate-x-[50%] sm:translate-x-0 top-25 sm:right-10 min-w-64 w-full sm:w-fit max-w-9/10 sm:max-w-100 bg-neutral-600/75 backdrop-blur-sm border border-neutral-500/75 rounded shadow-lg p-4 transition-opacity duration-500 ${hidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+        <div className={`z-9999 font-sans fixed right-[50vw] translate-x-[50%] sm:translate-x-0 top-25 sm:right-10 min-w-64 w-full sm:w-fit max-w-9/10 sm:max-w-100 backdrop-blur-sm border rounded shadow-lg p-4 transition-opacity duration-500 ${is_chaos ? "bg-purple-900/75 border-purple-400/80 shadow-[0_0_25px_3px_rgba(168,85,247,0.4)]" : "bg-neutral-600/75 border-neutral-500/75"} ${hidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+            {is_chaos && (
+                <div className="flex items-center justify-between mb-1 text-xs font-bold tracking-wide uppercase text-purple-200">
+                    <span>⚡ Chaos mode</span>
+                    {show_countdown && <span>{Math.ceil(remaining_ms / 1000)}s left</span>}
+                </div>
+            )}
+
+            {is_chaos && winners_count > 1 && (
+                <div className="mb-2 text-xs text-purple-200/90">
+                    Top {winners_count} options win this round!
+                </div>
+            )}
+
             <div className="w-full flex items-start justify-between mb-2 gap-2">
                 {question && <h3 className="text-lg font-semibold break-words max-w-[92.5%]">{question}</h3>}
 

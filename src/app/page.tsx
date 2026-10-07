@@ -24,6 +24,7 @@ import ClownTracker from "@/components/ClownTracker";
 import CasinoAnnouncements from "@/components/CasinoAnnouncements";
 import DuckParade from "@/components/DuckParade";
 import {Pranks} from "@/components/Pranks";
+import ChaosEffects from "@/components/ChaosEffects";
 import {screen_to_page_space} from "@/lib/page_flip";
 import useTemplate from "@/hooks/useTemplate";
 import TemplateOverlay, {TemplateProgress} from "@/components/TemplateOverlay";
@@ -237,8 +238,12 @@ export default function Home() {
 
     const {value: gifting_value, loaded: gifting_loaded} = usePublicConfigState("gifting_enabled");
     const {value: casino_value, loaded: casino_loaded} = usePublicConfigState("casino_enabled");
+    const {value: chaos_value, loaded: chaos_loaded} = usePublicConfigState("chaos_enabled");
     const gifting_enabled = gifting_loaded && gifting_value;
     const casino_enabled = casino_loaded && casino_value;
+    const chaos_enabled = chaos_loaded && chaos_value;
+
+    const pranks_enabled = casino_enabled || chaos_enabled;
 
     return (
         <>
@@ -262,7 +267,7 @@ export default function Home() {
             {gifting_enabled && (
                 <GiftedBanner />
             )}
-            {casino_enabled && (
+            {pranks_enabled && (
                 <>
                     <CasinoAnnouncements />
                     <DuckParade />
@@ -270,6 +275,7 @@ export default function Home() {
                 </>
             )}
             <FloatingPoll />
+            <ChaosEffects />
 
             <AutomodPopup
                 open={automod_to_show !== null}
@@ -355,7 +361,7 @@ export default function Home() {
                 />
             }
 
-            {casino_enabled && <Pranks />}
+            {pranks_enabled && <Pranks />}
         </>
     );
 }

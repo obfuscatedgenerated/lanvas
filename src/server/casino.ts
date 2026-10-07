@@ -8,6 +8,7 @@ import {get_config, set_config} from "@/server/config";
 
 import {get_active_users} from "@/server/afk";
 import {emit_gift_info, give_gift, user_room} from "@/server/gifts";
+import {prank_user} from "@/server/pranks";
 import snowflake from "@/snowflake";
 import {increment_virtual_stat} from "@/server/stats";
 import {get_visible_stats} from "@/server/feature_stats";
@@ -76,6 +77,16 @@ export const add_to_pot = (io: Server, pool: Pool, amount: number): number => {
 
 // user id to when their clown badge wears off
 const clowned_until = new Map<string, number>();
+
+// clown a batch of users for a given duration, reused by the casino's own clown outcome and by chaos mod
+export const clown_users = (io: Server, user_ids: Iterable<string>, duration_ms: number): void => {
+    const until = Date.now() + duration_ms;
+
+    for (const user_id of user_ids) {
+        clowned_until.set(user_id, until);
+        io.emit("clowned", {user_id, remaining_ms: duration_ms});
+    }
+};
 
 // remaining durations rather than timestamps, so client clock drift doesn't matter
 export const get_clowned_users = (): {user_id: string; remaining_ms: number}[] => {
@@ -274,8 +285,11 @@ const OUTCOMES: CasinoOutcome[] = [
         weight: 5,
         segment_id: "adware",
         announce: "feed",
-        // client side popup spam for only the spinner for 1 min
-        apply: (context) => `💻 ${context.spinner.name} got adware (for 1 minute)`,
+        // popup spam for only the spinner for 1 min, persisted so a reload can't shake it off
+        apply: (context) => {
+            prank_user(context.io, context.spinner.user_id, "adware");
+            return `💻 ${context.spinner.name} got adware (for 1 minute)`;
+        },
     },
     {
         id: "upside_down",
@@ -283,8 +297,11 @@ const OUTCOMES: CasinoOutcome[] = [
         weight: 5,
         segment_id: "upside_down",
         announce: "feed",
-        // client side flip for only the spinner for 1 min
-        apply: (context) => `🔄 ${context.spinner.name} got turned upside down (for 1 minute)`,
+        // flip for only the spinner for 1 min, persisted so a reload can't undo it
+        apply: (context) => {
+            prank_user(context.io, context.spinner.user_id, "upside_down");
+            return `🔄 ${context.spinner.name} got turned upside down (for 1 minute)`;
+        },
     },
     {
         id: "rainbow",
@@ -292,8 +309,11 @@ const OUTCOMES: CasinoOutcome[] = [
         weight: 5,
         segment_id: "rainbow",
         announce: "feed",
-        // client side randomisation of colour picker (through the hue) for only the spinner for 1 min
-        apply: (context) => `🌈 ${context.spinner.name} is tasting the rainbow! (for 1 minute)`,
+        // randomised colour picker for only the spinner for 1 min, persisted across reloads
+        apply: (context) => {
+            prank_user(context.io, context.spinner.user_id, "rainbow");
+            return `🌈 ${context.spinner.name} is tasting the rainbow! (for 1 minute)`;
+        },
     },
     {
         id: "eraserhead",
@@ -301,8 +321,11 @@ const OUTCOMES: CasinoOutcome[] = [
         weight: 5,
         segment_id: "eraserhead",
         announce: "feed",
-        // client side can only draw white pixels for only the spinner for 1 min
-        apply: (context) => `🎥 ${context.spinner.name} has become Eraserhead (for 1 minute)`,
+        // can only draw white for only the spinner for 1 min, persisted across reloads
+        apply: (context) => {
+            prank_user(context.io, context.spinner.user_id, "eraserhead");
+            return `🎥 ${context.spinner.name} has become Eraserhead (for 1 minute)`;
+        },
     },
 
     // busts: 35%
@@ -313,8 +336,7 @@ const OUTCOMES: CasinoOutcome[] = [
         segment_id: "clowned",
         announce: "feed",
         apply: (context) => {
-            clowned_until.set(context.spinner.user_id, Date.now() + CLOWNED_DURATION_MS);
-            context.io.emit("clowned", {user_id: context.spinner.user_id, remaining_ms: CLOWNED_DURATION_MS});
+            clown_users(context.io, [context.spinner.user_id], CLOWNED_DURATION_MS);
 
             return `🤡 ${context.spinner.name} got clowned`;
         },

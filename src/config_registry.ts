@@ -33,6 +33,14 @@ export const CONFIG = {
     casino_timeout_ms: {type: "number", default: 5 * 60 * 1000, public: true, min: 0},
     casino_pot: {type: "number", default: 20, public: false, min: 0},
     casino_pot_seed: {type: "number", default: 20, public: false, min: 0},
+    chaos_enabled: {type: "boolean", default: false, public: true},
+    chaos_interval_ms: {type: "number", default: 3 * 60 * 1000, public: false, min: 10000},
+    chaos_vote_ms: {type: "number", default: 15000, public: false, min: 5000},
+    chaos_option_count: {type: "number", default: 4, public: false, min: 2, max: 6},
+    chaos_effect_ms: {type: "number", default: 60000, public: false, min: 5000},
+    chaos_ramp_enabled: {type: "boolean", default: true, public: false},
+    chaos_min_interval_ms: {type: "number", default: 15000, public: false, min: 5000},
+    chaos_max_simultaneous: {type: "number", default: 3, public: false, min: 1, max: 6},
 } as const satisfies Record<string, ConfigDefinition>;
 
 export type ConfigKey = keyof typeof CONFIG;

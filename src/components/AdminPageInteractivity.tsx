@@ -908,14 +908,24 @@ const PollForm = () => {
 
     // check for existing poll on mount
     useEffect(() => {
-        const handle_poll = ({question, options, counts}: {question: string, options: string[], counts: number[]}) => {
+        const handle_poll = ({question, options, counts, chaos}: {question: string, options: string[], counts: number[], chaos?: boolean}) => {
+            // chaos polls run themselves; don't hijack the manual poll editor with them
+            if (chaos) {
+                return;
+            }
+
             setQuestionInput(question);
             setOptionsInput(options);
             setPollStarted(true);
             setRunningCounts(counts);
         };
 
-        const handle_end_poll = ({results, total_votes, winners}: {results: Record<string, number>, total_votes: number, winners: string[]}) => {
+        const handle_end_poll = ({results, total_votes, winners, chaos}: {results: Record<string, number>, total_votes: number, winners: string[], chaos?: boolean}) => {
+            // a chaos round ending isn't the admin's manual poll, so don't pop an alert for it
+            if (chaos) {
+                return;
+            }
+
             const winner_votes = winners.length > 0 ? results[winners[0]] : 0;
             const winner_percentage = total_votes > 0 ? ((winner_votes / total_votes) * 100).toFixed(2) : "0.00";
 
@@ -1233,6 +1243,30 @@ const ReloadClientsButton = () => (
     </FancyButton>
 );
 
+// starts a chaos round immediately (works even while chaos is disabled, as a one-off), and reports back
+// when it couldn't because a poll was already up
+const ForceChaosButton = () => {
+    useEffect(() => {
+        const handle_forced = ({result}: {result: "started" | "poll_active"}) => {
+            if (result === "poll_active") {
+                alert("Couldn't force a chaos poll: a poll is already active. End it first, or wait for the current round to finish.");
+            }
+        };
+
+        socket.on("chaos_forced", handle_forced);
+
+        return () => {
+            socket.off("chaos_forced", handle_forced);
+        };
+    }, []);
+
+    return (
+        <FancyButton onClick={() => socket.emit("admin_force_chaos")}>
+            Force chaos poll now
+        </FancyButton>
+    );
+};
+
 // ---------------------------------------------------------------------------------------------------------------------
 // page
 // ---------------------------------------------------------------------------------------------------------------------
@@ -1378,6 +1412,76 @@ const AdminPageInteractivity = () => {
                     help="The current pot value. This it automatically filled by expired gifts etc, so only edit manually if you know what you're doing."
                     confirm_note="This will reset the pot to this value, and is not recommended unless you know what you're doing."
                 />
+            </AdminSection>
+
+            <AdminSection title="Chaos mod" row>
+                <ConfigCheckbox
+                    config_key="chaos_enabled"
+                    label="Chaos mod enabled"
+                    confirm_name="chaos mod"
+                    help="Every so often an automatic poll appears letting players vote for a chaotic effect, inspired by GTA chaos mods. Effects are temporary and revert automatically. Turning this off stops new polls and instantly reverts any live effect."
+                />
+
+                <ConfigNumberInput
+                    config_key="chaos_interval_ms"
+                    label="Time between rounds (ms)"
+                    confirm_name="chaos interval"
+                    help="How long after one chaos round ends before the next poll appears."
+                    min={10000}
+                />
+
+                <ConfigNumberInput
+                    config_key="chaos_vote_ms"
+                    label="Voting window (ms)"
+                    confirm_name="chaos voting window"
+                    help="How long each chaos poll stays open for voting."
+                    min={5000}
+                />
+
+                <ConfigNumberInput
+                    config_key="chaos_effect_ms"
+                    label="Effect duration (ms)"
+                    confirm_name="chaos effect duration"
+                    help="How long a config-based chaos effect (e.g. faster cooldowns) lasts before reverting. Prank effects keep their own built-in timing."
+                    min={5000}
+                />
+
+                <ConfigNumberInput
+                    config_key="chaos_option_count"
+                    label="Options per poll"
+                    confirm_name="chaos option count"
+                    help="How many effects each poll offers, capped at the number currently available."
+                    unit=""
+                    min={2}
+                    width_class="w-20"
+                />
+
+                <ConfigCheckbox
+                    config_key="chaos_ramp_enabled"
+                    label="Ramp up over time"
+                    confirm_name="chaos ramping"
+                    help="Chaos escalates as it runs: the gap between rounds shrinks and more of each poll's top options win at once, so effects stack and overlap. The 'Ceasefire' option (or disabling chaos) resets it to calm. Turn this off for a steady one-effect-per-round pace."
+                />
+
+                <ConfigNumberInput
+                    config_key="chaos_min_interval_ms"
+                    label="Min interval at peak (ms)"
+                    confirm_name="chaos minimum interval"
+                    help="The shortest the gap between rounds can ramp down to at full chaos."
+                    min={5000}
+                />
+
+                <ConfigNumberInput
+                    config_key="chaos_max_simultaneous"
+                    label="Max effects at once"
+                    confirm_name="chaos max simultaneous"
+                    help="The most effects a single round can apply at peak chaos (the top options by vote)."
+                    unit=""
+                    min={1}
+                    width_class="w-20"
+                />
+
+                <ForceChaosButton />
             </AdminSection>
 
             <ConnectedUsersSection />
