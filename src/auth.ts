@@ -16,6 +16,7 @@ export const handler = NextAuth({
             clientSecret: process.env.DISCORD_CLIENT_SECRET,
             authorization: { params: { scope: "identify guilds" } }, // need access to guilds
             httpOptions: { timeout: 10000 },
+            issuer: "https://discord.com",
         })
     ],
 
