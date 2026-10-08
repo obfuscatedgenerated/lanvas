@@ -24,39 +24,45 @@ const draw_pixels = async () => {
     });
     await client.connect();
 
-    // get width and size from config
-    const res_config = await client.query("SELECT key, value FROM config WHERE key IN ($1, $2)", ["grid_width", "grid_height"]);
-
     let grid_width: number = CONFIG.grid_width.default;
     let grid_height: number = CONFIG.grid_height.default;
-    for (const row of res_config.rows) {
-        const {key, value} = row;
-        if (key === "grid_width") {
-            grid_width = parseInt(value, 10);
-        } else if (key === "grid_height") {
-            grid_height = parseInt(value, 10);
+    let grid_data: string[][];
+
+    try {
+        // get width and size from config
+        const res_config = await client.query("SELECT key, value FROM config WHERE key IN ($1, $2)", ["grid_width", "grid_height"]);
+
+        for (const row of res_config.rows) {
+            const {key, value} = row;
+            if (key === "grid_width") {
+                grid_width = parseInt(value, 10);
+            } else if (key === "grid_height") {
+                grid_height = parseInt(value, 10);
+            }
         }
-    }
 
-    const grid_data = Array.from({length: grid_height}, () => Array(grid_width).fill("#FFFFFF"));
+        grid_data = Array.from({length: grid_height}, () => Array(grid_width).fill("#FFFFFF"));
 
-    const pixels = await client.query(`
-        SELECT DISTINCT ON (x, y)
-            x,
-            y,
-            color
-        FROM pixels
-        ORDER BY x, y, snowflake DESC
-    `);
-    for (const row of pixels.rows) {
-        const {x, y, color} = row;
+        const pixels = await client.query(`
+            SELECT DISTINCT ON (x, y)
+                x,
+                y,
+                color
+            FROM pixels
+            ORDER BY x, y, snowflake DESC
+        `);
+        for (const row of pixels.rows) {
+            const {x, y, color} = row;
 
-        // load each pixel into the in-memory grids
-        if (x >= 0 && x < grid_width && y >= 0 && y < grid_height) {
-            grid_data[y][x] = color;
+            // load each pixel into the in-memory grids
+            if (x >= 0 && x < grid_width && y >= 0 && y < grid_height) {
+                grid_data[y][x] = color;
+            }
         }
+    } finally {
+        // always release the connection, otherwise a query error leaks it from the pool-less client
+        await client.end();
     }
-    client.end();
 
     // use a node canvas to render the grid! so cool!
     const canvas = createCanvas(grid_width * PIXEL_SIZE, grid_height * PIXEL_SIZE);

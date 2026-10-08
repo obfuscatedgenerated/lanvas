@@ -36,10 +36,14 @@ export const get_vote_counts = () => {
     return counts;
 }
 
-export const vote_in_poll = (user_id: string, option_index: number) => {
-    if (votes && options && option_index >= 0 && option_index < options.length) {
+// returns true only when the vote was accepted into an active poll
+export const vote_in_poll = (user_id: string, option_index: number): boolean => {
+    if (votes && options && Number.isInteger(option_index) && option_index >= 0 && option_index < options.length) {
         votes.set(user_id, option_index);
+        return true;
     }
+
+    return false;
 }
 
 export const has_user_voted = (user_id: string) => {

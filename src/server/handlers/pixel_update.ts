@@ -29,8 +29,8 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}
         // basic validation of incoming data
         if (
             !(
-                typeof x === "number" && x >= 0 && x < get_config("grid_width") &&
-                typeof y === "number" && y >= 0 && y < get_config("grid_height") &&
+                typeof x === "number" && Number.isInteger(x) && x >= 0 && x < get_config("grid_width") &&
+                typeof y === "number" && Number.isInteger(y) && y >= 0 && y < get_config("grid_height") &&
                 typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color)
             )
         ) {

@@ -152,7 +152,7 @@ const main = async () => {
         if (handler_name.startsWith("admin_")) {
             //@ts-expect-error handler guaranteed to exist from above
             const handler = handlers[handler_name] as SocketHandler;
-            if (!handler.flags || !handler.flags.require_admin === undefined) {
+            if (!handler.flags || handler.flags.require_admin === undefined) {
                 console.warn(`  WARNING: handler with admin prefix is missing require_admin flag!!! It will not be protected as intended. If this is intentional, set require_admin to false explicitly.`);
             }
         }
