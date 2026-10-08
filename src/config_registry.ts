@@ -11,10 +11,10 @@ export interface ConfigDefinition {
 
 // don't rename any keys unless you know what you're doing!
 export const CONFIG = {
-    grid_width: {type: "number", default: 100, public: true, min: 1, max: 1000},
-    grid_height: {type: "number", default: 100, public: true, min: 1, max: 1000},
+    grid_width: {type: "number", default: 200, public: true, min: 1, max: 1000},
+    grid_height: {type: "number", default: 115, public: true, min: 1, max: 1000},
     readonly: {type: "boolean", default: false, public: true},
-    pixel_timeout_ms: {type: "number", default: 30000, public: true, min: 0},
+    pixel_timeout_ms: {type: "number", default: 10000, public: true, min: 0},
     // scales the pixel cooldown up with the number of active players, to keep pace manageable as the canvas fills.
     // effective cooldown = min(pixel_timeout_ms + cooldown_per_player_ms * active_players, cooldown_max_ms)
     cooldown_scaling_enabled: {type: "boolean", default: false, public: true},
