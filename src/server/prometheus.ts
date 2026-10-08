@@ -85,17 +85,14 @@ export const register_intercept_metrics = () => {
 }
 
 export const intercept_pool = (pool: Pool) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((pool as any)._intercepted) {
         return;
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (pool as any)._intercepted = true;
 
     // modify pool.query to observe latency
     const original_query = pool.query.bind(pool);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     pool.query = async function (this: Pool, ...args: any[]): Promise<Result> {
         if (LOG_QUERIES) {
             console.log("Executing query:", args[0]);
@@ -105,7 +102,6 @@ export const intercept_pool = (pool: Pool) => {
         const end = query_histogram.startTimer({command});
 
         try {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             //@ts-ignore
             const res = await original_query(...args);
             const ended = end();
@@ -138,20 +134,17 @@ export const intercept_pool = (pool: Pool) => {
 }
 
 export const intercept_client = (client: PoolClient) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((client as any)._intercepted) {
         return;
     }
 
     // TODO: way to copy client, it affects the clients used for pool.query too, leading to double counting!
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (client as any)._intercepted = true;
 
     // modify client.query to observe latency
     const original_query = client.query.bind(client);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     client.query = async function (this: PoolClient, ...args: any[]): Promise<Result> {
         if (LOG_QUERIES) {
             console.log("Executing query in client:", args[0]);
@@ -161,7 +154,6 @@ export const intercept_client = (client: PoolClient) => {
         const end = query_histogram.startTimer({command});
 
         try {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             //@ts-ignore
             const res = await original_query(...args);
             const ended = end();

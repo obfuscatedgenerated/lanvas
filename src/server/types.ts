@@ -19,7 +19,6 @@ export interface SocketHandlerContext {
     socket: SocketWithJWT;
     io: Server;
     // TODO: use unknown or never and have handlers do their own assertions
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     payload: any;
 
     connected_users: Set<ConnectedUserDetails>;
