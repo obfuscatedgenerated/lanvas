@@ -37,6 +37,7 @@ const MAX_FRAME_SECONDS = 1 / 30;
 interface Duck {
     id: number;
     summoner: string;
+    face_url?: string;
 }
 
 interface ExplosionPoint {
@@ -239,7 +240,18 @@ const WanderingDuck = ({duck, on_finished}: {duck: Duck; on_finished: () => void
                 {duck.summoner}&apos;s duck
             </span>
 
-            <span ref={body_ref} className="text-5xl leading-none inline-block origin-bottom">🦆</span>
+            <span ref={body_ref} className="text-5xl leading-none inline-block origin-bottom relative">
+                🦆
+
+                {duck.face_url && (
+                    <img
+                        src={duck.face_url}
+                        alt=""
+                        draggable={false}
+                        className="absolute -top-1 left-1/3 -translate-x-1/2 w-8 h-8 rounded-full"
+                    />
+                )}
+            </span>
         </div>
     );
 };
@@ -254,7 +266,7 @@ const DuckParade = () => {
                 return;
             }
 
-            const duck: Duck = {id: next_id_ref.current++, summoner: spinner.name};
+            const duck: Duck = {id: next_id_ref.current++, summoner: spinner.name, face_url: spinner.avatar_url || undefined};
             setDucks((previous) => previous.length >= MAX_DUCKS ? previous : [...previous, duck]);
         };
 
