@@ -36,6 +36,32 @@ export default function Home() {
     const [timeout_start_time, setTimeoutStartTime] = useState<number | null>(null);
     const [timeout_end_time, setTimeoutEndTime] = useState<number | null>(null);
 
+    // one pending clear at a time, so a newer cooldown (like the server's scaled one) always replaces an older one
+    const timeout_clear_ref = useRef<NodeJS.Timeout | null>(null);
+
+    const clear_timeout_display = useCallback(() => {
+        if (timeout_clear_ref.current) {
+            clearTimeout(timeout_clear_ref.current);
+            timeout_clear_ref.current = null;
+        }
+
+        setTimeoutStartTime(null);
+        setTimeoutEndTime(null);
+    }, []);
+
+    // positions the countdown on this client's clock from relative durations, so server clock drift doesn't matter
+    const show_timeout = useCallback((duration_ms: number, elapsed_ms = 0) => {
+        if (timeout_clear_ref.current) {
+            clearTimeout(timeout_clear_ref.current);
+        }
+
+        const started_at = Date.now() - elapsed_ms;
+        setTimeoutStartTime(started_at);
+        setTimeoutEndTime(started_at + duration_ms);
+
+        timeout_clear_ref.current = setTimeout(clear_timeout_display, Math.max(0, duration_ms - elapsed_ms));
+    }, [clear_timeout_display]);
+
     const [is_readonly, setIsReadonly] = useState(false);
     const pixel_timeout_ms = usePublicConfigValue("pixel_timeout_ms");
 
@@ -73,49 +99,25 @@ export default function Home() {
                 return;
             }
 
-            setTimeoutStartTime(Date.now());
-            setTimeoutEndTime(Date.now() + pixel_timeout_ms);
-
-            // after timeout, switch back to color picker mode
-            setTimeout(() => {
-                setTimeoutStartTime(null);
-                setTimeoutEndTime(null);
-            }, pixel_timeout_ms);
+            show_timeout(pixel_timeout_ms);
         },
-        [pixel_timeout_ms, in_timeout]
+        [pixel_timeout_ms, in_timeout, show_timeout]
     );
 
     // if the update was rejected, undo the timeout state
-    const handle_pixel_update_rejected = useCallback(
-        () => {
-            setTimeoutStartTime(null);
-            setTimeoutEndTime(null);
-        },
-        []
-    );
+    const handle_pixel_update_rejected = clear_timeout_display;
 
     // use socket to check timeout
     useEffect(() => {
         const handle_connect = () => console.log("Connected!", socket.id);
 
-        const handle_timeout_info = (info: {started: number; ends: number}) => {
+        // the server is the authority on how long the cooldown really is
+        const handle_timeout_info = (info: {elapsed: number; remaining: number}) => {
             if (localStorage.getItem(LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER) === "true") {
                 return;
             }
 
-            // update timeout so far
-            setTimeoutStartTime(info.started);
-            setTimeoutEndTime(info.ends);
-
-            // adjust remaining for clock sync (could also subtract the checked_at time, but this is simpler)
-            const current_time = Date.now();
-            const true_remaining = info.ends - current_time;
-
-            // after timeout, switch back to color picker mode
-            setTimeout(() => {
-                setTimeoutStartTime(null);
-                setTimeoutEndTime(null);
-            }, true_remaining);
+            show_timeout(info.elapsed + info.remaining, info.elapsed);
         };
 
         const handle_readonly = (readonly: boolean) => {
@@ -169,7 +171,7 @@ export default function Home() {
             socket.off("reload", handle_reload);
             socket.off("comment_rejected", handle_comment_rejected);
         }
-    }, []);
+    }, [show_timeout]);
 
     const prepare_live_comment = useCallback(
         (pixel: ResolvedPixel | null, event: React.MouseEvent) => {
