@@ -56,7 +56,7 @@ This feature can be configured from the admin page to turn it on or off on the f
 
 Regardless of this config setting, LANvas will attempt to download the model on server startup to ensure it is available when needed.
 
-If you wish to completely disable this, which will not allow you to toggle it during runtime, the `@huggingface/transformers` dependency is optional, so you can use `npm install --omit=optional` to skip installing it in the first place.
+If you wish to completely disable this, which will not allow you to toggle it during runtime, the `@huggingface/transformers` dependency is optional, so you can use `npm uninstall --no-save @huggingface/transformers` to remove it if you wish.
 
 ## Wishlist
 

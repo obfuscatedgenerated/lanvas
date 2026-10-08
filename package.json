@@ -12,7 +12,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@christiangalsterer/node-postgres-prometheus-exporter": "^1.4.0",
     "@napi-rs/canvas": "^1.0.10",
     "@number-flow/react": "^0.5.10",
     "@prometheus-io/client": "^0.16.1",

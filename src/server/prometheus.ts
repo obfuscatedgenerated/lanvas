@@ -6,6 +6,50 @@ collectDefaultMetrics({ register });
 
 export default register;
 
+export const monitor_pool = (pool: Pool): void => {
+    const labels = {host: process.env.PGHOST ?? "", database: process.env.PGDATABASE ?? ""};
+    const label_names = ["host", "database"] as const;
+
+    new Gauge({
+        name: "pg_pool_size",
+        help: "Connections currently in the pool, idle or in use",
+        labelNames: label_names,
+        registers: [register],
+        collect() {
+            this.set(labels, pool.totalCount);
+        },
+    });
+
+    new Gauge({
+        name: "pg_pool_idle_connections",
+        help: "Connections in the pool that are not in use",
+        labelNames: label_names,
+        registers: [register],
+        collect() {
+            this.set(labels, pool.idleCount);
+        },
+    });
+
+    new Gauge({
+        name: "pg_pool_waiting_connections",
+        help: "Queries waiting for a free connection",
+        labelNames: label_names,
+        registers: [register],
+        collect() {
+            this.set(labels, pool.waitingCount);
+        },
+    });
+
+    const errors = new Counter({
+        name: "pg_pool_errors_total",
+        help: "Errors emitted by idle pool connections",
+        labelNames: label_names,
+        registers: [register],
+    });
+
+    pool.on("error", () => errors.inc(labels));
+};
+
 const LOG_QUERIES = process.env.LOG_QUERIES === "true";
 const LOG_QUERY_TIMES = process.env.LOG_QUERY_TIMES === "true";
 

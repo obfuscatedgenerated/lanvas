@@ -11,8 +11,7 @@ import {parse as parse_cookies} from "cookie";
 
 import {Pool} from "pg";
 
-import register, {intercept_pool, register_intercept_metrics} from "@/server/prometheus";
-import {monitorPgPool} from "@christiangalsterer/node-postgres-prometheus-exporter";
+import register, {intercept_pool, monitor_pool, register_intercept_metrics} from "@/server/prometheus";
 
 import {
     ConnectedUserDetails,
@@ -67,7 +66,7 @@ const pool = new Pool({
 });
 
 // monitor pg pool
-monitorPgPool(pool, register);
+monitor_pool(pool);
 intercept_pool(pool);
 register_intercept_metrics();
 
