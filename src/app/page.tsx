@@ -29,6 +29,7 @@ import {screen_to_page_space} from "@/lib/page_pranks";
 import useTemplate from "@/hooks/useTemplate";
 import TemplateOverlay, {TemplateProgress} from "@/components/TemplateOverlay";
 import TemplatePanel from "@/components/TemplatePanel";
+import {is_sfx_muted, play_sound, set_sfx_muted} from "@/lib/sfx";
 
 export default function Home() {
     const [current_color, setCurrentColor] = useState("#000000");
@@ -90,6 +91,8 @@ export default function Home() {
     // when pixel is submitted, switch to show timeout mode for the widget
     const handle_pixel_submitted = useCallback(
         () => {
+            play_sound("pop", {pitch_variation: 0.5});
+
             if (localStorage.getItem(LOCALSTORAGE_KEY_SKIP_CLIENT_TIMER) === "true") {
                 return;
             }
@@ -259,7 +262,8 @@ export default function Home() {
                         if (template.settings) {
                             template.update({visible: !template.settings.visible});
                         }
-                    }
+                    },
+                    "m": () => set_sfx_muted(!is_sfx_muted()),
                 }}
 
                 enabled={!comment_composer_coords}

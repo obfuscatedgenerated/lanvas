@@ -5,6 +5,7 @@ import {useEffect, useRef, useState} from "react";
 
 import {socket} from "@/socket";
 import type {Author} from "@/types";
+import {play_sound} from "@/lib/sfx";
 
 const BANNER_DURATION_MS = 3500;
 const BANNER_FADE_MS = 300;
@@ -52,6 +53,8 @@ const GiftedBanner = () => {
                 // unmount once the fade out has finished
                 clear_timeout_ref.current = setTimeout(() => setSender(null), BANNER_FADE_MS);
             }, BANNER_DURATION_MS);
+
+            play_sound("gift");
         };
 
         socket.on("gift_received", handle_gift_received);

@@ -5,6 +5,7 @@ import HelpButtonAndPopup, {HelpButtonFallback} from "@/components/HelpButtonAnd
 import StatsButtonAndPopup, {StatsButtonFallback} from "@/components/StatsButtonAndPopup";
 
 import GithubLogo from "@/components/GithubLogo";
+import SFXToggle from "@/components/SFXToggle";
 
 const Header = () => {
     const lan_number = process.env.NEXT_PUBLIC_LAN_NUMBER || "";
@@ -26,7 +27,9 @@ const Header = () => {
                     <StatsButtonAndPopup />
                 </Suspense>
 
-                <a href="https://github.com/obfuscatedgenerated/lanvas" rel="noreferrer noopener" target="_blank" title="View source on GitHub">
+                <SFXToggle />
+
+                <a className="hidden sm:block ml-6" href="https://github.com/obfuscatedgenerated/lanvas" rel="noreferrer noopener" target="_blank" title="View source on GitHub">
                     <GithubLogo className="h-6 w-6" />
                 </a>
             </div>

@@ -4,6 +4,7 @@ import {useCallback, useEffect, useRef, useState} from "react";
 
 import {socket} from "@/socket";
 import type {Author} from "@/types";
+import {play_sound} from "@/lib/sfx";
 
 // how long a duck makes a nuisance of itself before going off
 const DUCK_LIFETIME_MS = 40000;
@@ -51,6 +52,8 @@ const DuckExplosion = ({point, on_finished}: {point: ExplosionPoint; on_finished
     const feather_refs = useRef<(HTMLSpanElement | null)[]>([]);
 
     useEffect(() => {
+        play_sound("explode", {volume: 0.3});
+
         const animations: Animation[] = [];
 
         if (bang_ref.current) {
@@ -170,6 +173,7 @@ const WanderingDuck = ({duck, on_finished}: {duck: Duck; on_finished: () => void
 
                 if (height === 0 && Math.random() < HOP_CHANCE * delta_seconds) {
                     velocity_y = random_between(HOP_SPEED_MIN, HOP_SPEED_MAX);
+                    play_sound("quack", {pitch_variation: 0.1, volume: 0.25});
                 }
 
                 position_x += velocity_x * delta_seconds;

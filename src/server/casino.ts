@@ -12,9 +12,7 @@ import {prank_user} from "@/server/pranks";
 import snowflake from "@/snowflake";
 import {increment_virtual_stat} from "@/server/stats";
 import {get_visible_stats} from "@/server/feature_stats";
-
-// must match the client wheel's spin duration, so nobody hears the result before the spinner's wheel stops
-const REVEAL_DELAY_MS = 4500;
+import {wheel_spin_total_ms} from "@/wheel_timing";
 
 const GIFT_BOMB_RECIPIENTS = 3;
 const CLOWNED_DURATION_MS = 2 * 60 * 1000;
@@ -494,7 +492,7 @@ export const spin = (base_context: Omit<CasinoContext, "payout">): CasinoOutcome
         } catch (apply_error) {
             console.error(`Casino outcome ${outcome.id} failed:`, apply_error);
         }
-    }, REVEAL_DELAY_MS);
+    }, wheel_spin_total_ms(outcome.segment_id, outcome.tease_segment_id));
 
     return outcome;
 };

@@ -8,6 +8,7 @@ import useRemainingMs from "@/hooks/useRemainingMs";
 
 import {socket} from "@/socket";
 import type {Cooldown, WheelSegment} from "@/types";
+import {play_sound} from "@/lib/sfx";
 
 interface CasinoPopupProps extends ComponentProps<typeof Popup> {
     // a spin costs a pixel, either your ready one or a held gift
@@ -87,7 +88,13 @@ export const CasinoPopup = ({can_wager, casino_cooldown, ...popup_props}: Casino
         };
 
         // only our own result, everyone's results go through the feed instead
-        const handle_own_result = ({message}: {message: string}) => setPendingResult(message);
+        const handle_own_result = ({message, outcome_id}: {message: string, outcome_id: string}) => {
+            setPendingResult(message);
+
+            if (outcome_id === "clowned") {
+                play_sound("clown");
+            }
+        }
 
         socket.on("casino_wheel", handle_wheel);
         socket.on("casino_pot", setPot);
