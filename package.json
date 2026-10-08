@@ -1,6 +1,6 @@
 {
   "name": "lanvas",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "An r/place like web app for realtime collaborative editing of a pixel canvas.",
   "license": "AGPL-3.0",
   "type": "module",
