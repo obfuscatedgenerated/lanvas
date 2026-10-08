@@ -3,6 +3,7 @@
 import {add_debug_instrument} from "@/lib/debug_instrument";
 
 import { io } from "socket.io-client";
+import msgpack from "socket.io-msgpack-parser";
 
 // this module is a client component, but Next still executes it during SSR when rendering the initial
 // HTML. autoConnect is therefore gated on the browser so the server never opens a stray connection;
@@ -12,6 +13,7 @@ const is_browser = typeof window !== "undefined";
 export const socket = io({
     autoConnect: false,
     withCredentials: true,
+    parser: msgpack,
     query: {
         context: is_browser ? window.location.pathname : "SSR"
     }

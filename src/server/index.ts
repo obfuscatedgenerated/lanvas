@@ -5,13 +5,14 @@ import next from "next";
 
 import {Server} from "socket.io";
 import {instrument} from "@socket.io/admin-ui";
+import msgpack from "socket.io-msgpack-parser";
 
 import {getToken} from "next-auth/jwt";
 import {parse as parse_cookies} from "cookie";
 
 import {Pool} from "pg";
 
-import register, {intercept_pool, monitor_pool, register_intercept_metrics} from "@/server/prometheus";
+import {intercept_pool, monitor_pool, register_intercept_metrics} from "@/server/prometheus";
 
 import {
     ConnectedUserDetails,
@@ -173,7 +174,10 @@ const main = async () => {
         },
     } : {};
 
-    const io = new Server(http_server, io_opts);
+    const io = new Server(http_server, {
+        ...io_opts,
+        parser: msgpack,
+    });
 
     // leaderboards are aggregate queries, so they refresh on a timer and only broadcast when they change
     void refresh_leaderboards(pool, io);
