@@ -348,15 +348,23 @@ const main = async () => {
                 }
 
                 // invoke the handler
-                handler.handler({
-                    io,
-                    socket,
-                    pool,
-                    payload,
+                try {
+                    const result = handler.handler({
+                        io,
+                        socket,
+                        pool,
+                        payload,
 
-                    connected_users,
-                    unique_connected_user_ids,
-                });
+                        connected_users,
+                        unique_connected_user_ids,
+                    });
+
+                    if (result instanceof Promise) {
+                        result.catch((handler_error) => console.error(`Handler ${handler_name} failed:`, handler_error));
+                    }
+                } catch (handler_error) {
+                    console.error(`Handler ${handler_name} failed:`, handler_error);
+                }
             });
         }
 
