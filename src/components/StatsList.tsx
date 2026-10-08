@@ -15,8 +15,7 @@ const known_stat_labels: { [key: string]: string } = {
     casino_pixels_won: "Pixels won on the wheel",
     casino_jackpots: "Jackpots",
     ducks_summoned: "Ducks summoned",
-    clownings: "Clownings",
-    taxman_collections: "Taxman visits",
+    misplaced_glasses: "Misplaced glasses"
 };
 
 const stats_order = [
@@ -28,8 +27,7 @@ const stats_order = [
     "casino_pixels_won",
     "casino_jackpots",
     "ducks_summoned",
-    "clownings",
-    "taxman_collections",
+    "misplaced_glasses"
 ];
 
 const StatEntry = ({ stat_key, stats, className = "" }: { stat_key: string; stats: StatsData; className?: string }) => (

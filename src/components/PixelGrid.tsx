@@ -18,7 +18,7 @@ import useMediaQuery from "@/hooks/useMediaQuery";
 import {DEFAULT_GRID_COLOR} from "@/defaults";
 import CommentsOverlay from "@/components/CommentsOverlay";
 import GridLines from "@/components/GridLines";
-import {is_page_flipped} from "@/lib/page_flip";
+import {is_page_flipped} from "@/lib/page_pranks";
 
 const PIXEL_SIZE = 10; // use slight oversampling. could also instead use pixelated on parent, but that leads to weird subpixel artifacts
 

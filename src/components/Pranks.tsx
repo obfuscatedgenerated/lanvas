@@ -1,7 +1,13 @@
 import {useEffect, useRef, useState} from "react";
 import {socket} from "@/socket";
 import {AdwarePrank} from "@/components/AdwarePrank";
-import {set_page_flipped} from "@/lib/page_flip";
+import {
+    set_page_flipped,
+    set_page_glorped,
+    set_page_grayscale,
+    set_page_inverted,
+    set_page_no_glasses
+} from "@/lib/page_pranks";
 
 interface PrankMessage {
     prank: string;
@@ -16,7 +22,12 @@ export const Pranks = () => {
     const [adware_enabled, setAdwareEnabled] = useState(false);
 
     const adware_timers = useRef<NodeJS.Timeout[]>([]);
+
     const flip_timer = useRef<NodeJS.Timeout | null>(null);
+    const invert_timer = useRef<NodeJS.Timeout | null>(null);
+    const grayscale_timer = useRef<NodeJS.Timeout | null>(null);
+    const glorp_timer = useRef<NodeJS.Timeout | null>(null);
+    const no_glasses_timer = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         const clear_adware_timers = () => {
@@ -24,8 +35,26 @@ export const Pranks = () => {
             adware_timers.current = [];
         };
 
-        const apply = ({prank, remaining_ms}: PrankMessage) => {
-            if (prank === "adware") {
+        // helper to produce handlers for simple timed on/off pranks
+        const make_timed_handler =
+            (timer_ref: { current: NodeJS.Timeout | null }, set_fn: (v: boolean) => void) =>
+                (remaining_ms: number) => {
+                    if (timer_ref.current) {
+                        clearTimeout(timer_ref.current);
+                        timer_ref.current = null;
+                    }
+
+                    if (remaining_ms <= 0) {
+                        set_fn(false);
+                        return;
+                    }
+
+                    set_fn(true);
+                    timer_ref.current = setTimeout(() => set_fn(false), remaining_ms);
+                };
+
+        const handlers: Record<string, (remaining_ms: number) => void> = {
+            adware: (remaining_ms: number) => {
                 clear_adware_timers();
 
                 if (remaining_ms <= 0) {
@@ -37,22 +66,22 @@ export const Pranks = () => {
                 setAdwareRender(true);
                 setAdwareEnabled(true);
 
-                adware_timers.current.push(setTimeout(() => setAdwareEnabled(false), Math.max(0, remaining_ms - ADWARE_SPAWN_LEAD_MS)));
+                adware_timers.current.push(
+                    setTimeout(() => setAdwareEnabled(false), Math.max(0, remaining_ms - ADWARE_SPAWN_LEAD_MS))
+                );
                 adware_timers.current.push(setTimeout(() => setAdwareRender(false), remaining_ms));
-            } else if (prank === "upside_down") {
-                if (flip_timer.current) {
-                    clearTimeout(flip_timer.current);
-                    flip_timer.current = null;
-                }
+            },
 
-                if (remaining_ms <= 0) {
-                    set_page_flipped(false);
-                    return;
-                }
+            upside_down: make_timed_handler(flip_timer, set_page_flipped),
+            invert: make_timed_handler(invert_timer, set_page_inverted),
+            grayscale: make_timed_handler(grayscale_timer, set_page_grayscale),
+            glorp: make_timed_handler(glorp_timer, set_page_glorped),
+            no_glasses: make_timed_handler(no_glasses_timer, set_page_no_glasses),
+        };
 
-                set_page_flipped(true);
-                flip_timer.current = setTimeout(() => set_page_flipped(false), remaining_ms);
-            }
+        const apply = ({prank, remaining_ms}: PrankMessage) => {
+            const fn = handlers[prank];
+            if (fn) fn(remaining_ms);
         };
 
         const handle_prank = (message: PrankMessage) => apply(message);
@@ -73,6 +102,7 @@ export const Pranks = () => {
     return (
         <>
             {adware_render && <AdwarePrank enabled={adware_enabled} />}
+            <div id="glorpverlay" />
         </>
     );
 }

@@ -201,10 +201,13 @@ const SEGMENTS: Omit<WheelSegment, "weight">[] = [
     {id: "upside_down", label: "uʍop ǝpᴉsd∩", color: "#0ea5e9"},
     {id: "rainbow", label: "Taste the rainbow", color: "#a855f7"},
     {id: "eraserhead", label: "Eraserhead", color: "#52525b"},
+    {id: "invert", label: "Inverted colours", color: "#facc15"},
+    {id: "grayscale", label: "Grayscale", color: "#737373"},
+    {id: "glorp", label: "Glorp", color: "#00ff00"},
+    {id: "no_glasses", label: "No glasses", color: "#24b4ff"},
     {id: "jackpot", label: "JACKPOT", color: "#eab308"},
     {id: "nothing", label: "Nothing", color: "#404040"},
     {id: "triple", label: "×3", color: "#15803d"},
-    {id: "taxman", label: "Taxman", color: "#b91c1c"},
     {id: "gift_bomb", label: "Gift bomb", color: "#9333ea"},
 ];
 
@@ -269,11 +272,11 @@ const OUTCOMES: CasinoOutcome[] = [
         },
     },
 
-    // weird: 35%
+    // weird: 45%
     {
         id: "duck",
         kind: "weird",
-        weight: 15,
+        weight: 5,
         segment_id: "duck",
         announce: "banner",
         // the client sees outcome_id "duck" in casino_result and sends the duck waddling for everyone
@@ -327,8 +330,56 @@ const OUTCOMES: CasinoOutcome[] = [
             return `🎥 ${context.spinner.name} has become Eraserhead (for 1 minute)`;
         },
     },
+    {
+        id: "invert",
+        kind: "weird",
+        weight: 5,
+        segment_id: "invert",
+        announce: "feed",
+        // inverted colours for only the spinner for 1 min, persisted across reloads
+        apply: (context) => {
+            prank_user(context.io, context.spinner.user_id, "invert");
+            return `🌓 ${context.spinner.name} is seeing things differently (for 1 minute)`;
+        },
+    },
+    {
+        id: "grayscale",
+        kind: "weird",
+        weight: 5,
+        segment_id: "grayscale",
+        announce: "feed",
+        // grayscale for only the spinner for 1 min, persisted across reloads
+        apply: (context) => {
+            prank_user(context.io, context.spinner.user_id, "grayscale");
+            return `⚫ ${context.spinner.name} returned to the good old days (for 1 minute)`;
+        }
+    },
+    {
+        id: "glorp",
+        kind: "weird",
+        weight: 5,
+        segment_id: "glorp",
+        announce: "feed",
+        // glorp for only the spinner for 1 min, persisted across reloads
+        apply: (context) => {
+            prank_user(context.io, context.spinner.user_id, "glorp");
+            return `🟢 ${context.spinner.name} zeep gloop glorp (fær 1 mïnütë)`;
+        }
+    },
+    {
+        id: "no_glasses",
+        kind: "weird",
+        weight: 5,
+        segment_id: "no_glasses",
+        announce: "feed",
+        // no glasses for only the spinner for 1 min, persisted across reloads
+        apply: (context) => {
+            prank_user(context.io, context.spinner.user_id, "no_glasses");
+            return `👓 ${context.spinner.name} lost their glasses (for 1 minute)`;
+        }
+    },
 
-    // busts: 35%
+    // busts: 25%
     {
         id: "clowned",
         kind: "bust",
@@ -339,25 +390,6 @@ const OUTCOMES: CasinoOutcome[] = [
             clown_users(context.io, [context.spinner.user_id], CLOWNED_DURATION_MS);
 
             return `🤡 ${context.spinner.name} got clowned`;
-        },
-    },
-    {
-        id: "taxman",
-        kind: "bust",
-        weight: 10,
-        segment_id: "taxman",
-        announce: "feed",
-        // the bet itself is handed to someone named, so it's clear where it went
-        apply: async (context) => {
-            const [recipient] = pick_random_players(context, 1);
-
-            if (!recipient) {
-                add_to_pot(context.io, context.pool, 1);
-                return `The taxman came for ${context.spinner.name}'s bet but found nobody to give it to, so it went in the pot`;
-            }
-
-            await give_pixels(context, context.spinner, recipient, 1);
-            return `💸 The taxman took ${context.spinner.name}'s bet and gave it to ${recipient.name}`;
         },
     },
     {
@@ -412,8 +444,7 @@ const roll = (): CasinoOutcome => {
 const OUTCOME_STAT_KEYS: Record<string, string> = {
     jackpot: "casino_jackpots",
     duck: "ducks_summoned",
-    clowned: "clownings",
-    taxman: "taxman_collections",
+    no_glasses: "misplaced_glasses",
 };
 
 // best effort, a spin still counts for the player even if its stats row can't be written

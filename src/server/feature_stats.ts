@@ -18,8 +18,7 @@ const STAT_FEATURES: Record<string, Feature> = {
     casino_pixels_won: "casino",
     casino_jackpots: "casino",
     ducks_summoned: "casino",
-    clownings: "casino",
-    taxman_collections: "casino",
+    misplaced_glasses: "casino"
 };
 
 // what players are allowed to see, use this for everything sent to the stats room

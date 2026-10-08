@@ -25,7 +25,7 @@ import CasinoAnnouncements from "@/components/CasinoAnnouncements";
 import DuckParade from "@/components/DuckParade";
 import {Pranks} from "@/components/Pranks";
 import ChaosEffects from "@/components/ChaosEffects";
-import {screen_to_page_space} from "@/lib/page_flip";
+import {screen_to_page_space} from "@/lib/page_pranks";
 import useTemplate from "@/hooks/useTemplate";
 import TemplateOverlay, {TemplateProgress} from "@/components/TemplateOverlay";
 import TemplatePanel from "@/components/TemplatePanel";

@@ -162,8 +162,7 @@ export const load_counter_stats = async (pool: Pool, set_counter: (key: string, 
         {key: "casino_pixels_won", query: `SELECT SUM(payout) AS value FROM casino_log`},
         {key: "casino_jackpots", query: `SELECT COUNT(*) AS value FROM casino_log WHERE outcome_id = 'jackpot'`},
         {key: "ducks_summoned", query: `SELECT COUNT(*) AS value FROM casino_log WHERE outcome_id = 'duck'`},
-        {key: "clownings", query: `SELECT COUNT(*) AS value FROM casino_log WHERE outcome_id = 'clowned'`},
-        {key: "taxman_collections", query: `SELECT COUNT(*) AS value FROM casino_log WHERE outcome_id = 'taxman'`},
+        {key: "misplaced_glasses", query: `SELECT COUNT(*) AS value FROM casino_log WHERE outcome_id = 'no_glasses'`}
     ];
 
     for (const counter of counters) {

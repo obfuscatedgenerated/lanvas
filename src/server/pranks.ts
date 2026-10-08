@@ -3,7 +3,7 @@ import type {Server} from "socket.io";
 import {user_room} from "@/server/gifts";
 
 
-export type PrankID = "upside_down" | "rainbow" | "eraserhead" | "adware";
+export type PrankID = "upside_down" | "rainbow" | "eraserhead" | "adware" | "invert" | "grayscale" | "glorp" | "no_glasses";
 
 // all pranks currently last a minute; kept here as the single source of truth for client and server
 const PRANK_DURATION_MS = 60_000;

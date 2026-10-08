@@ -239,12 +239,42 @@ const EFFECTS: ChaosEffect[] = [
                     announce: "feed",
                 });
 
+                // TODO: add to the duck stat for correctness
+
                 n_ducks++;
                 if (n_ducks >= 10) {
                     clearInterval(interval);
                 }
             }, 1000);
         },
+    },
+    {
+        id: "invert",
+        label: "🖤 Invert - everyone sees inverted colours",
+        available: casino_or_chaos,
+        activate: (context) => prank_everyone(context.io, "invert"),
+        active_ms: prank_duration,
+    },
+    {
+        id: "grayscale",
+        label: "⚪ Grayscale - everyone sees black and white",
+        available: casino_or_chaos,
+        activate: (context) => prank_everyone(context.io, "grayscale"),
+        active_ms: prank_duration,
+    },
+    {
+        id: "glorp",
+        label: "💚 Glorp - æveryöne gleep glorp..",
+        available: casino_or_chaos,
+        activate: (context) => prank_everyone(context.io, "glorp"),
+        active_ms: prank_duration,
+    },
+    {
+        id: "no_glasses",
+        label: "🥽 No glasses - everyone loses their glasses",
+        available: casino_or_chaos,
+        activate: (context) => prank_everyone(context.io, "no_glasses"),
+        active_ms: prank_duration,
     }
 ];
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import TooltipDiv from "@/components/TooltipDiv";
-import {screen_to_page_space} from "@/lib/page_flip";
+import {screen_to_page_space} from "@/lib/page_pranks";
 
 interface CursorTooltipProps {
     children: React.ReactElement;
