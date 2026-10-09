@@ -87,6 +87,10 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}
             avatar_url: socket.user.picture || null,
         };
 
+        // generate the snowflake synchronously, so that the persisted snowflake order matches the order in which we apply and broadcast placements
+        // if we wrote it later, two racing writes to the same cell could persist in the opposite order, flipping the cell back to a stale color on reload
+        const snowflake_id = snowflake.generate();
+
         // we will do an optimistic update, so we store the old state in case we need to revert
         const {color: old_color, author: old_author} = get_cell(x, y)!;
 
@@ -128,15 +132,11 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}
             // await client.query("BEGIN");
             // transaction_open = true;
 
-            const snowflake_id = snowflake.generate();
-
             // then upsert the pixel
             await client.query(
                 "INSERT INTO pixels (x, y, color, author_id, snowflake, gift_snowflake) VALUES ($1, $2, $3, $4, $5, $6)",
                 [x, y, color, anonymous ? null : user_id, snowflake_id, used_gift ? used_gift.id : null],
             );
-
-            // TODO: ensure the latest cached pixel is the one with the latest snowflake to avoid reload inconsistencies? kinda over the top for the likelihood rn tho
 
             // await increment_db_stat(client, "total_pixels_placed");
 

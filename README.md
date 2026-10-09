@@ -61,4 +61,3 @@ If you wish to completely disable this, which will not allow you to toggle it du
 ## Wishlist
 
 - Support mobile properly, including sizing, breakpoints, and proper use of react-zoom-pan-pinch without conflicting with tapping to draw (currently half works, but not optimised for it)
-- Improve stability by dealing with conflicting edits safely
