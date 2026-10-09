@@ -11,7 +11,7 @@ enum PollState {
     ENDED
 }
 
-const FloatingPoll = () => {
+const FloatingPoll = ({read_only = false, position_class = "right-[50vw] translate-x-[50%] sm:translate-x-0 top-25 sm:right-10"}: {read_only?: boolean; position_class?: string}) => {
     const [poll_state, setPollState] = useState<PollState>(PollState.HIDDEN);
     const [user_hiding, setUserHiding] = useState<boolean>(false);
 
@@ -88,7 +88,7 @@ const FloatingPoll = () => {
     const show_countdown = is_chaos && poll_state === PollState.ACTIVE && ends_at !== null;
 
     return (
-        <div className={`z-9999 font-sans fixed right-[50vw] translate-x-[50%] sm:translate-x-0 top-25 sm:right-10 min-w-64 w-full sm:w-fit max-w-9/10 sm:max-w-100 backdrop-blur-sm border rounded shadow-lg p-4 transition-opacity duration-500 ${is_chaos ? "bg-purple-900/75 border-purple-400/80 shadow-[0_0_25px_3px_rgba(168,85,247,0.4)]" : "bg-neutral-600/75 border-neutral-500/75"} ${hidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+        <div className={`z-9999 font-sans fixed ${position_class} min-w-64 w-full sm:w-fit max-w-9/10 sm:max-w-100 backdrop-blur-sm border rounded shadow-lg p-4 transition-opacity duration-500 ${is_chaos ? "bg-purple-900/75 border-purple-400/80 shadow-[0_0_25px_3px_rgba(168,85,247,0.4)]" : "bg-neutral-600/75 border-neutral-500/75"} ${hidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
             {is_chaos && (
                 <div className="flex items-center justify-between mb-1 text-xs font-bold tracking-wide uppercase text-purple-200">
                     <span>⚡ Chaos mode</span>
@@ -114,15 +114,15 @@ const FloatingPoll = () => {
             {options && options.map((option, index) => (
                 <button
                     key={index}
-                    className={`${chosen_option_index === index ? "outline-2 outline-orange-200/80" : ""} ${winners && winners.includes(option) ? "shadow-[0_0_20px_5px_rgba(234,179,8,0.6)] !bg-yellow-200 text-black" : ""} flex justify-between gap-2 sm:gap-4 w-full mb-2 break-words px-3 py-2 bg-orange-700 hover:bg-orange-600 transition-all rounded disabled:bg-neutral-400 cursor-pointer disabled:cursor-not-allowed`}
+                    className={`${chosen_option_index === index ? "outline-2 outline-orange-200/80" : ""} ${winners && winners.includes(option) ? "shadow-[0_0_20px_5px_rgba(234,179,8,0.6)] !bg-yellow-200 text-black" : ""} flex justify-between gap-2 sm:gap-4 w-full mb-2 break-words px-3 py-2 bg-orange-700 transition-all rounded disabled:bg-neutral-400 ${read_only ? "pointer-events-none" : "hover:bg-orange-600 cursor-pointer disabled:cursor-not-allowed"}`}
                     onClick={() => {
-                        if (poll_state === PollState.ACTIVE) {
+                        if (!read_only && poll_state === PollState.ACTIVE) {
                             socket.emit("poll_vote", index);
                             setChosenOptionIndex(index);
                         }
                     }}
-                    disabled={poll_state !== PollState.ACTIVE}
-                    title={poll_state === PollState.ACTIVE ? "Click to vote for this option" : ""}
+                    disabled={!read_only && poll_state !== PollState.ACTIVE}
+                    title={!read_only && poll_state === PollState.ACTIVE ? "Click to vote for this option" : ""}
                 >
                     <span className="break-words min-w-0 text-left flex-1">
                         {option}

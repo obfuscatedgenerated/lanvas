@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import {Merriweather_Sans, Playpen_Sans} from "next/font/google";
 import "./globals.css";
 
-import Header from "@/components/Header";
-
 const font_sans = Merriweather_Sans({
   variable: "--font-sans",
   subsets: ["latin"],
@@ -35,7 +33,6 @@ export default function RootLayout({
       <body
         className={`${font_sans.variable} ${font_doodle.variable} select-none antialiased h-screen max-h-screen overflow-hidden flex flex-col`}
       >
-        <Header />
         {children}
       </body>
     </html>

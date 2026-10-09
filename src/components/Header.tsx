@@ -3,9 +3,10 @@ import {Suspense} from "react";
 import LoginStatus from "@/components/LoginStatus";
 import HelpButtonAndPopup, {HelpButtonFallback} from "@/components/HelpButtonAndPopup";
 import StatsButtonAndPopup, {StatsButtonFallback} from "@/components/StatsButtonAndPopup";
+import SFXToggle from "@/components/SFXToggle";
 
 import GithubLogo from "@/components/GithubLogo";
-import SFXToggle from "@/components/SFXToggle";
+import {EyeDashed} from "lucide-react";
 
 const Header = () => {
     const lan_number = process.env.NEXT_PUBLIC_LAN_NUMBER || "";
@@ -29,7 +30,11 @@ const Header = () => {
 
                 <SFXToggle />
 
-                <a className="hidden sm:block ml-6" href="https://github.com/obfuscatedgenerated/lanvas" rel="noreferrer noopener" target="_blank" title="View source on GitHub">
+                <a className="hidden sm:block ml-6" href="/spectator" rel="noreferrer noopener" target="_blank" title="Open spectator view in a new tab">
+                    <EyeDashed className="h-6 w-6" />
+                </a>
+
+                <a className="hidden sm:block" href="https://github.com/obfuscatedgenerated/lanvas" rel="noreferrer noopener" target="_blank" title="View source on GitHub">
                     <GithubLogo className="h-6 w-6" />
                 </a>
             </div>
