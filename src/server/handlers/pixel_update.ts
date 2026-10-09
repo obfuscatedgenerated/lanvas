@@ -146,7 +146,21 @@ export const handler: SocketHandlerFunction = async ({socket, payload, io, pool}
             console.log(`Database updated for pixel at (${x}, ${y})`);
 
             // and increment the total_pixels_placed stat, as well as returning the new total
-            increment_virtual_stat("total_pixels_placed");
+            const new_total = increment_virtual_stat("total_pixels_placed");
+
+            // celebrate when the running total crosses a milestone
+            if (get_config("milestone_banners_enabled")) {
+                const interval = get_config("pixel_milestone_interval");
+                if (interval > 0 && Math.floor(new_total / interval) > Math.floor((new_total - 1) / interval)) {
+                    const milestone = Math.floor(new_total / interval) * interval;
+
+                    io.emit("admin_message", {
+                        message: `🎉 ${milestone.toLocaleString()} pixels placed!`,
+                        persist: false,
+                        duration_ms: 8000,
+                    });
+                }
+            }
 
             // emit updated stats to all clients in stats room
             io.to("stats").emit("stats", get_visible_stats());

@@ -41,6 +41,8 @@ export const CONFIG = {
     chaos_ramp_enabled: {type: "boolean", default: true, public: false},
     chaos_min_interval_ms: {type: "number", default: 15000, public: false, min: 5000},
     chaos_max_simultaneous: {type: "number", default: 3, public: false, min: 1, max: 6},
+    milestone_banners_enabled: {type: "boolean", default: true, public: false},
+    pixel_milestone_interval: {type: "number", default: 1000, public: false, min: 1},
 } as const satisfies Record<string, ConfigDefinition>;
 
 export type ConfigKey = keyof typeof CONFIG;

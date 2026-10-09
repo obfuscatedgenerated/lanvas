@@ -1320,6 +1320,23 @@ const AdminPageInteractivity = () => {
                 <ReadonlyToggle />
             </AdminSection>
 
+            <AdminSection title="Milestones" row>
+                <ConfigCheckbox
+                    config_key="milestone_banners_enabled"
+                    label="Milestone banners"
+                    confirm_name="milestone banners"
+                    help="Show a celebratory banner each time the total placed pixel count crosses a multiple of the interval."
+                />
+
+                <ConfigNumberInput
+                    config_key="pixel_milestone_interval"
+                    label="Milestone interval (pixels)"
+                    confirm_name="milestone interval"
+                    unit=" pixels"
+                    help="A banner fires every time the running total crosses a multiple of this many pixels."
+                />
+            </AdminSection>
+
             <AdminSection title="Admin tools & cheats" row>
                 <ConfigCheckbox
                     config_key="admin_god"
