@@ -4,6 +4,7 @@ import {useEffect, useRef} from "react";
 
 import type {PixelGridRef} from "@/components/PixelGrid";
 import {colours_match, type TemplateCells, type TemplateSettings} from "@/lib/template";
+import {socket} from "@/socket";
 
 // dots cover this fraction of a cell, leaving the real canvas visible around them
 const DOT_FRACTION = 0.4;
@@ -125,6 +126,32 @@ const TemplateOverlay = ({settings, cells, grid_data, grid_width, grid_height, p
         on_progress({matched, total});
     }, [cells, grid_data, grid_width, grid_height, pixel_size, template_width, template_height, origin_x, origin_y, settings.mode, on_progress]);
 
+    // eraserhead and rainbow hijack the colour you'd place, so sampling with e while one runs is meaningless — track
+    // their end times (server-authoritative, same feed the widget uses) so the keybind can bow out until they're over
+    const colour_prank_until_ref = useRef<Record<string, number>>({});
+
+    useEffect(() => {
+        const apply = ({prank, remaining_ms}: {prank: string; remaining_ms: number}) => {
+            if (prank !== "eraserhead" && prank !== "rainbow") {
+                return;
+            }
+
+            colour_prank_until_ref.current[prank] = remaining_ms > 0 ? Date.now() + remaining_ms : 0;
+        };
+
+        const handle_prank = (message: {prank: string; remaining_ms: number}) => apply(message);
+        const handle_pranks = (list: {prank: string; remaining_ms: number}[]) => list.forEach(apply);
+
+        socket.on("prank", handle_prank);
+        socket.on("pranks", handle_pranks);
+        socket.emit("check_pranks");
+
+        return () => {
+            socket.off("prank", handle_prank);
+            socket.off("pranks", handle_pranks);
+        };
+    }, []);
+
     // press e over the template to pick up the colour it wants there
     const last_pointer_ref = useRef<{x: number; y: number} | null>(null);
 
@@ -135,6 +162,12 @@ const TemplateOverlay = ({settings, cells, grid_data, grid_width, grid_height, p
 
         const handle_key_down = (event: KeyboardEvent) => {
             if (event.key.toLowerCase() !== "e" || event.ctrlKey || event.metaKey || event.altKey || is_typing_target(event.target)) {
+                return;
+            }
+
+            const now = Date.now();
+            const until = colour_prank_until_ref.current;
+            if ((until.eraserhead ?? 0) > now || (until.rainbow ?? 0) > now) {
                 return;
             }
 
