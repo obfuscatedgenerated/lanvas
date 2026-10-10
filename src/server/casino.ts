@@ -190,9 +190,22 @@ const pick_random_players = (context: CasinoContext, count: number): Author[] =>
     return shuffled.slice(0, count);
 };
 
+const count_active_players = (context: CasinoContext, exclude_spinner = false): number => {
+    const active_ids = new Set(get_active_users());
+    let count = 0;
+
+    for (const connected of context.connected_users) {
+        if (connected.user_id && active_ids.has(connected.user_id) && (!exclude_spinner || connected.user_id !== context.spinner.user_id)) {
+            count++;
+        }
+    }
+
+    return count;
+}
+
 
 const SEGMENTS: Omit<WheelSegment, "weight">[] = [
-    {id: "double", label: "×2", color: "#16a34a"},
+    {id: "five", label: "+5", color: "#16a34a"},
     {id: "clowned", label: "🤡", color: "#dc2626"},
     {id: "duck", label: "🦆", color: "#ca8a04"},
     {id: "adware", label: "Adware", color: "#f97316"},
@@ -205,32 +218,34 @@ const SEGMENTS: Omit<WheelSegment, "weight">[] = [
     {id: "no_glasses", label: "No glasses", color: "#24b4ff"},
     {id: "jackpot", label: "JACKPOT", color: "#eab308"},
     {id: "nothing", label: "Nothing", color: "#404040"},
-    {id: "triple", label: "×3", color: "#15803d"},
+    {id: "charity", label: "Charity", color: "#15803d"},
     {id: "gift_bomb", label: "Gift bomb", color: "#9333ea"},
 ];
 
 const OUTCOMES: CasinoOutcome[] = [
     // wins: 30%
     {
-        id: "double",
+        id: "five",
         kind: "win",
-        weight: 16,
-        segment_id: "double",
+        weight: 8,
+        segment_id: "five",
         announce: "feed",
         apply: async (context) => {
-            await give_pixels(context, HOUSE_AUTHOR, context.spinner, 2);
-            return `${context.spinner.name} doubled up! +2 pixels`;
+            await give_pixels(context, HOUSE_AUTHOR, context.spinner, 5);
+            return `${context.spinner.name} got +5 pixels!`;
         },
     },
     {
-        id: "triple",
+        id: "charity",
         kind: "win",
-        weight: 8,
-        segment_id: "triple",
+        weight: 16,
+        segment_id: "charity",
         announce: "feed",
         apply: async (context) => {
-            await give_pixels(context, HOUSE_AUTHOR, context.spinner, 3);
-            return `${context.spinner.name} tripled up! +3 pixels`;
+            // give 2 pixels for every active player
+            const active_count = count_active_players(context, false);
+            await give_pixels(context, HOUSE_AUTHOR, context.spinner, active_count * 2);
+            return `${context.spinner.name} got 2 pixels for every active player! +${active_count * 2} pixels`;
         },
     },
     {

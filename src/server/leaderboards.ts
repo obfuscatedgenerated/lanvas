@@ -79,14 +79,7 @@ const LEADERBOARDS: LeaderboardDefinition[] = [
         title: "Duck keeper",
         unit: "ducks",
         query: `SELECT user_id, COUNT(*) AS value FROM casino_log WHERE outcome_id = 'duck' GROUP BY user_id`,
-    },
-    {
-        key: "most_taxed",
-        feature: "casino",
-        title: "Most taxed",
-        unit: "times",
-        query: `SELECT user_id, COUNT(*) AS value FROM casino_log WHERE outcome_id = 'taxman' GROUP BY user_id`,
-    },
+    }
 ];
 
 interface LeaderboardRow {
